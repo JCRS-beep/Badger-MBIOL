@@ -9,8 +9,8 @@ badger_raw<- read.csv("Data/wytham.data.csv")   # more info on this df in "Docs"
 
 # Creating my matrix based off this (info in doc )
 badger_matrix<- matrix(c(0,    0,	   3, 
-                         0.12, 0,    0, 
-                         0,    0.66, 0.32), 
+                         0.66, 0,    0, 
+                         0,    0.66, 0.29), 
                        byrow=TRUE, 3,3)
 
 
@@ -24,35 +24,35 @@ project.plot<- vec(project)
 matplot(project.plot, type="l", log="y")
 legend("topright", legend= c("Cub", "Yearling", "Adult"), 
        col= 1:ncol(project.plot), lty= 1:ncol(project.plot))
-# projection shows decline to extinction over 10 time intervals
+# projection shows rise over 10 time intervals
 
 # Asking for eigen values and vectors
 eigs(badger_matrix)
-# lamdba= 0.7464394
-# stable stage distribution= 0.7094330 0.1140507 0.1765163
-# reproductive rates = 0.375847 2.337892 2.644082  
+# lamdba= 1.199006
+# stable stage distribution= 0.5127877 0.2822671 0.2049451
+# reproductive value = 0.5875586 1.0674033 1.9391252  
 
 # Elasticity analysis
 popdemo::elas(badger_matrix)
 #           [,1]      [,2]      [,3]
-# [1,]         0         0 0.2666382
-# [2,] 0.2666382         0         0
-# [3,]         0 0.2666382 0.2000853
-# suggests 3 transitions are equally important: birth, and cub and yearling development
+# [1,]         0         0 0.30129286
+# [2,]  0.3012929         0         0
+# [3,]         0  0.3012929 0.09612143
+# equal values for birth, and cub and yearling development, changes in these vital rates affect lambda 
 
 
 
 # Life table response experiments- USEFUL IN FINAL REMOVAL EXPERIMENTS
 # How to model removal
 removal<- matrix(c(0,      0,	     3*1.5,     # if reproduction increases by 50%
-                   0.12*2, 0,        0,       # if cub survival doubles
-                   0,      0.66*0.5, 0.32*0.5),     # if adult and yearling survival falls 50%
+                   0.66*2, 0,        0,       # if cub survival doubles
+                   0,      0.66*0.5, 0.29*0.5),     # if adult and yearling survival falls 50%
                 byrow=TRUE, 3,3)
 
 popdemo::eigs(removal, what = "lambda")
-# 0.7665447
+#1.301755
 elas(removal)
 #         [,1]      [,2]       [,3]
-# [1,] 0         0         0.30639233
-# [2,] 0.3063923 0 ,       0
-# [3,] 0         0.3063923 0.08082302
+# [1,] 0         0          0.31996410
+# [2,] 0.3199641 0 ,        0
+# [3,] 0         0.3199641  0.04010769
