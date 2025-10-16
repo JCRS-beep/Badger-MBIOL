@@ -32,13 +32,29 @@ eigs(badger_matrix)
 # stable stage distribution= 0.5127877 0.2822671 0.2049451
 # reproductive value = 0.5875586 1.0674033 1.9391252  
 
+############
+## Comment from Chrissy: The left eigenvector is reproductive *value*, not
+#reproductive rate. There's a subtle difference - check that you understand (and
+#we can discuss in a future meeting as needed).
+############
+
+
 # Elasticity analysis
 popdemo::elas(badger_matrix)
-#           [,1]      [,2]      [,3]
+#           [,1]      [,2]      [,3]AD
 # [1,]         0         0 0.30129286
 # [2,]  0.3012929         0         0
 # [3,]         0  0.3012929 0.09612143
 # equal values for birth, and cub and yearling development, changes in these vital rates affect lambda 
+
+
+# [1,]         0         0 0.2666382
+# [2,] 0.2666382         0         0
+# [3,]         0 0.2666382 0.2000853
+# suggests 3 transitions are equally important: birth, and cub and yearling development
+############
+## Comment from Chrissy: Equally important to/for what? What does elasticity tell us?
+############
 
 
 
@@ -53,6 +69,17 @@ popdemo::eigs(removal, what = "lambda")
 #1.301755
 elas(removal)
 #         [,1]      [,2]       [,3]
+
 # [1,] 0         0          0.31996410
 # [2,] 0.3199641 0 ,        0
 # [3,] 0         0.3199641  0.04010769
+
+############ 
+# Comment from Chrissy: I like the direction that this is going! It's not quite
+# a Life Table Response Experiment (LTRE) yet as written here. An LTRE would
+# take two (or more) matrices and compare them, decomposing the difference or
+# variance in population growth rate (or another metric of interest) into
+# contributions from the different matrix elements (or underlying vital rates).
+# It's a pretty flexible tool that I am an expert in, so we can discuss more in
+# a future meeting!
+############
