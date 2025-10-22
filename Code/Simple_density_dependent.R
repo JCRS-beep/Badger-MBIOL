@@ -31,7 +31,7 @@ MPM<- create_lM(mats=list(A),   # must be converted to list even if length=1
                 stageframe = sframe) 
 summary(MPM)
 
-# recreating our 10 year projection
+# recreating our 10 year projection- (if projecting with lists, must find mean vital rates)
 project<- projection3(MPM, times=10)  # projecting MPM over 10 timesteps
 summary(project) # assumes starting vector of 1 per stage- very small pop!
 plot(project)
@@ -61,3 +61,14 @@ project_final<- projection3(MPM, times=10,
                        integeronly = TRUE) 
 summary(project_final) 
 plot(project_final)
+
+
+# density dependence
+# creating density frames- decrease litter size, all stage survival 
+den1<- density_input(MPM, 
+                     stage3 = c("Cub", "Yealing", "Adult"),  # stages in t+1 with transitions affected by density
+                     stage2= c("Cub", "Yealing", "Adult"),   # stages in t+1 with transitions affected by density
+                     style = 1,        # style 1 is ricker density dep
+                     time_delay = 1,    # 1 year following
+                     alpha = 0.05, beta = 0.0005, # strength of density dependence
+                     type = c(1, 2))   # kind of transition replaced- 1= survival, 2= fecundity
