@@ -1,4 +1,4 @@
-# Population growth rate - Function
+# Function- Population growth rate 
 # 23/10/25
 
 # function to calculate growth rate (+pop size)
@@ -10,5 +10,7 @@ return(gr)
 
 # Function name: growth
 # Arguments    : projected matrix (made with mat.proj)
-# Purpose      : caculates intermediate population size (popN) for future use
+# Purpose      : calculates intermediate population size (popN) for future use
 #                generates growth rate per year (gr) by dividing pop size by previous year 
+
+growth(project1)  # SUCCESS!
