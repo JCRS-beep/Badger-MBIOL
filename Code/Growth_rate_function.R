@@ -4,8 +4,8 @@
 # function to calculate growth rate (+pop size)
 growth<- function(projected) 
 {popN<- apply(projected, 2, sum) # intermediate pop size calculation
-gr<- popN[2:length(popN)]/popN[1:(length(popN)-1)]
-return(gr)
+gr<- popN[2:length(popN)]/popN[1:(length(popN)-1)]  # 
+return(gr)  
 }   
 
 # Function name: growth

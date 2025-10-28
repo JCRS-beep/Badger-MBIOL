@@ -25,7 +25,8 @@ mat.proj<- function(N0, mat, time_int){
 
 # Function to plot output of mat.proj----
 plot.proj<- function(pmat, vec_col){
-matplot(pmat, type="l",  # type l for line
+matplot(t(pmat), # transposing the matrix to plot col on x and abundance on y
+        type="l",  # type l for line
         col=c(vec_col),  # 2 cols for sexes- NEEDS EDITING
         lty= 1:(nrow(pmat))/2,           # line types repeated for sexes to match age classes
         ylab= "abundance", xlab="time (t)")
