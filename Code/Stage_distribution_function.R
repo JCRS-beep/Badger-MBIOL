@@ -11,7 +11,7 @@ prop.stage<- function(projected)     # input projected matrix
   return(popStage)
 }
 
-prop.stage(project1)
+prop.stage(project1)   # SUCCESS!
 
 # Function name= prop.stage
 # Arguments: 
