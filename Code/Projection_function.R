@@ -39,27 +39,37 @@ proj  # SUCCESS!
 
 
 
-# Function to plot output of mat.proj
+# Function to plot output of mat.proj  - NNED TO FIX COL ASSIGNMENT
 plot.proj<- function(pmat,
-                     vec_col= "black", 
+                     col= "black", 
                      nSex=1,
                      ylab = "abundance", 
                      xlab = "time (t)",
                      legend.pos = "topright", 
                      cex.legend = 0.8) {
-  nStages=(nrow(pmat))
-  if(nSex==1) 
+  if(nSex==1) {
+    nStages=(nrow(pmat))  # stages of single sex or
+  }
+  else{
+    nStages=nrow(pmat)/2   # half of stages for 2 sex
+  }
+  
+   if(nSex==1)    # if single sex
   {
     lty_vec<- seq_len(nStages)   # single sex, lty = age classes
-  }
-  else {
-    lty_vec<- rep(seq_len(nStages), times=2) # line types repeated for sexes 
-  }        
+    col_vec<- col                 # use single colour or vector of cols
+    }
+
+  
+  if(nSex==2) {
+    lty_vec<- rep(seq_len(nStages), times=2)    # line types repeated for sexes - incorrect for 2 sex
+    col_vec<- c(rep(col[1], nStages), rep(col[2], nStages))
+              }        
   
   matplot(t(pmat), # transposing the matrix to plot col on x and abundance on y
         type="l",  # type l for line
         lty= lty_vec,
-        col=c(vec_col), 
+        col=col_vec, 
         ylab = ylab, 
         xlab = xlab)
                  
@@ -67,14 +77,14 @@ legend("topright",
        legend= rownames(pmat),  
        cex=0.65,
        lty= lty_vec,  # line type matches graph
-       col=vec_col)            # colours match graph
+       col=col_vec)            # colours match graph
 }
 
 # Function name = plot.proj  
 # Arguments
 # pmat   : matrix output of projection (out.mat)
-# v_cols : Colour vector length 2, col1 for sex1
+# col : Colour vector. Allows single colour for single sex, multicolour for single sex stages, or multicolour for multiple sex 
 # Purpose= plots the projected matrix with a key corresponding to stage and sex. MUST HAVE EQUAL STAGES FOR EACH SEX
 
 # TEST
-plot<- plot.proj(proj)
+plot<- plot.proj(proj, col="blue" )  # SUCCESS!
