@@ -83,4 +83,27 @@ popdemo:: elas(mat2)
 # Adult(m)         0           0        0 0.0000000   0.1108541 0.6674378
 
 # How to do sensitivity analysis
+
+
+
+# creating a 2 sex matrix with create.matrix----
+stageNames<- c("Cub", "Yearling", "Adult") # vector of stages
+
+mat1<-  create.matrix(names= stageNames,   # vector of stage names    
+                      nSex=2,    # 1 or 2 sex matrix (default 1)             
+                      r1= 0.32 ,             # reproduction sex 1
+                      r2= 0.4,              # reproduction sex 2
+                      g1= c(0.67, 0.67),   # vector of all growth rates/ transition probabilities
+                      g2= c(0.65, 0.65), # second sex values for growth
+                      S= c(0.86, 0.82)
+)
+mat1
+
+
+# projecting matrix for population size estimates----
+n0<- c(10, 10, 10, 10, 10, 10)  # initial pop structure
+cols<- c("red", "blue")
+proj1<- mat.proj(n0, mat1,20)  # 10 year projection
+plot.proj(proj1, cols, nSex=2)   
+growth(proj1)  # varies below 1
  
