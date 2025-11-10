@@ -23,7 +23,7 @@ params<- data.frame(      # dataframe with density dependent parameters
   Sc_f_max=0.65,   # 
   Sc_m_max=0.65, 
   b=0.02,
-  rep_K= 2.4,          #litter size (K)
+  rep_K= 3,          #litter size (K)
   h= 6   # harem size per male
   )
 
@@ -90,4 +90,46 @@ Umat[2,1]<- 0.32*gN
 Umat[5,4]<- 0.27*gN  
 Umat  
 
+# generalising into a function
+create.Umat<- function(params, 
+                       nStages,
+                       N, 
+                       g2f, 
+                       g2m,
+                       S) {   # Adult survival vector
+Umat<- matrix(0, nrow=(2*nStages), ncol= (2*nStages))
+b<- params$b
+g1f<- params$Sc_f_max
+g1m<-params$Sc_m_max
+rick<-exp(-b*N)    # ricker function embedded
+Umat[2,1]<- g1f*rick   # only cub survival density dependent
+Umat[3,2]<- g2f
+Umat[3,3]<- S[1]
+Umat[5,4]<- g1m*rick
+Umat[6,5]<- g2m
+Umat[6,6]<- S[2]
+return(Umat)
+}
 
+
+# Combining these into a final matrix (Amat)----
+# Theoretical pop of 55f, 45m. near carrying capacity, strong density dependence
+params_th<- data.frame(
+  Ffmax= 1.6,     # F fecundity max (max cubs per adult female)
+  Fmmax= 2.1,     # Male fecundity  (max cubs per adult female)
+  Sc_f_max= 0.67,   
+  Sc_m_max= 0.65, 
+  b=0.025,
+  rep_K= 3,          #litter size (K)
+  h= 6               # harem size per male
+)
+
+(Fmat_th<-create.Fmat(params=params_th, nStages=3, Nf=55, Nm=45))
+(Umat_th<-create.Umat(params= params_th, nStages=3, N=100, 
+                     g2f=0.7, 
+                     g2m=0.67, 
+                     S=c(0.86, 0.84)))
+
+Amat_th<- Umat_th+ Fmat_th 
+
+#Projecting this over time steps ---- 
