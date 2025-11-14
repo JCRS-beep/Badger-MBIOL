@@ -10,10 +10,10 @@ rownames(mat.blank)<- stages
 colnames(mat.blank)<- stages
 
 ex_Fmat<- mat.blank   # copying to visualise Fertility matrix (not female mat)
-ex_Fmat[1,3]<- "sr*Ff"
-ex_Fmat[1,6]<- "sr*Fm"
-ex_Fmat[4,3]<-  "(1-sr)*Ff"
-ex_Fmat[4,6]<- "(1-sr)*Fm"
+# Assumes females only reproduction
+ex_Fmat[1,3]<- "0.5f"      # where f= litter size per *adult* female for given number males and females (Nm, Nf)
+ex_Fmat[4,3]<-  "0.5f"
+
 
 # Inspo from ex functions
 params<- data.frame(      # dataframe with density dependent parameters
@@ -29,70 +29,84 @@ params<- data.frame(      # dataframe with density dependent parameters
 
 # creating Fmat with mating systems
 Mating.Fmat<- function(params,     # density dependent parameters
-                       nStages,   # Stages in life cycle graph
+                       stagenames,   # Stages in life cycle graph (single sex)
                        Nf,        # Adult females
                        Nm)        # Adult males
   {
-  Fmat<-matrix(0, nrow=(2*nStages), ncol= (2*nStages))   # blank matrix with dim of stages
-  p<- Nf/(Nm+Nf)   # sex ratio as prop females
+  if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimension calculations")
+   nStages<- length(stagenames) 
+     
+  Fmat<-matrix(0, nrow=(nStages), ncol= (nStages))   # blank matrix with dim of stages
+  rownames(Fmat)<- stagenames
+  colnames(Fmat)<- stagenames
+  
   K<- params$rep_K
   h<- params$h
-  Ff<- (K*Nm)/(Nm+Nf*h^-1)    # female fertility function
-  Fm<- (K*Nf)/(Nf+Nm*h^-1)    # male fertility function
-  Fmat[1,nStages]<-p*Ff      # female cub production by females
-  Fmat[1,2*nStages]<- p*Fm   # female cub production by males
-  Fmat[(nStages+1),nStages]<- (1-p)*Ff   # male cub production by females
-  Fmat[(nStages+1),(2*nStages)]<- (1-p)*Fm  # male cub production by males
+  f<- (K*Nm)/(Nm+Nf*h^-1)    # fertility function
+  Fmat[1,nStages/2]<-0.5*f      # female cub production by females
+  Fmat[(nStages/2+1),nStages/2]<- 0.5*f   # male cub production by females
   return(Fmat)
   }
 
 # Function name= Mating.Fmat
-# Calculates resulting matrix (Fmat) with 
+# Calculates resulting matrix (Fmat) using harmonic fertility function  
 
-Fmat<- Mating.Fmat(params=params, nStages=3, Nf=20, Nm=18)  # starting pop = 20 fems, 18 males
+Fmat<- Mating.Fmat(params=params, stagenames=stages, Nf=20, Nm=18)  # starting pop = 20 fems, 18 males
 Fmat   # SUCCESS!
 
-# Do I include Harmonic fertility function and ricker equation to manage matF?
 
 
 
 
-#Projecting this over time steps ---- 
-
-Fmat.proj<-function(initial, params, stagenames, time, memberN, return.vec="FALSE") {
-  out<- list(pop=vector(), vec=matrix(), mat=matrix())  # objects returned
-  
+#Can't project without Amat= Fmat + Umat, otherwise extinction ---- 
+Fmat.proj<-function(initial, params, stagenames, time, return.vec= FALSE) {
+ 
+   out<- list(pop=vector(), vec=matrix(), mat=matrix())  # objects returned
+ 
+   # Time as integer
+  time <- as.integer(time)
   # Initial vector:
-   n0 <- initial
+  dims<-length(stagenames)      # dims is nrow and ncol of Fmat 
+  if (length(initial) != dims) stop("initial pop vector must equal length(stagenames)")
+  n0 <- as.numeric(initial)     # no intial pop vector
    
-   nStages<-length(stagenames)
-   Nf<- n0[3]        # extract Nf and Nm from n0
-   Nm<- n0[6]
+  
+#   if (is.null(memberN)){
+#     memberN<- 1:length(stagenames)   # all members contribute to pop size
+#   }
+   Nf<- n0[(dims/2)]        # extract Nf and Nm from n0. Should yearlings be included?
+   Nm<- n0[dims]
    
    # Initialize the output for population vector:
-   Vec <- matrix(0, ncol = nStages, nrow = time + 1)
-   Pop <- rep(NA, (time + 1))
-   dimnames(Vec)[[2]] <- stagenames
-   dimnames(Vec)[[1]] <- 1:(time+1)
-   Vec[1, ] <- n0
-   Pop[1] <- sum(n0)
-   for (i in 1:time) {  
-     thisNf<- Vec[i,(nStages/2)]    
-     thisNm<- Vec[i,nStages]        # assumes adult males final entry
-     thisFmat<-Mating.Fmat(params, nStages,thisNf, thisNm)   # results in matrix from
-     Vec[(i + 1), ] <- thisFmat %*% Vec[i, ]    # new stage abundance vector
-     Pop[i + 1] <- sum(Vec[(i + 1), ])        # new total pop size
+   Vec <- matrix(0, ncol = dims, nrow = time + 1)  # matrix to fill with stage abundance for each time step (each row)
+   Pop <- rep(NA, (time + 1))       # vector to fill with total pop size each year
+   colnames(Vec) <- stagenames   # naming cols matrix as stages 
+   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection
+    Vec[1, ] <- n0                   
+    Pop[1] <- sum(n0)    
+ 
+     for (i in 1:time) {  
+     thisNf<- Vec[i,dims/2]    # Nf is mid col in Vec matrix
+     thisNm<- Vec[i,dims]        # assumes adult males final entry in matrix
+    
+     thisFmat<-Mating.Fmat(params, dims,thisNf, thisNm)   # applies Fmat creation to 
+     Vec[(i + 1), ] <- thisFmat %*% Vec[i, ]    # mat multiplication of Fmat rates and prev year stage abundance gives new stage abundance
+     Pop[i + 1] <- sum(Vec[(i + 1), ])        # new total pop size sums stage abundance
    }
    
   # out objects
    dim(Pop) <- time + 1
    out$pop <- Pop
-   if (return.vec== TRUE) {
-     out$vec <- Vec
-  } out$mat <- thisFmat
+   if (isTRUE(return.vec)) {
+     out$vec <- Vec        # issues in this line?
+  } 
+   out$mat <- thisFmat
    
    return(out)
      }
 
 # Testing function----
-n0=c(10,10,10,10,10,10)  # equal all sexes and ages
+initial=c(10,10,10,10,10,10)  # equal all sexes and ages
+proj.test<- Fmat.proj(initial, params, stagenames= stages, time=10, return.vec= TRUE)
+# 'Error in thisFmat %*% Vec[i, ] : non-conformable arguments'   
+
