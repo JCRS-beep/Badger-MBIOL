@@ -30,8 +30,8 @@ params<- data.frame(      # dataframe with density dependent parameters
 # creating Fmat with mating systems
 Mating.Fmat<- function(params,     # density dependent parameters
                        stagenames,   # Stages in life cycle graph (single sex)
-                       Nf,        # Adult females
-                       Nm)        # Adult males
+                       Nf,        # Adult and yearling females
+                       Nm)        # Adult and yearling males
   {
   if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimension calculations")
    nStages<- length(stagenames) 
@@ -56,8 +56,6 @@ Fmat   # SUCCESS!
 
 
 
-
-
 #Can't project without Amat= Fmat + Umat, otherwise extinction ---- 
 Fmat.proj<-function(initial, params, stagenames, time, return.vec= FALSE) {
  
@@ -74,7 +72,7 @@ Fmat.proj<-function(initial, params, stagenames, time, return.vec= FALSE) {
 #   if (is.null(memberN)){
 #     memberN<- 1:length(stagenames)   # all members contribute to pop size
 #   }
-   Nf<- n0[(dims/2)]        # extract Nf and Nm from n0. Should yearlings be included?
+   Nf<- n0[(dims/2)-1] + n0[(dims/2)]      # extract Nf and Nm from n0. adult and yearlings included, only cubs excluded
    Nm<- n0[dims]
    
    # Initialize the output for population vector:
