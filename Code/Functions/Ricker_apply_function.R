@@ -15,7 +15,7 @@ ricker<- function(params, N){   # Using params (b) and population size input
 
 
 
-# Applying ricker density dependence to matrix
+# Applying ricker function density dependence to matrix
 apply.DD<- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker to whole matrix, survival or fertility
 { 
   # making sure mats match 
@@ -42,9 +42,9 @@ apply.DD<- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker to
    # working out positions of cub in matrix
    nStages<- nrow(Umat)/2  
   # Mcub<- c(nStages+2, nStages+1)         # assumes female cubs are [1,], male cubs [nStages+1, ] 
-  
-   Umat_N<- Umat[2,1]* rick # female cub survival to yearlings
-   Umat_N<- Umat_N[(nStages+2), (nStages+1)]* rick # male cub survival to yearlings  INCORRECT NUMBER OF DIMS?
+   Umat_N<- Umat
+   Umat_N[2,1]<- Umat[2,1]* rick # female cub survival to yearlings
+   Umat_N[(nStages+2), (nStages+1)]<- Umat_N[(nStages+2), (nStages+1)]* rick # male cub survival to yearlings 
    Amat_N<- Fmat + Umat_N
   
    # Applying to Fmat
