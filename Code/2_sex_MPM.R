@@ -1,32 +1,35 @@
 # 2 Sex Matrix population Models
 # 22.10.25
 
-# creating seperate male and female leslie matrix using survival table data----
-Fmat<- matrix(0, nrow=3, ncol=3)# blank female (F) matrix of zeros to fill
-Fmat[1,3]<- 0.27   # female reproduction
-Fmat[2,1]<- 0.65    # cub to yearling 
-Fmat[3,]<- c(0, 0.65, 0.86)  # yearling to adult, adult survival as(n-1/n)
+# NOTE- incorrect matrix used, should be 4X4 final not 6X6.
 
-Mmat<-  matrix(0, nrow=3, ncol=3)   # blank male matrix 
-Mmat[1,3]<- 0.32  #  reproduction
+
+# creating seperate male and female leslie matrix using survival table data----
+Fmat<- matrix(0, nrow=2, ncol=2)# blank female (F) matrix of zeros to fill
+Fmat[1,2]<- 0.27   # female reproduction- from matrix so no updates needed
+Fmat[2,1]<- 0.65    # cub to yearling 
+Fmat[2,2]<-  0.86  # yearling to adult, adult survival as(n-1/n)
+
+Mmat<-  matrix(0, nrow=2, ncol=2)   # blank male matrix 
+Mmat[1,2]<- 0.32  #  reproduction
 Mmat[2,1]<- 0.67   # cub to yearling 
-Mmat[3,]<- c(0, 0.67, 0.82)  # yearling to adult, male adult survival lower than females
+Mmat[2,2]<-  0.82  # yearling to adult, male adult survival lower than females
 
 # combining into 2 sex matrix for stage specific vital rates
-mat2<- matrix(0, nrow=6, ncol=6)
-mat2[1:3, 1:3]<- Fmat   # adding females
-mat2[4:6, 4:6]<- Mmat    # adding males
-cnames<- c("Cub(f)", "Yearling(f)", "Adult(f)", "Cub(m)", "Yearling(m)", "Adult(m)")
-rnames<- c("Cub(f)", "Yearling(f)", "Adult(f)", "Cub(m)", "Yearling(m)", "Adult(m)")
-colnames(mat2)<- cnames
-rownames(mat2)<- rnames
+
+mat2<- matrix(0, nrow=4, ncol=4)
+mat2[1:2, 1:2]<- Fmat   # adding females
+mat2[3:4, 3:4]<- Mmat    # adding males
+names<- c("Yearling(f)", "Adult(f)", "Yearling(m)", "Adult(m)")
+colnames(mat2)<- names
+rownames(mat2)<- names
 mat2   # female produce only female cubs, and males produce only male cubs
 
 
 
 
 # Projections----
-initial<- matrix(c(0,20, 5, 0, 20, 4), ncol=1)  # initial pop structure matrix (no cubs)
+initial<- matrix(c(10, 5, 10, 4), ncol=1)  # initial pop structure matrix (no cubs)
 N1<- mat2 %*% initial  # 1 year projection. %*% for matrix multiplication
 
 years<- 10  # over 10 years
@@ -43,21 +46,24 @@ project1
 
 
 # plotting this 10 year projection and colour coding life stages and sex
-cols<- c("red", "red", "red", "blue", "blue", "blue")   # custom colour vector
+cols<- c( "red", "red", "blue", "blue")   # custom colour vector
 matplot(t(project1),   # transposing matrix- swaps cols for rows
         type="l",  # type l for line
-        col=cols, lty= 1:3,           # red female, blue male, line type
+        col=cols, lty= 1:2,           # red female, blue male, line type
         ylab= "abundance", xlab="time (t)")
-legend("topright", legend= c("Cub", "Yearling", "Adult"),
+legend("topright", legend= c("Yearling", "Adult"),
        cex=0.65,
-       lty= 1:3)   # line type matches graph
+       lty= 1:2)   # line type matches graph
 
 
 library(popdemo)
 eigs(mat2)
-# lambda 1.002837
-# ss 0.0000000 0.0000000 0.0000000 0.2082479 0.1391314 0.6526206
-# rv 0.0000000 0.0000000 0.0000000 0.5323178 0.7967578 1.1925640
+# lambda 1.030333
+# $ss
+# 0.2076391 0.7923609 0.0000000 0.0000000
+# $rv
+# 0.6832316 1.0830095 0.0000000 0.0000000
+
 
 #manually calculating pop growth rate
 popN<- apply(project1, 2, sum)   # apply sum func over matrix array (2= by col). Pop size per year
@@ -66,9 +72,10 @@ plot(1:11, popN,
 
 lambda<- popN[2:11]/popN[1:10]    # each year divided by prev year abundance
 lambda  # calculates growth rate for each year
+#        1         2         3         4         5         6         7         8         9        10 
+# 0.8072414 1.0814310 1.0202555 1.0311666 1.0291067 1.0294971 1.0294235 1.0294387 1.0294368 1.0294381 
 
-
-# stage distribution - incorrect?
+# stage distribution
 propStage<- project1/popN # divide each value by total pop size to get proportion each year
 matplot(1:11, propStage, type= "l")
 
@@ -82,28 +89,4 @@ popdemo:: elas(mat2)
 # Yearling(m)      0           0        0 0.1108541   0.0000000 0.0000000
 # Adult(m)         0           0        0 0.0000000   0.1108541 0.6674378
 
-# How to do sensitivity analysis
-
-
-
-# creating a 2 sex matrix with create.matrix----
-stageNames<- c("Cub", "Yearling", "Adult") # vector of stages
-
-mat1<-  create.matrix(names= stageNames,   # vector of stage names    
-                      nSex=2,    # 1 or 2 sex matrix (default 1)             
-                      r1= 0.32 ,             # reproduction sex 1
-                      r2= 0.4,              # reproduction sex 2
-                      g1= c(0.67, 0.67),   # vector of all growth rates/ transition probabilities
-                      g2= c(0.65, 0.65), # second sex values for growth
-                      S= c(0.86, 0.82)
-)
-mat1
-
-
-# projecting matrix for population size estimates----
-n0<- c(10, 10, 10, 10, 10, 10)  # initial pop structure
-cols<- c("red", "blue")
-proj1<- mat.proj(n0, mat1,20)  # 10 year projection
-plot.proj(proj1, cols, nSex=2)   
-growth(proj1)  # varies below 1
- 
+# How to do sensitivity analysis?
