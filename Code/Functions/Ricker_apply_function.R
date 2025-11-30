@@ -2,19 +2,6 @@
 # 16/11/2025
 
 
-ricker <- function(params, N){   # Using params (b) and population size input
-  dd_fun <- exp(-params$b*N)
-  return(dd_fun)      # returns value of multiplier
-}
-
-# Function name= ricker
-# Inputs: 
-# params, incl b = strength of density dependence
-# N= population size (can be total, NAdults, other, but explain in comments) 
-# Use: Using given population size, returns dd_fun multiplier.
-
-
-
 # Applying ricker function density dependence to matrix
 apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker to whole matrix, survival or fertility
 { 
@@ -23,7 +10,18 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker t
     stop("Reproductive (Fmat) and survival (Umat) matrices 
          must have the same dimensions.")
   }
+  
+  # Function ricker
+  # params, incl b = strength of density dependence
+  # N= population size (can be total, NAdults, other, but explain in comments) 
+  # Use: returns dd_fun multiplier.
+  ricker <- function(params, N){   # Using params (b) and population size input
+    dd_fun <- exp(-params$b*N)
+    return(dd_fun)      # returns value of multiplier
+  }
   rick <- ricker(params, N)    # ricker function embedded
+  
+  # constructing Amat
   Amat <- Fmat + Umat
   
   # applying based on method
@@ -38,18 +36,10 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker t
   Fmat_N <- Fmat*rick
   Amat_N <- Fmat_N + Umat
   
- } else if(DDapply %in% c("Recruitment", "recruitment")){
-   # working out positions of cub in matrix
-   nStages <- nrow(Umat)/2  
-  # Mcub<- c(nStages+2, nStages+1)         # assumes female cubs are [1,], male cubs [nStages+1, ] 
-   Umat_N <- Umat
-   Umat_N[2,1] <- Umat[2,1]* rick # female cub survival to yearlings
-   Umat_N[(nStages+2), (nStages+1)] <- Umat_N[(nStages+2), (nStages+1)]* rick # male cub survival to yearlings 
-   Amat_N <- Fmat + Umat_N
-  
-   # Applying to Fmat
-   Fmat_N <- Fmat*rick
-   Amat_N <- Fmat_N + Umat_N
+ } else if(DDapply %in% c("Recruitment", "recruitment")) {
+   # Applying to Fmat TWICE (survival and fertility)
+   Fmat_N <- Fmat*(rick^2)
+   Amat_N <- Fmat_N + Umat
  } 
 
   return(Amat_N) 
