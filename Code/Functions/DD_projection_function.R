@@ -1,15 +1,18 @@
 # DD projection function
 # 17/11/2025
 
-DD.proj<-function(Fmat, 
+# WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
+# Needs completing
+
+dd.proj<-function(Fmat, 
                   Umat, 
                   initial, 
                   params, 
                   stagenames, 
                   time, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                  AdultNx= TRUE,  # are adults/ oldest class the only individuals included in Nf and Nm calcs? If elderly incl and yearlings not, tweaks needed
                   DDapply="matrix", 
+                  Mfunction= "Min",
                   return.vec= FALSE) 
 {
   # Time 
@@ -19,13 +22,15 @@ DD.proj<-function(Fmat,
   if (is.null(initial)) {stop("You must provide initial population vector for each stage abundance")
   } else(n0 <- as.numeric(initial))
   
-  nStages<-length(stagenames)/2      # how many stages
+  
   if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
   if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimensions")
   
   if (is.null(params)){
     stop("You must provide the parameters that match your selected function for density-dependent reproduction.")
   }
+  
+  nStages<-length(stagenames)/2      # how many stages
   
   # population size
   if (is.null(memberN)){
@@ -35,18 +40,15 @@ DD.proj<-function(Fmat,
     memeberN <- c(memberN) 
   }
   
-  # Nf and Nm from n0. adult only vs yearlings included
-  if(AdultNx==TRUE){ # if adults only, final entries for each sex = Nx
-    Nf <- n0[nStages]      
-    Nm <- n0[2*nStages]
+  # Calculating Unions with mating function
+    Nf <- n0[nStages]       # pulls adult female entry from initial vector
+    Nm <- n0[2*nStages]      # adult male in vector (finaly entry)
+    K <- params$rep_K   
+    h <- params$h  
+    U <- mating.func(params, Nf, Nm, Mfunction)  # calculating fems in unions possible under this pop structure
     
-  } else if(AdultNx==FALSE){   # if multiple stages included, sum all stages except cubs (n0[1] and n0[nStages+1])
-    Nf <- sum(n0[2:nStages])      # omitting 1 (fem cub), yearling to final. 
-    Nm <- sum(n0[nStages+2:2*nStages]) 
     
-  }
-  
-  # creating Amat
+  # creating Amat - too early?
   Amat <- Fmat+Umat
   
   # Initialize the output for population vector:
@@ -63,21 +65,23 @@ DD.proj<-function(Fmat,
   for (i in 1:time) {  
     
     # Mating Fmat creation 
-    if(AdultNx == TRUE) {   # if only adults
       thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix
-      thisNm <- Vec[i,2*nStages]       
-    } else if(AdultNx == FALSE){
-      thisNf <- sum(Vec[i,2:nStages])   # all fems excluding cubs
-      thisNm <- sum(Vec[i,(nStages+2):(2*nStages)]) # all males excl cubs- ISSUES IN THIS SYNTAX, SUBSCRIPT OUT OF BOUNDS
-    }
+      thisNm <- Vec[i,2*nStages]  
+       
+    # apply mating func to calculate pairs
+    thisU <- mating.func(params,thisNf, thisNm, Mfunction)     # how to use?
     
-    thisFmat <- Mating.Fmat(params, stagenames,thisNf, thisNm)   # applies Fmat creation to calculated Nx 
+    thisFmat <- mating.Fmat(params,     # density dependent parameters
+                            stagenames,   # Stages in life cycle graph (single sex)
+                            Nf= thisNf,       # Adult and yearling females
+                            Nm= thisNm,             # Adult and yearling males
+                            Mfunction= "min") 
     
     # ricker density dependence each year
     thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
-    thisAmat <- apply.DD(params, thisFmat, Umat, thisN, DDapply)
+    thisAmat <- apply.DD(params, thisFmat, Umat, thisN, DDapply)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
     
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year vector
+    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
   }
