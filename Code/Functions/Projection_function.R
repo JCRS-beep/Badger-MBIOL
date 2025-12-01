@@ -1,7 +1,7 @@
-# Function- projection and plotting this- DOESN'T RUN
+# Function- projection and plotting this
 # 23/10/25
 
-# Function to compute projection over given time interval - issues with nrow?
+# Function to compute projection over given time interval 
 mat.proj<- function(N0, mat, time_int){
   out.mat<-matrix(0, nrow=nrow(mat), ncol= (time_int+1)) # creates empty matrix to fill
   rownames(out.mat)<- rownames(mat)   
