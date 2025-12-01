@@ -71,15 +71,15 @@ dd.proj<-function(Fmat,
     # apply mating func to calculate pairs
     thisU <- mating.func(params,thisNf, thisNm, Mfunction)     # how to use?
     
-    thisFmat <- mating.Fmat(params,     # density dependent parameters
-                            stagenames,   # Stages in life cycle graph (single sex)
-                            Nf= thisNf,       # Adult and yearling females
-                            Nm= thisNm,             # Adult and yearling males
-                            Mfunction= "min") 
+ #   thisFmat <- mating.Fmat(params,     # density dependent parameters
+  #                          stagenames,   # Stages in life cycle graph (single sex)
+   #                         Nf= thisNf,       # Adult and yearling females
+    #                        Nm= thisNm,             # Adult and yearling males
+     #                       Mfunction= "min") 
     
     # ricker density dependence each year
     thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
-    thisAmat <- apply.DD(params, thisFmat, Umat, thisN, DDapply)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
+    thisAmat <- apply.DD(params, Fmat, Umat, thisN, DDapply)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
     
     Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
     Pop[i + 1] <- sum(Vec[(i + 1), ])
