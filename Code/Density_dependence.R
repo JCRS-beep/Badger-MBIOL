@@ -174,14 +174,17 @@ test_proj <-dd.proj(Umat,
                     return.vec= TRUE) 
 # SUCCESS? 
 
- 
+ # needs updating
 # Plotting pop strucutre over time
 library(ggplot2)
 time_vec <- c(0:20)
+ 
 (Nplot <- ggplot(NULL, aes(x=time_vec, y=test_proj$pop)) + 
                            xlab("time(years)") +
                            ylab("Population size") +
-  geom_point())      # nice plateau, but 300 individuals appears high!
+  geom_point(alpha=0.8)+
+    geom_line() +
+    theme_classic())      # nice plateau, but 300 individuals appears high!
 
 (test_plot_N <-dd_plot(test_proj, 
                       y_val= "N", 
@@ -199,4 +202,55 @@ time_vec <- c(0:20)
                     col= c("red", "blue"),
                     legend.pos = "topleft",
                     cex.legend = 1))
-# why do yearling m and f have identical projections? Why do adults appear much more abudance than yearlings? 
+# why do yearling m and f have identical projections? Why are adults much more abundant than yearlings? 
+
+
+
+
+
+# dataframe creation for plot function use
+
+proj_df <- as.data.frame(test_proj$vec)
+proj_df$Year <- c(0:20)   
+
+time_vec <- c(0:20)     # still need to include time for x axis
+
+# df must be in longer form - year vs stage TIDY DATA!
+library(tidyr)
+#  gather to create new columns stage and abundance by year?
+proj_df_long <- gather(proj_df, key= "Stage", value= "Abundance", 1:4)  # key is new column you are gathering by, value is the values you want in new cols
+proj_df_long2 <- separate(proj_df_long, col= "Stage", into=c("Stage", "Sex"), sep='_')    # separate stage into new col, stage and sex by _. 
+
+
+# lty_v <- c(rep(1,2), rep(2,2))   # line type = stage
+cols<- c("#FF6A6A", "#87CEEB", "#5CACEE") 
+col_v1 <- rep(c("#FF6A6A", "#87CEEB"), 2)
+col_v2 <- rep(c("#FF6A6A", "#5CACEE"), 2)
+
+theme_custom <- function(){
+  theme_classic()+
+    theme(axis.text.x= element_text(size=10), 
+          axis.text.y= element_text(size= 10), 
+          axis.title = element_text(size = 12),
+          plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), units = , "cm"),
+          plot.title = element_text(size = 14, vjust = 1, hjust = 0.5, face = "bold" ),
+          legend.text = element_text(size = 10, face = "italic"),
+          legend.title = element_blank(),
+          legend.position = c(0.9, 0.9))
+}
+
+
+(abundance_plot <- ggplot(data= proj_df_long2, aes(x=Year, y=Abundance, colour= Sex, linetype=Stage, shape=Stage))+
+    geom_point(position= "jitter", alpha=0.8)+  # jitter to avoid overlap pf yearlings
+    geom_line(data= proj_df_long2, alpha=0.7) +
+    scale_colour_manual(values=col_v2,
+                        labels=c("Female", "Male")) +
+    labs(title = "Stage Abundance over Time", 
+         x = "Year", y = "Abundance") + 
+    theme_classic() +
+    theme(plot.title = element_text(size = 14, vjust = 1, hjust = 0.5, face = "bold" ),
+          legend.text = element_text(size = 10, face = "italic"))
+    )
+
+
+
