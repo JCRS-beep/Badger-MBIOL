@@ -172,9 +172,8 @@ test_proj <-dd.proj(Umat,
                     DDapply= "recruitment", 
                     Mfunction= "min",
                     return.vec= TRUE) 
-# SUCCESS? 
-
- # needs updating
+# SUCCESS 
+# 
 # Plotting pop strucutre over time
 library(ggplot2)
 time_vec <- c(0:20)
@@ -184,27 +183,7 @@ time_vec <- c(0:20)
                            ylab("Population size") +
   geom_point(alpha=0.8)+
     geom_line() +
-    theme_classic())      # nice plateau, but 300 individuals appears high!
-
-(test_plot_N <-dd_plot(test_proj, 
-                      y_val= "N", 
-                      ylab = "Population size", 
-                      xlab = "time (t)",
-                      col= "black",
-                      legend.pos = "topleft",
-                      cex.legend = 0.8))
-
-
-(test_plot_vec <- dd_plot(test_proj, 
-                    y_val= "Vec", 
-                    ylab = "abundance", 
-                    xlab = "time (t)",
-                    col= c("red", "blue"),
-                    legend.pos = "topleft",
-                    cex.legend = 1))
-# why do yearling m and f have identical projections? Why are adults much more abundant than yearlings? 
-
-
+    theme_classic())      # nice plateau, but 300 individuals appears high? Other studied have sizes above 300, could be reasonable
 
 
 
@@ -212,8 +191,6 @@ time_vec <- c(0:20)
 
 proj_df <- as.data.frame(test_proj$vec)
 proj_df$Year <- c(0:20)   
-
-time_vec <- c(0:20)     # still need to include time for x axis
 
 # df must be in longer form - year vs stage TIDY DATA!
 library(tidyr)
@@ -229,14 +206,13 @@ col_v2 <- rep(c("#FF6A6A", "#5CACEE"), 2)
 
 theme_custom <- function(){
   theme_classic()+
-    theme(axis.text.x= element_text(size=10), 
-          axis.text.y= element_text(size= 10), 
-          axis.title = element_text(size = 12),
-          plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), units = , "cm"),
-          plot.title = element_text(size = 14, vjust = 1, hjust = 0.5, face = "bold" ),
-          legend.text = element_text(size = 10, face = "italic"),
-          legend.title = element_blank(),
-          legend.position = c(0.9, 0.9))
+    theme(
+      axis.text.x= element_text(size=10), 
+      axis.text.y= element_text(size= 10), 
+      axis.title = element_text(size = 12),
+      plot.title = element_text(size = 14, vjust = 1, hjust = 0.5, face = "bold"),
+      legend.text = element_text(size = 10, face = "italic"),
+      legend.position.inside = c(0.9, 0.7))
 }
 
 
@@ -247,10 +223,32 @@ theme_custom <- function(){
                         labels=c("Female", "Male")) +
     labs(title = "Stage Abundance over Time", 
          x = "Year", y = "Abundance") + 
-    theme_classic() +
-    theme(plot.title = element_text(size = 14, vjust = 1, hjust = 0.5, face = "bold" ),
-          legend.text = element_text(size = 10, face = "italic"))
+    theme_custom()   # added correctly here?
     )
 
 
+(test_plot <- dd_plot(test_proj, 
+                                  y_val= "Stages", 
+                                  ylab = "Abundance", 
+                                  xlab = "Time (t)",
+                                  theme = theme_custom(),   
+                                  cols= c("#FF6A6A", "#87CEEB"),
+                                  legend.pos = "topright",
+                                  cex.legend = 0.8))   
+  
 
+# using growth.rate() function to plot lambda over time
+lambda <- growth.rate(test_proj)
+gr_graph <- plot(lambda, xlab= "Year")  # steady decline over time - is this the pattern we want? 
+SSD <- prop.stage(test_proj)
+
+SSD_df <- as.data.frame(SSD)
+colnames(SSD_df) <- c(stages)
+SSD_df$Year <- c(0:20)
+
+
+SSD_long <- gather(SSD_df, key= "Stage", value= "Proportion", 1:4)  # key is new column you are gathering by, value is the values you want in new cols
+SSD_long <- separate(SSD_long, col= "Stage", into=c("Stage", "Sex"), sep='_')    # separate stage into new col, stage and sex by _
+
+SSD_plot <- ggplot(data= SSD_long, aes(x= Year, y=Proportion, colour= Sex, shape = Stage))+
+  geom_point()
