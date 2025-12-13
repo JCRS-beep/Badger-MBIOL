@@ -112,59 +112,67 @@ dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
 
 
 
-# Function to plot projection output
-dd_plot <- function(out, 
-                    y_val= "N", 
-                    ylab = "abundance", 
-                    xlab = "time (t)",
-                    col= "black",
-                    legend.pos = "topright",
-                    cex.legend = 0.8) # plot pop size over time, structure (or U?)
-  {
-  Vec <- out$vec
-  Pop <- out$pop
-  time_vec <- c(0: nrow(Vec)-1)    # time = 0:time
- 
-  if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-  matplot(Pop,      # transposing the matrix to plot col on x and abundance on y
-          type="l",  # type l for line
-          lty= 1,
-          col=col, 
-          ylab = ylab, 
-          xlab = xlab)
 
-  }else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
-    # creating line and colour vectors based on sex and age
-    lty_vec<- rep(seq_len(ncol(Vec)/2), times=2)   # lty = age classes
-    col_vec<- c(rep(col[1], ncol(Vec)/2), rep(col[2], ncol(Vec)/2))  # repeats colour for stages so each colour = each sex
-    
-    # 
-    matplot(Vec,      # transposing the matrix to plot col on x and abundance on y
-            type="l",  # type l for line
-            lty= lty_vec,
-            col=col_vec, 
-            ylab = ylab, 
-            xlab = xlab)
-    
-    legend(legend.pos, 
-           legend= colnames(Vec),  
-           cex=0.65,
-           lty= lty_vec,  # line type matches graph
-           col=col_vec)            # colours match graph
+
+# Updated function- plotting with ggplot. 
+dd_plot <- function(out, 
+                     y_val= "N", 
+                     ylab = "abundance", 
+                     xlab = "time (t)",
+                     theme = theme_classic(), 
+                     cols= "black",    # can be vector of cols
+                     legend.pos = "topright",
+                     cex.legend = 0.8){
+  # loading required libraries
+  library(tidyr)
+  library(ggplot2)
+  
+  # creating time vector for n years
+  t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
+  time <- c(0:t)       # vector 0:t
+
+  # for pop size over time graph
+  if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
+   plot<-  ggplot( aes(x= time, y=out$pop) +
+             geom_point() +
+             xlab(xlab) +
+             ylab(ylab) +
+             geom_smooth()+
+             theme_bw())
+             
+  } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
+    x <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
+    # turning into dataframe
+    df <- as.data.frame(out$vec)
+    df$Year <- time    # year column from 0 to t years
+    # tidy data - converting to long format so each row is a single observation 
+    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x)   # creating a stage col in df with abundance %>% 
+    df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
+   
+   # plotting graph with ggplot2 
+    plot <- ggplot(data= df_long, aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage))+  # sexes diff cols, shapes and lines diff for stages
+      geom_point(position= "jitter", alpha=0.8)+  # jitter to avoid overlap of yearlings
+      geom_line(data= df_long, alpha=0.7) +
+      scale_colour_manual(values=cols,
+                          labels=c("Female", "Male")) +
+      labs(title = "Stage Abundance over Time", 
+           x = xlab, y = ylab) + 
+      theme
     
   }
+  return(plot)
 
 }
-# Notes----
+  
+# NOTES ----
 # Function name = dd_plot
-# inputs out, 
+# inputs 
+# out: output obj from dd_proj function, including structure vec or popsize (N)
 # y_val= "N", method to plot, pop size vec or age structured matrix (vec)
-# ylab = "abundance", labs
-# xlab = "time (t)",   
-# col= "black",    colours used
-# legend.pos = "topright",   legend position on graph
-# cex.legend = 0.8) # plot pop size over time, structure (or U?) legend size
-# 
-# improvements = should use points plus line to join- see dots on ggplot but not function plot. 
-# Add theme for plot
-# Title? 
+# ylab : defaults "abundance", 
+# xlab : defaults "time (t)"
+# col: "black",    colours used fro sexes in graph
+# legend.pos: "topright",   legend position on graph
+# cex.legend: legend size
+# Take matrix and vector output from out obj from projection, convert to dataframe (?) and plot with ggplot, [including custom theme?]
+# Required packages = ggplot2, tidyr
