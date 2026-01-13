@@ -146,7 +146,7 @@ dd_plot <- function(out,
     df <- as.data.frame(out$vec)
     df$Year <- time    # year column from 0 to t years
     # tidy data - converting to long format so each row is a single observation 
-    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x)   # creating a stage col in df with abundance %>% 
+    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x)   # creating a stage col in df with abundance
     df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
    
    # plotting graph with ggplot2 

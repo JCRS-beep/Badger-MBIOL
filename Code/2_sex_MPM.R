@@ -7,13 +7,13 @@
 # creating seperate male and female leslie matrix using survival table data----
 Fmat<- matrix(0, nrow=2, ncol=2)# blank female (F) matrix of zeros to fill
 Fmat[1,2]<- 0.27   # female reproduction- from matrix so no updates needed
-Fmat[2,1]<- 0.65    # cub to yearling 
-Fmat[2,2]<-  0.86  # yearling to adult, adult survival as(n-1/n)
+Fmat[2,1]<- 0.65    #yearling to adult
+Fmat[2,2]<-  0.86  #  adult survival 
 
 Mmat<-  matrix(0, nrow=2, ncol=2)   # blank male matrix 
 Mmat[1,2]<- 0.32  #  reproduction
-Mmat[2,1]<- 0.67   # cub to yearling 
-Mmat[2,2]<-  0.82  # yearling to adult, male adult survival lower than females
+Mmat[2,1]<- 0.67   # yearling to adult 
+Mmat[2,2]<-  0.82  #male adult survival lower than females
 
 # combining into 2 sex matrix for stage specific vital rates
 
