@@ -2,7 +2,6 @@
 # 17/11/2025
 
 # WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
-# Needs completing
 
 dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
                   Umat,   # MAX SURVIVAL
@@ -65,7 +64,7 @@ dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
   for (i in 1:time) {  
     
     # Mating Fmat creation 
-      thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix
+      thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix - should sum yearlings and adults!
       thisNm <- Vec[i,2*nStages]  # Nm 
        
     # apply mating func to calculate pairs

@@ -32,7 +32,7 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker t
   Umat_N <- Umat*rick
   Amat_N <- Fmat + Umat_N
   
- } else if(DDapply  %in% c("Ferility", "fertility", "Fmat")) {
+ } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
   Fmat_N <- Fmat*rick
   Amat_N <- Fmat_N + Umat
   
@@ -45,13 +45,10 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix")   # apply ricker t
   return(Amat_N) 
 }
 # Function name= applyDD
-# Inputs: 
-# params, incl b for ricker
-# N for ricker
-# Fmat: matrix wihth reproductive params 
-# Umat: 
-# DDapply= across which elements ricker is applied. Can include entire matrix, survival (Umat only), Fertility (fmat only) or recruitment (cub survival and Fmat)
-# N= population size (can be total, NAdults, other, but explain in comments) 
+# Inputs:  
+#  params: incl b for ricker
+#  N: effective pop size (can be total, NAdults, other, but explain in comments) 
+#  Fmat: matrix with reproductive params (can be created by mating.func) 
+#  Umat: survival matrix
+#  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
 # Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
-
-# issues in application- recruitment subsetting for male survival incorrect?
