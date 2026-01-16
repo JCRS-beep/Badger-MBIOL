@@ -51,34 +51,93 @@ Umat <- rbind(Umat, Umat_low)
 
 
 # creating Fmat for site 1 based on abundance ----
-Fmat1 <- mating.func(params,     # density dependent parameters
+Fmat1_out <- mating.func(params,     # density dependent parameters
                      stages,   # Stages in life cycle graph (single sex)
-                     Nf = 15,        # Adult and yearling females
-                     Nm = 5,             # Adult and yearling males
+                     Nf = 5,        # Adult and yearling females
+                     Nm = 2,             # Adult and yearling males
                      Mfunction= "min", 
                      return.mat= TRUE)    
 
-Fmat2 <- mating.func(params,     
+Fmat2_out <- mating.func(params,     
                      stages,   
-                     Nf = 5,        
-                     Nm = 4,           
+                     Nf = 2,        
+                     Nm = 2,           
                      Mfunction= "min",  
                      return.mat= TRUE)    # both Fmats identical!
 
-# how to work out mating function for Fmat when considering dispersal?
+Fmat1 <- Fmat1_out$Fmat
+Fmat2 <- Fmat2_out$Fmat
+# how to work out mating function for Fmat when considering dispersal? Use prev year N
 
 
 # combining into Amat
 Amat <- Umat 
+Amat[1,2] <- Fmat1[1,2]
+Amat[3,2] <- Fmat1[3,2]
+Amat[5,6] <- Fmat2[1,2]
+Amat[7,6] <- Fmat2[3,2]
 
-# what to enter for dipsersal?
+# what to enter for dispersal?
+
+# Shortening this matrix creation
+meta.mat <- function(stagenames,   # vector of stage names
+                     g1,   # vector of all growth rates/ transition probabilities
+                     g2= NULL, # second sex values for growth
+                     s, 
+                     patches = 2,
+                     full_mat = TRUE){    # is Umat replicated across whole matrix or just diagonal?
+  nStages<- length(stagenames)/2                            # number of stages
+  # create out obj
+  out <- list(U <- matrix(), mat <- matrix())
+  
+  # Umat creation
+   Umat <- matrix(0, nrow=(2*nStages), ncol=(2*nStages))     # empty matrix with equal rows and columns as stages
+   colnames(Umat) <- stagenames                                       # naming columns after stages
+   rownames(Umat) <-  stagenames                             # naming rows after stages
+         
+   Umat[nStages, nStages - 1 ]<- g1   # inputs growth rates into respective matrix location
+   Umat[2*nStages,  nStages + 1] <- g2
+   Umat[nStages,nStages] <- s[1]                      # final stage remaining is adult survival
+   Umat[2*nStages, 2*nStages] <- s[2]
+  
+   if(isTRUE(full_mat)){
+  # Replicate Umat (pacthes^2)
+   trans <- matrix(rep(t(Umat), times = patches^2), ncol= ncol(Umat), byrow= TRUE)       # transposed mat nrow = patches * length(stagenames)
+   meta <- trans[1:(patches*nrow(Umat)),]   # forming a stack
+   Metamat <- cbind(meta, meta, meta) }     # NEEDS GENERALISING
+ # Metamat <- matrix(0, ncol= (patches * 2 *nStages), nrow=(patches * 2 *nStages))        # meta mat nrow = patches * length(stagenames)
+ # Metamat[1:2*nStages,1:2*nStages] <- Umat
+  
+   else if(full_mat == FALSE) {
+     Metamat <- matrix(0, ncol= (patches * 2 *nStages), nrow=(patches * 2 *nStages))        # meta mat nrow = patches * length(stagenames)
+      Metamat[1:2*nStages,1:2*nStages] <- Umat  # Umat in first quadrant
+   }
+  # filling in outputs
+  out$U <- Umat
+  out$mat <- Metamat
+      return(out)  
+  } 
+
+mat_test<- meta.mat(stagenames = stages, 
+                     g1= 0.67, 
+                     g2= 0.65,
+                     s= c(0.78, 0.72), 
+                    patches = 3)
+outU <- mat_test$U  # Umat correct
+mat_test$mat # done
 
 
+trans <- matrix(rep(t(outU), times = 3^2), ncol=ncol(outU), byrow= TRUE) # 9 vertical stacks to matrix?
+
+meta1 <- trans[1:(3*nrow(outU)),]   # getting Umat stack!
+meta <- cbind(c(rep(meta1,times = 3)))  # DONE!
 
 
+vec <- noquote(rep("meta1,", times = 3))
+meta <- cbind(vec)
 
-
-
-
-
-
+patches <- 3
+trans <- matrix(rep(t(outU), times = patches^2), ncol= ncol(outU), byrow= TRUE)       # transposed mat nrow = patches * length(stagenames)
+meta <- trans[1:(patches*nrow(Umat)),]   # forming a stack
+chain <- noquote(rep("meta,", times = patches -1))
+Metamat <- cbind(chain, meta)     
