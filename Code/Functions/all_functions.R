@@ -1,5 +1,5 @@
 ## All required functions
-# Run this script before any additional code. 
+# Run this script before any additional code. (Ctrl + Shft + A)
 # Includes
 # - ricker/ dd application function
 # - Mating system function
