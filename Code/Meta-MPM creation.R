@@ -6,7 +6,7 @@ params<- data.frame(      # dataframe
   fmax= 3.2,     # F fecundity max (max cubs per adult female) 
   Sc_f_max=0.65,   # max cub survival (equal for sexes)
   Sc_m_max=0.65,
-  b=0.002,       # temp value- must be calculated from provided datasets
+  b=0.002,       # temp value from Bright-Ross. must be calculated from provided datasets
   rep_K= 4,          #litter size (K)
   h= 6   # harem size per male
 )
@@ -29,7 +29,7 @@ Umat[4,3]<- 0.65   # yearling m survival
 Umat[4,4]<- 0.72  # adult m survival
 
 
-# creating dispersal prob matrix (Dmat) - 2 sites 2X2, p(stay) vs p(leave)----
+# creating dispersal prob matrix (Dmat) - 2 sites , p(stay) vs p(leave) for EACH CLASS----
 Dmat <- matrix(0, ncol=2, nrow=2)
 rownames(Dmat) <- c("p1", "p2")
 colnames(Dmat) <- c("p1", "p2")
@@ -53,7 +53,7 @@ Umat <- rbind(Umat, Umat_low)
 # creating Fmat for site 1 based on abundance ----
 Fmat1_out <- mating.func(params,     # density dependent parameters
                      stages,   # Stages in life cycle graph (single sex)
-                     Nf = 5,        # Adult and yearling females
+                     Nf = 5,        # Adult and yearling females  
                      Nm = 2,             # Adult and yearling males
                      Mfunction= "min", 
                      return.mat= TRUE)    
