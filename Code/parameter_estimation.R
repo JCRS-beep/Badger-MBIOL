@@ -1,4 +1,4 @@
-# Calculating parameters for density dependence
+# Data digitisation and parameter estimation
 # 13.12.2025
 
 # installing digitise package
@@ -11,7 +11,8 @@ library(dplyr)
 library(tidyr)
 library(tidyverse) # NEEDED FOR PIPE!
 
-# function - for scatter, rename, round, remove cols.----
+# Functions ----
+# function - for scatter, rename, round, remove cols
 scat.clean <- function(df,y_name = NULL, year= TRUE, remove.id= TRUE, dec = 0) {
   if(is.null(y_name)){
   yname <- unique(df$y_variable)}
@@ -38,6 +39,13 @@ scat.clean <- function(df,y_name = NULL, year= TRUE, remove.id= TRUE, dec = 0) {
   
   names(df) <- gsub("\\s+", "_", names(df))
   df <- as.data.frame(df)
+}
+
+year.down <- function(data){  # function for dataframe from scatters
+  year <- data$Year
+  data$Year <- floor(year)  # should round down
+  # insert back into data frame?
+  return(data)
 }
 
 # manually digitising figs ----
@@ -77,13 +85,13 @@ rogers_1997_rep1 <-scatter$`242_Rogers_1997_fig10.png` # % Af breeding
 rogers_1997_rep1_clean <- scat.clean(rogers_1997_rep1)
 
 
-rogers_1997_rep2 <- scatter$`242_Rogers_1997_fig12.png` # rep rate 
+rogers_1997_rep2 <- scatter$`242_Rogers_1997_fig12.png` # rep rate (cubs per adult?)
 rogers_1997_rep2_clean <- scat.clean(rogers_1997_rep2)
 
 rogers_1997_rep3<- scatter$`242_Rogers_1997_fig13.png` # Cubs / breeding fem
 rogers_1997_rep3_clean <- scat.clean(rogers_1997_rep3)
 
-rogers_1997_rep4 <- mean_err$`242_Rogers_1997_fig11.png` # rep fems
+rogers_1997_rep4 <- mean_err$`242_Rogers_1997_fig11.png` # number of reproducing fems per social group 
 rogers_1997_rep4_clean <- rename(rogers_1997_rep4, Year= id, "Av_reproducing_fems" = mean)
 rogers_1997_rep4_clean <- dplyr::select(rogers_1997_rep4_clean, -c(n, variable))
 
@@ -102,16 +110,27 @@ rogers_1997_data <- full_join(rogers_1997_s, rogers_1997_rep, by= "Year")
 rogers_1997_data <- full_join(rogers_1997_data, rogers_1997_popsize_wide, by= "Year")
 
 # visualising 
-rogers_N_plot <- plot(x=rogers_1997_data$Year, y=rogers_1997_data$Total_Adult_Badgers)  # pop size over time
-#lm for growth over time
+rogers_N_plot <- plot(x=rogers_1997_data$Year, y=rogers_1997_data$Total_Adult_Badgers)  # pop size over time increases linearly
+#lm for growth over time - not needed
+par(mfrow = c(2, 2))
 rogers_breeding_plot <- plot(x=rogers_1997_data$Percentage_of_Adult_Females_Breeding, y=rogers_1997_data$Total_Adult_Badgers)
-rogers_plot <- plot(x=rogers_1997_data$Reproductive_rate, y=rogers_1997_data$Total_Adult_Badgers)  # decline, not strong relationship
-rogers_plot <- plot(x=rogers_1997_data$Number_of_cubs_per_breeding_female, y=rogers_1997_data$Total_Adult_Badgers)  # outlier of 6+ cubs per fem?
-rogers_plot <- plot(x=rogers_1997_data$Av_reproducing_fems, y=rogers_1997_data$Total_Adult_Badgers)  # breeding fems per social group increases over time
+rogers_reprate_plot <- plot(x=rogers_1997_data$Reproductive_rate, y=rogers_1997_data$Total_Adult_Badgers)  # decline, not strong relationship
+rogers_fec_plot <- plot(x=rogers_1997_data$Number_of_cubs_per_breeding_female, y=rogers_1997_data$Total_Adult_Badgers)  # outlier of 6+ cubs per fem?
+rogers_fems_plot <- plot(x=rogers_1997_data$Av_reproducing_fems, y=rogers_1997_data$Total_Adult_Badgers)  # breeding fems per social group increases over time
 
-# Analysis, test which variable is greatest predictor for cubs per female, percentage breeding and reproductive rate
+# Analysis, test which variable is greatest predictor for cubs per female, percentage breeding 
+breeding.lm <- lm(Percentage_of_Adult_Females_Breeding~Total_Adult_Badgers, data= rogers_1997_data)  # does density affect percentage adult fems reproducing
+summary(breeding.lm)  # intercept sig, slope not. Low r squared, not important
 
 
+cohort.lm <- lm(Number_of_cubs_per_breeding_female~Total_Adult_Badgers, data= rogers_1997_data)  # does density affect litter size
+summary(cohort.lm)  # intercept sig, slope not. Low r squared
+
+fecundity.lm <- lm(Reproductive_rate~Total_Adult_Badgers, data= rogers_1997_data)  # does density affect recruitment
+summary(fecundity.lm)  # still non significant?
+
+fems.lm <- lm(Av_reproducing_fems~Total_Adult_Badgers, data= rogers_1997_data)  # does pop size affect reproducing females per group?
+summary(fems.lm) # sign positive slope 
 
 # Next paper - Macdonald 2013----
 mcdonald_fig1 <- scatter$`443_Mcdonald_2016_fig1.png`
@@ -159,25 +178,32 @@ tuyttens_fig1c_clean <- scat.clean(tuyttens_fig1c, y_name= "NN_badgers/km^2", re
 tuyttens_fig1c_clean$Year <- year_v2
 # need estimates of density in each area to link rep values each year at sites
 tuyttens1 <- full_join(tuyttens_fig1a_clean, tuyttens_fig1b_clean, by= c("id","Year"))
-tuyttens1 <- full_join(tuyttens1, tuyttens_fig1c_clean, by= c("id","Year")) #combined into rought dataset - good enough !
+tuyttens1 <- full_join(tuyttens1, tuyttens_fig1c_clean, by= c("id","Year")) #combined into rought dataset - density at each site per year, split by age class !
 
 # options = mean of each year to summarise abundance each year, or keep each observation with vec naming? better as each df after uses sungle recordings per site
 
 tuyttens_fig4 <- mean_err$`567_Tuyttens_2000_fig4.png`
 tuyttens_fig4_clean <- rename(tuyttens_fig4, Year= id, "Av_Badgers_per_social_group" = mean)
-tuyttens_fig4_clean <- dplyr::select(tuyttens_fig4_clean, -c(n, variable))
+tuyttens_fig4_clean <- dplyr::select(tuyttens_fig4_clean, -c(n, variable))  # why is site not a colunm? need to separate out
 
 tuyttens_fig5 <- scatter$`567_Tuyttens_2000_fig5.png` # also need to keep groupings, cant remove id
-tuyttens_fig5_clean <- scat.clean(tuyttens_fig5, remove.id= FALSE)
+tuyttens_fig5_clean <- scat.clean(tuyttens_fig5, remove.id= FALSE, dec = 3) # no rounding years for now
+tuyttens_fig5_clean <- year.down(tuyttens_fig5_clean)  # first convert year to correct matching
+# need to fix year rounding so always rounds down
 
 tuyttens_fig6b <- scatter$`567_Tuyttens_2000_fig6b.png`
-tuyttens_fig6b_clean <- scat.clean(tuyttens_fig6b, remove.id= FALSE)
+tuyttens_fig6b_clean <- scat.clean(tuyttens_fig6b, remove.id= FALSE, dec = 3)
+tuyttens_fig6b_clean <- year.down(tuyttens_fig6b_clean)
+tuyttens_fig6b_clean <- rename(tuyttens_fig6b_clean, "Fem_cubs_per_Fem_adults"= "Fem_cubs/_Fem_adults")
+tuyttens_fig6b_clean$Cubs_per_Fem_adults <- 2*(tuyttens_fig6b_clean$`Fem_cubs_per_Fem_adults`) # assuming equal sex ratio
 
 tuyttens_fig6c <- scatter$`567_Tuyttens_2000_fig6c.png`
-tuyttens_fig6c_clean <- scat.clean(tuyttens_fig6c, remove.id= FALSE)
+tuyttens_fig6c_clean <- scat.clean(tuyttens_fig6c, remove.id= FALSE, dec = 3)
+tuyttens_fig6c_clean <- year.down(tuyttens_fig6c_clean) # issue - WW has data 1996- 98 (a year ahead?)
 
+# joining into df
 tuyttens_rep <- full_join(tuyttens_fig5_clean, tuyttens_fig6b_clean, by = c("id", "Year"))
-tuyttens_rep <- full_join(tuyttens_rep, tuyttens_fig6c_clean, by = c("id", "Year"))
+tuyttens_rep <- full_join(tuyttens_rep, tuyttens_fig6c_clean, by = c("id", "Year")) 
 
 # Final paper
 bright_fig2 <- scatter$`3307_Bright_2020_fig2.png`
