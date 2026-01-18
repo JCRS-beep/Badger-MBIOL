@@ -4,6 +4,7 @@
 # initial structure = yf, af, ym, am (25, 10, 25, 10)
 stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
 n0 <- c(25, 10, 25, 10)
+
 # Creating my control - population projected over 100 years
 Umat <- matrix(0, nrow=4, ncol=4)
 Umat[2,1]<- 0.67   # yearling f survival
@@ -44,6 +45,10 @@ col_vec <- c("#FF6A6A", "#87CEEB")
 # reaches plateau around 25 years - removal at year = 25?
 
 # First removal strat = calculate X% of initial pop (r), in single year remove Nr? ----
+
+# R= 40. generate normal dist of 1 to ?. Mean = R/4. sample 4 numbers that sum to R
+
+
 # Must write removal funcs similar to DDproj
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
@@ -55,7 +60,8 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                      Mfunction= "Min",
                      intensity= 50,  # percentage you want REMOVED from pop at time T=ry
                      remyear = 25,  # removal year = decrease from following year
-                     return.vec= TRUE) 
+                     return.vec= TRUE, 
+                     return.remvec = FALSE) 
 {
   # Time 
   if (time<=1) stop("Time must be a positive integer")
@@ -91,11 +97,16 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   U <- mating.out$U 
   Fmat <- mating.out$Fmat
 
-  # Initialize the output for population vector:
-  out<- list(pop=vector(), vec=matrix(), mat=matrix())
+  # Set up the output
+  out<- list(pop=vector(), 
+             vec=matrix(), 
+             mat=matrix(), 
+             Nremoved = numeric(), 
+             remvec= vector())  # including number removed and removals from each stage
   
   Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- rep(NA, (time + 1))       # vector to fill with total pop size each year
+  remvec <- rep(NA, length(stagenames))
   colnames(Vec) <- stagenames   # naming cols matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
   Vec[1, ] <- n0                   
@@ -125,18 +136,21 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   # removal year 
   Rem <- Pop[ry + 1] * intensity/100   # ry +1 IS ROW REPRESENTING YEAR remyear! Nremoved by calculating latest N, multiplying by percentage 
   
+  #generating the distribution
+#  x <- c(1:Rem/2)
+#  y = dnorm(x, mean(x), sd(x))  # needs to be steeper curve?
+
  # rem_vec <- rep(NA, length(stagenames))  # generate number vec length= stages # sum(rem_vec) == Rem
   
- # sample_vec <- c(1:Rem)
   # for (r in 1:Rem){    # sampling loop until numbers generated
-  #  rem_vec <- sample(sample_vec, size = length(stagenames), replace = TRUE)
+  #  rem_vec <- sample(x, size = length(stagenames), replace = TRUE)   # how to incorporate sum?
   # }   
   
   # for now, simply divide rem/4 and remove from each class
-  rem_vec <- rep(Rem/4, length(stagenames))
+  rem_vec <- Vec[ry + 1,]*intensity/100
   
   Vec[ry + 2,] <- Vec[ry + 1,]  - rem_vec  # year after remyear = 2 rows later filled with new stage vec
-  Pop[ry + 2] <- Pop[ry+1] - Rem  # remyear starting pop = prev N - Nremoved. *edit after*
+  Pop[ry + 2] <- Pop[ry+1] - Rem  # remyear starting pop = prev N - Nremoved. 
 # -------------------------------------------------
 
 # repeat loop after removal year
@@ -161,10 +175,13 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   # out objects
   out$pop <- Pop
+  out$Nremoved <- Rem
   if (isTRUE(return.vec)) {
     out$vec <- Vec        
   } 
-  
+  if (isTRUE(return.remvec)) {
+    out$remvec <- rem_vec        
+  } 
   out$mat <- thisAmat
   
   return(out)
@@ -181,7 +198,8 @@ proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   Mfunction= "Min",
                   intensity= 50,  # percentage you want REMOVED from pop at time T=ry
                   remyear = 25, 
-                  return.vec= TRUE) 
+                  return.vec= TRUE, 
+                  return.remvec = TRUE) 
 
 (proj2_plot <- dd_plot(proj2, 
                      y_val= "Vec", 
@@ -192,6 +210,7 @@ proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                      legend.pos = "topright",
                      cex.legend = 0.8))
 # NOTES - population very quickly returns to optima - some environmental stochasticity needed?
+#         Update plot function to draw red dotted line at remyear
 
 proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stocasticity needed?
                   initial = n0, 
