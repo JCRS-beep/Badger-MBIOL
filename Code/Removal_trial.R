@@ -12,21 +12,20 @@ Umat[2,2]<- 0.78   # adult f survival
 Umat[4,3]<- 0.64   # yearling m survival
 Umat[4,4]<- 0.70
 
-params<- data.frame(      # dataframe 
-  fmax= 3.2,     # F fecundity max (max cubs per adult female) 
-  Sc_f_max=0.65,   # max cub survival (equal for sexes)
-  Sc_m_max=0.65,
-  b=0.003,       # temp value- must be calculated from provided datasets
-  rep_K= 4,          #litter size (K)
-  h= 6   # harem size per male
-)
+params<- data.frame(fmax= 3.2,     # F fecundity max (max cubs per adult female) 
+                    Sc_f_max=0.65,   # max cub survival (equal for sexes)
+                    Sc_m_max=0.65,
+                    b=0.004,       # temp value- must be calculated from provided datasets
+                    rep_K= 4,          #litter size (K)
+                    h= 6   # harem size per male
+                    )
 
 # Setting up with projection function
 proj1 <- dd.proj(Umat,      # seems to reach stability quickly - some kind of stocasticity needed?
                  initial = n0, 
                  params, 
                  stagenames = stages, 
-                 time = 100, 
+                 time = 50, 
                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
                  DDapply="Fmat", 
                  Mfunction= "Min",
@@ -42,11 +41,26 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                      cols= col_vec,    # can be vector of cols
                      legend.pos = "topright",
                      cex.legend = 0.8))
+
+
+(proj_Nplot <- dd_plot(proj1, 
+                      y_val= "Pop", 
+                      ylab = "Pop size", 
+                      xlab = "Time (t)",
+                      theme = theme_classic(), 
+                      cols= ,    # can be vector of cols
+                      legend.pos = "topright",
+                      cex.legend = 0.8))   # why doesn't this run now? 
+
 # reaches plateau around 25 years - removal at year = 25?
 
-# First removal strat = calculate X% of initial pop (r), in single year remove Nr? ----
+# First removal strat = generate normal dist of 0 - intensity. Mean = intensity. sample 4 numbers and remove that proportion of stage
+# generating rnorm
+intensity = 50
+prop <- rnorm(4, mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.05
+removed <- proj1$vec* prop
+remaining <- proj1$vec - removed 
 
-# R= 40. generate normal dist of 1 to ?. Mean = R/4. sample 4 numbers that sum to R
 
 
 # Must write removal funcs similar to DDproj
@@ -137,20 +151,11 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   Rem <- Pop[ry + 1] * intensity/100   # ry +1 IS ROW REPRESENTING YEAR remyear! Nremoved by calculating latest N, multiplying by percentage 
   
   #generating the distribution
-#  x <- c(1:Rem/2)
-#  y = dnorm(x, mean(x), sd(x))  # needs to be steeper curve?
-
- # rem_vec <- rep(NA, length(stagenames))  # generate number vec length= stages # sum(rem_vec) == Rem
-  
-  # for (r in 1:Rem){    # sampling loop until numbers generated
-  #  rem_vec <- sample(x, size = length(stagenames), replace = TRUE)   # how to incorporate sum?
-  # }   
-  
-  # for now, simply divide rem/4 and remove from each class
-  rem_vec <- Vec[ry + 1,]*intensity/100
+  prop <- rnorm(length(stagenames), mean = intensity/100, sd= intensity/1000)  # 4 samples from dist mean 0.5, sd 0.05
+  rem_vec <- Vec[ry+1,] * prop    # remaining <- Vec[ry+1] - rem_vec
   
   Vec[ry + 2,] <- Vec[ry + 1,]  - rem_vec  # year after remyear = 2 rows later filled with new stage vec
-  Pop[ry + 2] <- Pop[ry+1] - Rem  # remyear starting pop = prev N - Nremoved. 
+  Pop[ry + 2] <- sum(Vec[ry + 2]) # filling in total pop size
 # -------------------------------------------------
 
 # repeat loop after removal year
@@ -192,7 +197,7 @@ proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   initial = n0, 
                   params, 
                   stagenames = stages, 
-                  time = 100, 
+                  time = 50, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
                   Mfunction= "Min",
@@ -212,11 +217,11 @@ proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
 # NOTES - population very quickly returns to optima - some environmental stochasticity needed?
 #         Update plot function to draw red dotted line at remyear
 
-proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stocasticity needed?
+proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                   initial = n0, 
                   params, 
                   stagenames = stages, 
-                  time = 100, 
+                  time = 40, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
                   Mfunction= "Min",
@@ -233,9 +238,4 @@ proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                        legend.pos = "topright",
                        cex.legend = 0.8))
 
-
-# Second removal strat = calculate X% of initial pop (Nr), over 3 years remove Nr/3?
-
-# Third removal strat = calculate X% of initial pop (Nr), over y years remove r until Nt+y = (1-X)* N0
-
-
+# Observation - short gen times make recovery extremely quick! 
