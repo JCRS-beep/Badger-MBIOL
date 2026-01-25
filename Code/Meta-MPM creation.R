@@ -1,6 +1,10 @@
 # meta-population matrix creation
 # 13/01/26
 
+# loadong library
+library(tidyverse)
+
+
 #loading params----
 params<- data.frame(      # dataframe 
   fmax= 3.2,     # F fecundity max (max cubs per adult female) 
@@ -29,27 +33,6 @@ Umat[4,3]<- 0.65   # yearling m survival
 Umat[4,4]<- 0.72  # adult m survival
 
 
-# creating dispersal prob matrix (Dmat) - 2 sites , p(stay) vs p(leave) for EACH CLASS----
-Dmat <- matrix(0, ncol=2, nrow=2)
-rownames(Dmat) <- c("p1", "p2")
-colnames(Dmat) <- c("p1", "p2")
-Dmat[,1] <- c(0.8, 0.2)
-Dmat[,2] <- c(0.5, 0.5)
-
-
-# clone Umat x times, where x= sites^2. Multiply each by relevant Dmat entry ----
-Umat1 <- Umat * Dmat[1,1]
-Umat2 <- Umat * Dmat[2,2]
-Umat21 <- Umat * Dmat[2,1]    # from 1 to 2 (2,1)
-Umat12 <- Umat * Dmat[1,2]    # from 2 to 1
-
-# merge matrices together, bind y1 y12
-Umat <- cbind(Umat1, Umat12)
-Umat_low <- cbind(Umat21, Umat2)
-Umat <- rbind(Umat, Umat_low)
-
-
-
 # creating Fmat for site 1 based on abundance ----
 Fmat1_out <- mating.func(params,     # density dependent parameters
                      stages,   # Stages in life cycle graph (single sex)
@@ -65,19 +48,79 @@ Fmat2_out <- mating.func(params,
                      Mfunction= "min",  
                      return.mat= TRUE)    # both Fmats identical!
 
-Fmat1 <- Fmat1_out$Fmat
+Fmat1 <- Fmat1_out$Fmat # same lol
 Fmat2 <- Fmat2_out$Fmat
 # how to work out mating function for Fmat when considering dispersal? Use prev year N
 
 
 # combining into Amat
 Amat <- Umat 
-Amat[1,2] <- Fmat1[1,2]
+Amat[1,2] <- Fmat1[1,2]  # same Amat for patch 1 and 2
 Amat[3,2] <- Fmat1[3,2]
-Amat[5,6] <- Fmat2[1,2]
-Amat[7,6] <- Fmat2[3,2]
+# Amat2[5,6] <- Fmat2[1,2]
+# Amat2[7,6] <- Fmat2[3,2]
+
+
+Dmat <- matrix(0, ncol= length(stages), nrow= 2) # row = number patches
+colnames(Dmat) <- stages
+
+stay1 <- c(0.7, 0.9, 0.5, 0.6)  # prob individ in patch1 remains in patch 1
+Dmat1 <- Dmat
+Dmat1[1,] <- stay1 # stay (and disperse) for each class in patch 1 
+Dmat1[2,] <- 1- stay1
+
+stay2 <- c(0.3, 0.6, 0.5, 0.5)
+Dmat2 <- Dmat
+Dmat2[1,] <- stay2 # stay (and disperse) for each class in patch 1 
+Dmat2[2,] <- 1- stay2
+
+# Amat * p(stay) each class for patch 1. Multiply each col with a col in Dmat? issue here - manual instructions
+
+Amat.create <- function(Amat, Dmat, disperse = TRUE) {  # input patch Amat and Dmat
+  Amat_new <- matrix(0, ncol= ncol(Amat), nrow= ncol(Amat))  
+  
+  if(isTRUE(disperse))
+    for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+  Amat_new[,i] <- Amat[,i] * Dmat[2,i]  # first row of Dmat = stay, each col for stage
+    
+    } else if(disperse== FALSE){
+      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+        Amat_new[,i] <- Amat[,i] * Dmat[1,i]  # first row of Dmat = stay, each col for stage
+  }
+    }
+  return(Amat_new)
+}
+
+Amat1 <- Amat.create(Amat, Dmat1, disperse= FALSE)  # for patch 1 
+Amat2 <- Amat.createa(Amat, Dmat2, disperse = FALSE) # fpr patch 2 
+
+
+Amat.disperse <- function(Amat, Dmat){
+  Amat_d <- matrix(0, ncol= ncol(Amat), nrow= ncol(Amat))  
+  
+  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+    Amat_d[,i] <- Amat[,i] * Dmat[2,i]  # first row of Dmat = stay, each col for stage
+  }
+  return(Amat_d)
+  
+}
+
+#  merge matrices together into meta mat
+meta_mat <- cbind(Amat, Umat)   # leaving fertility blank in second mat
+meta_mat_low <- cbind(Umat, Amat) 
+meta_mat <- rbind(meta_mat, meta_mat_low)   
+
 
 # what to enter for dispersal?
+
+
+# Now trying to simplify ----
+# clone Umat x times, where x= sites^2. Multiply each by relevant Dmat entry ----
+Umat1 <- Umat * Dmat[1,1]
+Umat2 <- Umat * Dmat[2,2]
+Umat21 <- Umat * Dmat[2,1]    # from 1 to 2 (2,1)
+Umat12 <- Umat * Dmat[1,2]    # from 2 to 1
+
 
 # Shortening this matrix creation
 meta.mat <- function(stagenames,   # vector of stage names
@@ -139,5 +182,4 @@ meta <- cbind(vec)
 patches <- 3
 trans <- matrix(rep(t(outU), times = patches^2), ncol= ncol(outU), byrow= TRUE)       # transposed mat nrow = patches * length(stagenames)
 meta <- trans[1:(patches*nrow(Umat)),]   # forming a stack
-chain <- noquote(rep("meta,", times = patches -1))
-Metamat <- cbind(chain, meta)     
+Metamat <- cbind(meta)     
