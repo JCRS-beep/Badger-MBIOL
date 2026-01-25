@@ -1,5 +1,5 @@
 ## All required functions
-# Run this script before any additional code. (Ctrl + Shft + A)
+# Run this script before any additional code. (Ctrl + A, Ctrl Ent)
 # Includes
 # - ricker/ dd application function
 # - Mating system function
@@ -39,12 +39,7 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix") {   # apply ricker
   } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
     Fmat_N <- Fmat*rick
     Amat_N <- Fmat_N + Umat
-    
-  } else if(DDapply %in% c("Recruitment", "recruitment")) {
-    # Applying to Fmat TWICE (survival and fertility)
-    Fmat_N <- Fmat*(rick^2)
-    Amat_N <- Fmat_N + Umat
-  } 
+  }
   
   return(Amat_N) 
 }
@@ -254,24 +249,24 @@ dd_plot <- function(out,   # output obj of dd.proj
   
   # creating time vector for n years
   t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
-  time <- c(0:t)       # vector 0:t
+  time <- as.numeric(c(0:t))       # vector 0:t
   
   # for pop size over time graph
   if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-    plot<-  ggplot( aes(x= time, y=out$pop) +
+    plot <- ggplot(data = out, aes(x= time, y= pop)) +  # start form year = 0
                       geom_point() +
                       xlab(xlab) +
                       ylab(ylab) +
                       geom_smooth()+
-                      theme_bw())
+                      theme_bw()
     
   } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
-    x <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
+    x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
     # turning into dataframe
     df <- as.data.frame(out$vec)
     df$Year <- time    # year column from 0 to t years
     # tidy data - converting to long format so each row is a single observation 
-    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x)   # creating a stage col in df with abundance
+    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x_val)   # creating a stage col in df with abundance
     df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
     
     # plotting graph with ggplot2 
