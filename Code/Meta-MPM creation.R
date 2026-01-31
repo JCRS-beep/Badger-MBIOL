@@ -50,40 +50,38 @@ Fmat2_out <- mating.func(params,
 
 Fmat1 <- Fmat1_out$Fmat # same lol
 Fmat2 <- Fmat2_out$Fmat
-# how to work out mating function for Fmat when considering dispersal? Use prev year N
-
-
-# combining into Amat
-Amat <- Umat 
-Amat[1,2] <- Fmat1[1,2]  # same Amat for patch 1 and 2
-Amat[3,2] <- Fmat1[3,2]
-# Amat2[5,6] <- Fmat2[1,2]
-# Amat2[7,6] <- Fmat2[3,2]
+# no mating in dispersing individuals: count -> breed -> move
 
 
 Dmat <- matrix(0, ncol= length(stages), nrow= 2) # row = number patches
 colnames(Dmat) <- stages
 
-stay1 <- c(0.7, 0.9, 0.5, 0.6)  # prob individ in patch1 remains in patch 1
+stay1 <- c(0.7, 0.9, 0.5, 0.6)  # prob individ in patch1 remains in patch 1 for each age class
 Dmat1 <- Dmat
 Dmat1[1,] <- stay1 # stay (and disperse) for each class in patch 1 
 Dmat1[2,] <- 1- stay1
 
-stay2 <- c(0.3, 0.6, 0.5, 0.5)
+stay2 <- c(0.3, 0.6, 0.4, 0.5)
 Dmat2 <- Dmat
 Dmat2[1,] <- stay2 # stay (and disperse) for each class in patch 1 
-Dmat2[2,] <- 1- stay2
+Dmat2[2,] <- 1 - stay2 
 
 # Amat * p(stay) each class for patch 1. Multiply each col with a col in Dmat? issue here - manual instructions
 
-Amat.create <- function(Amat, Dmat, disperse = TRUE) {  # input patch Amat and Dmat
-  Amat_new <- matrix(0, ncol= ncol(Amat), nrow= ncol(Amat))  
+Amat.create <- function(Umat, Dmat, Fmat = NULL, disperse = TRUE) {  # input patch Amat and Dmat
+  Amat_new <- matrix(0, ncol= ncol(Umat), nrow= nrow(Umat))  
   
-  if(isTRUE(disperse))
-    for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-  Amat_new[,i] <- Amat[,i] * Dmat[2,i]  # first row of Dmat = stay, each col for stage
+  if(isTRUE(disperse)){
+    for (i in 1:ncol(Umat)) {   # looping to fill with multiplied values
+  Amat_new[,i] <- Umat[,i] * Dmat[2,i] } # first row of Dmat = stay, each col for stage
     
     } else if(disperse== FALSE){
+      if(is.null(Fmat)){
+        stop("Fmat must be provided for reproducing individuals staying within patches")
+      }
+      Amat <- Umat  # creating original amat combining fert and survival
+      Amat[1,2] <- Fmat[1,2]
+      Amat[3,2] <- Fmat[3,2]
       for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
         Amat_new[,i] <- Amat[,i] * Dmat[1,i]  # first row of Dmat = stay, each col for stage
   }
@@ -91,95 +89,88 @@ Amat.create <- function(Amat, Dmat, disperse = TRUE) {  # input patch Amat and D
   return(Amat_new)
 }
 
-Amat1 <- Amat.create(Amat, Dmat1, disperse= FALSE)  # for patch 1 
-Amat2 <- Amat.createa(Amat, Dmat2, disperse = FALSE) # fpr patch 2 
-
-
-Amat.disperse <- function(Amat, Dmat){
-  Amat_d <- matrix(0, ncol= ncol(Amat), nrow= ncol(Amat))  
-  
-  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-    Amat_d[,i] <- Amat[,i] * Dmat[2,i]  # first row of Dmat = stay, each col for stage
-  }
-  return(Amat_d)
-  
-}
+# must find a way to streamline so less copy pasting - same Umat, Fmat1 and Fmat2, Dmat1 and DMat2, remove disperse
+Amat1 <- Amat.create(Umat, Dmat1, Fmat1, disperse= FALSE)  # for patch 1 
+Amat2 <- Amat.create(Umat, Dmat2, Fmat2, disperse = FALSE) # for patch 2 
+Amat12 <- Amat.create(Umat,Dmat1, Fmat = NULL, disperse= TRUE)  # moving from patch 1 to patch 2
+Amat21 <- Amat.create(Umat, Dmat2, disperse = TRUE) # from patch 2 to patch 1
 
 #  merge matrices together into meta mat
-meta_mat <- cbind(Amat, Umat)   # leaving fertility blank in second mat
-meta_mat_low <- cbind(Umat, Amat) 
+meta_mat <- cbind(Amat1, Amat21)   # leaving fertility blank in second mat
+meta_mat_low <- cbind(Amat12, Amat2) 
 meta_mat <- rbind(meta_mat, meta_mat_low)   
 
-
-# what to enter for dispersal?
-
-
-# Now trying to simplify ----
-# clone Umat x times, where x= sites^2. Multiply each by relevant Dmat entry ----
-Umat1 <- Umat * Dmat[1,1]
-Umat2 <- Umat * Dmat[2,2]
-Umat21 <- Umat * Dmat[2,1]    # from 1 to 2 (2,1)
-Umat12 <- Umat * Dmat[1,2]    # from 2 to 1
+# next steps once we have meta matrix = projection and removals 
+# generate rnorm for prop removed, but we want chance of no removal for some?
+# generate vector 1:length(patch*stage) for stage
 
 
-# Shortening this matrix creation
-meta.mat <- function(stagenames,   # vector of stage names
-                     g1,   # vector of all growth rates/ transition probabilities
-                     g2= NULL, # second sex values for growth
-                     s, 
-                     patches = 2,
-                     full_mat = TRUE){    # is Umat replicated across whole matrix or just diagonal?
-  nStages<- length(stagenames)/2                            # number of stages
-  # create out obj
-  out <- list(U <- matrix(), mat <- matrix())
+# Shortening this matrix creation - what about if 30 patches?? movement prob will be calculated in other ways
+# Steps - create Umat - same for all patches
+# n0 for all patches (also needed for projection)
+# Create Fmat (matingfunc w/ Nf and Nm)
+# Dmat creation using movement probs for each class from each patch calculation
+# 
+
+
+# function trials
+meta.mat <- function(Umat,   # vector of stage names
+                     Fmat1,
+                     Dmat1,
+                     Fmat2, 
+                     Dmat2,
+                     patches = 2){    # i
+  nStages<- ncol(Umat)/2  # number of stages
+  stagenames <- c(colnames(Umat))
   
-  # Umat creation
-   Umat <- matrix(0, nrow=(2*nStages), ncol=(2*nStages))     # empty matrix with equal rows and columns as stages
-   colnames(Umat) <- stagenames                                       # naming columns after stages
-   rownames(Umat) <-  stagenames                             # naming rows after stages
-         
-   Umat[nStages, nStages - 1 ]<- g1   # inputs growth rates into respective matrix location
-   Umat[2*nStages,  nStages + 1] <- g2
-   Umat[nStages,nStages] <- s[1]                      # final stage remaining is adult survival
-   Umat[2*nStages, 2*nStages] <- s[2]
+  # setting base for Amat
+    Amat <- matrix(0, ncol= ncol(Umat), nrow= nrow(Umat))  
+
+    # filling off diags
+    # Patch 1 to 2
+     Amat_off1 <- Amat   # creating patch 1 -> 2 amat
+      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+        Amat_off1[,i] <- Umat[,i] * Dmat1[2,i]  # second row = leaving patch 
+        } 
+    # patch 2 to 1  
+     Amat_off2 <- Amat  # creating patch 2 -> 1 amat
+    for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+      Amat_off2[,i] <- Umat[,i] * Dmat2[2,i] 
+      }
   
-   if(isTRUE(full_mat)){
-  # Replicate Umat (pacthes^2)
-   trans <- matrix(rep(t(Umat), times = patches^2), ncol= ncol(Umat), byrow= TRUE)       # transposed mat nrow = patches * length(stagenames)
-   meta <- trans[1:(patches*nrow(Umat)),]   # forming a stack
-   Metamat <- cbind(meta, meta, meta) }     # NEEDS GENERALISING
- # Metamat <- matrix(0, ncol= (patches * 2 *nStages), nrow=(patches * 2 *nStages))        # meta mat nrow = patches * length(stagenames)
- # Metamat[1:2*nStages,1:2*nStages] <- Umat
+     
+    # for diagonals
+      Amat1 <- Umat  # creating original amat combining fert and survival
+      Amat1[1,2] <- Fmat1[1,2]
+      Amat1[3,2] <- Fmat1[3,2]
+      
+      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+        Amat1[,i] <- Amat1[,i] * Dmat1[1,i]  # first row of Dmat = stay, each col for stage
+      }
+      
+      Amat2 <- Umat  # creating original amat combining fert and survival
+      Amat2[1,2] <- Fmat2[1,2]
+      Amat2[3,2] <- Fmat2[3,2]
+      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
+        Amat2[,i] <- Amat2[,i] * Dmat2[1,i]  # first row of Dmat = stay, each col for stage
+      }
+      
+      # combining Amats - patch 1 stay, next to it patch 2 move
+      meta_mat <- cbind(Amat1, Amat_off2)   # leaving fertility blank in second mat
+      meta_mat_low <- cbind(Amat_off1, Amat2) 
+      meta_mat <- rbind(meta_mat, meta_mat_low) 
+      colnames(meta_mat) <- rep(stagenames, 2)
+    return(meta_mat)
+  }
   
-   else if(full_mat == FALSE) {
-     Metamat <- matrix(0, ncol= (patches * 2 *nStages), nrow=(patches * 2 *nStages))        # meta mat nrow = patches * length(stagenames)
-      Metamat[1:2*nStages,1:2*nStages] <- Umat  # Umat in first quadrant
-   }
-  # filling in outputs
-  out$U <- Umat
-  out$mat <- Metamat
-      return(out)  
-  } 
-
-mat_test<- meta.mat(stagenames = stages, 
-                     g1= 0.67, 
-                     g2= 0.65,
-                     s= c(0.78, 0.72), 
-                    patches = 3)
-outU <- mat_test$U  # Umat correct
-mat_test$mat # done
+mattest <- meta.mat(Umat,   # vector of stage names
+                    Fmat1,
+                    Dmat1,
+                    Fmat2, 
+                    Dmat2,
+                    patches = 2)
+# SUCCESS!
 
 
-trans <- matrix(rep(t(outU), times = 3^2), ncol=ncol(outU), byrow= TRUE) # 9 vertical stacks to matrix?
-
-meta1 <- trans[1:(3*nrow(outU)),]   # getting Umat stack!
-meta <- cbind(c(rep(meta1,times = 3)))  # DONE!
 
 
-vec <- noquote(rep("meta1,", times = 3))
-meta <- cbind(vec)
-
-patches <- 3
-trans <- matrix(rep(t(outU), times = patches^2), ncol= ncol(outU), byrow= TRUE)       # transposed mat nrow = patches * length(stagenames)
-meta <- trans[1:(patches*nrow(Umat)),]   # forming a stack
-Metamat <- cbind(meta)     
