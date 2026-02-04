@@ -55,15 +55,6 @@ col_vec <- c("#FF6A6A", "#87CEEB")
 
 # reaches plateau around 20 years - removal at year = 25?
 
-# First removal strat = generate normal dist of 0 - intensity. Mean = intensity. sample 4 numbers and remove that proportion of stage
-# generating rnorm
-intensity = 50
-prop <- rnorm(4, mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.05
-removed <- proj1$vec* prop
-remaining <- proj1$vec - removed 
-
-
-
 #removal funcs similar to DDproj - replacement? Need to stop simulation once pop reaches 0 - in some cases becomes negative 
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
@@ -73,7 +64,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                      memberN=NULL,  # which individuals contribute to pop size? (as vec)
                      DDapply="matrix", 
                      Mfunction= "Min",
-                     #   removal = FALSE,  # allows function versitility, proj without removals
                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                      remyear = NULL,  # removal year = decrease from following year
                      return.vec= TRUE, 
@@ -130,7 +120,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   Vec[1, ] <- n0                   
   Pop[1] <- sum(n0)    
   
-  
+  # defining rem year = if no removals occur, set to time
   if(is.numeric(intensity)){   # removal scenarios only
     ry <- as.numeric(remyear)           # shortening name for future use
   } else if(is.null(intensity)){
@@ -174,18 +164,15 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     Pop[i + 1] <- sum(Vec[(i + 1), ])
   }
   
+  # pop removal
+  # ------------------------------------------------
   if (is.numeric(intensity)){
-    # ------------------------------------------------
-    # removal year 
-    Rem <- Pop[ry + 1] * intensity/100   # ry +1 IS ROW REPRESENTING YEAR remyear! Nremoved by calculating latest N, multiplying by percentage 
-    
     #generating the distribution
     prop <- rnorm(length(stagenames), mean = intensity/100, sd= intensity/1000)  # 4 samples from dist mean 0.5, sd 0.05
     rem_vec <- Vec[ry+1,] * prop    # remaining <- Vec[ry+1] - rem_vec
     
     Vec[ry + 2,] <- Vec[ry + 1,]  - rem_vec  # year after remyear = 2 rows later filled with new stage vec
     Pop[ry + 2] <- sum(Vec[ry + 2]) # filling in total pop size
-    # -------------------------------------------------
     
     # repeat loop after removal year
     for (j in (ry + 2):time) {    # starts filling from 27th row (26th year)
@@ -227,7 +214,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   # out objects
   out$pop <- Pop
   if(is.numeric(intensity)){   
-    out$Nremoved <- Rem    
+    out$Nremoved <- sum(rem_vec)    
     if (isTRUE(return.remvec)) {
       out$remvec <- rem_vec        # returns blank?
     } }
@@ -266,12 +253,12 @@ proj2 <- rem.proj(Umat,   # MAX SURVIVAL
                   initial = n0, 
                   params, 
                   stagenames = stages, 
-                  time = 20, 
+                  time = 30, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                  DDapply="matrix", 
+                  DDapply="Fmat", 
                   Mfunction= "Min",
-                  intensity= 50,  # percentage you want REMOVED from pop at time T=ry
-                  remyear = 5,  # removal year = decrease from following year
+                  intensity= 50,  # percentage you want REMOVED from pop at time t=ry
+                  remyear = 10,  # removal year = decrease from following year
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 
@@ -286,16 +273,17 @@ proj2 <- rem.proj(Umat,   # MAX SURVIVAL
 # NOTES - population very quickly returns to plateu - some environmental stochasticity needed?
 #         Update plot function to draw red dotted line at remyear
 
+
 proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                   initial = n0, 
                   params, 
                   stagenames = stages, 
-                  time = 40, 
+                  time = 30, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
                   Mfunction= "Min",
                   intensity= 90,  # percentage you want REMOVED from pop at time T=ry
-                  remyear = 25, 
+                  remyear = 10, 
                   return.vec= TRUE) 
 
 (proj3_plot <- dd_plot(proj3, 
@@ -306,64 +294,6 @@ proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                        cols= col_vec,    # can be vector of cols
                        legend.pos = "topright",
                        cex.legend = 0.8))
-
-
-proj4 <- rem.proj(Umat,   # MAX SURVIVAL
-                  initial = n0, 
-                  params, 
-                  stagenames= stages, 
-                  time = 25, 
-                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                  DDapply="matrix", 
-                  Mfunction= "Min",
-                  removal = TRUE,  
-                  intensity= 98,  
-                  remyear = 5,  
-                  return.vec= TRUE, # again has negative pop sizes - needs solving
-                  return.remvec = FALSE)
-
-(proj4_plot <- dd_plot(proj4, 
-                       y_val= "Vec", 
-                       ylab = "Abundance", 
-                       xlab = "Time (t)",
-                       theme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "topright",
-                       cex.legend = 0.8)) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# issues - negative values for abundance should not be possible
-##removal funcs similar to DDproj - combine with ddproj instead of replicates? Need to stop simulation once pop reaches 0 - in some cases becomes negative 
-
-
-proj.test <- rem.proj(Umat,   # MAX SURVIVAL
-                      initial = n0, 
-                      params, 
-                      stagenames = stages, 
-                      time = 20, 
-                      memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                      DDapply="matrix", 
-                      Mfunction= "Min",
-                      intensity= 95,  # percentage you want REMOVED from pop at time T=ry
-                      remyear = 5,  # removal year = decrease from following year
-                      return.vec= TRUE, 
-                      return.remvec = TRUE) 
 
 # almost works fine - ' Error in if (sum(thisAmat < 0) > 0) { : 
 # missing value where TRUE/FALSE needed ' when values below 0?
