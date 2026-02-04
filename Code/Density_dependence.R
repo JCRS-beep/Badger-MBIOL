@@ -22,11 +22,11 @@ Umat[4,4]<- 0.72
 
 # loading Parameters for density and Fmat creation 
 params<- data.frame(      # dataframe 
-  fmax= 3.2,     # F fecundity max (max cubs per adult female) 
+  fmax= 1.2,     # F fecundity max (max cubs per adult female) 
   Sc_f_max=0.65,   # max cub survival (equal for sexes)
   Sc_m_max=0.65,
-  b=0.002,       # temp value- must be calculated from provided datasets
-  rep_K= 4,          #litter size (K)
+  b=0.004,       # temp value- must be calculated from provided datasets
+  rep_K= 3.5,          #litter size (K)
   h= 6   # harem size per male
 )
 
@@ -49,15 +49,12 @@ Fmat[3,2]<- 0.5*f * Sm
 # can be loaded from script in Function folder
 
 # Creating Fmat for max rates WITH MATING FUNCTIONS
-Fmat2 <- mating.func(params, stages, Nf= 20, Nm= 20, Mfunction= "modharmonic", return.mat=TRUE)
+Fmat2 <- mating.func(params, stages, Nf= 20, Nm= 20, Mfunction= "min", return.mat=TRUE)
 
 
 
 # Applying to matrix with function applyDD for a static population - 40 adults, 20 females, 20 males -----
 Amat<-apply.DD(params, Fmat2$Fmat, Umat, N=40, DDapply="Fmat") # N includes only adults and yearlings, so that N= Nf + Nm
-Amat  
-
-# DD projection function ----
 
 
 # testing projection function----
@@ -72,7 +69,7 @@ test_proj <-dd.proj(Umat,
                     Mfunction= "min",
                     return.vec= TRUE) 
 # SUCCESS 
-# 
+
 # Plotting pop strucutre over time
 library(ggplot2)
 time_vec <- c(0:20)
