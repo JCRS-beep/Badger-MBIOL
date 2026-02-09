@@ -77,8 +77,7 @@ mean_err <- figs$mean_error
 
 # organising paper 1  - Rogers 1997 ----
 rogers_1997_fig1 <- figs$scatterplot$`242_Rogers_1997_fig1.png`
-rogers_1997_popsize <- scat.clean(rogers_1997_fig1, remove.id = FALSE, dec= 0)  # YEARS STILL INCORRECT - ,3 onwards should all be 1 year later for 
-rogers_1997_popsize <- rename(rogers_1997_popsize, MNA=  "Minimum_Number_Alive")
+rogers_1997_popsize <- scat.clean(rogers_1997_fig1, "MNA", remove.id = FALSE, dec= 0)  
 # order years correctly
 # rogers_1997_popsize <- arrange(rogers_1997_popsize, by= Year, group_by(id)) 
 
@@ -88,14 +87,6 @@ rogers_1997_popsize_wide$Year <- as.numeric(rogers_1997_popsize_wide$Year)
 # renaming rows
 names(rogers_1997_popsize_wide) <- gsub("\\s+", "_", names(rogers_1997_popsize_wide))
 
-
-# survival and population size
-rogers_1997_s <- mean_err$`242_Rogers_1997_fig3.png` # prob survival
-# renaming cols, joining with MNA estimates
-rogers_1997_s <- rename(rogers_1997_s, Year= id, "prob of survival" = mean)
-rogers_1997_s <- select(rogers_1997_s, -variable, -n)
-names(rogers_1997_s) <- gsub("\\s+", "_", names(rogers_1997_s))
-
 # reproductive rates
 rogers_1997_rep1 <- scatter$`242_Rogers_1997_fig10.png` # % Af breeding
 rogers_1997_rep1_clean <- scat.clean(rogers_1997_rep1, dec = 0)
@@ -103,9 +94,8 @@ rogers_1997_rep1_clean <- scat.clean(rogers_1997_rep1, dec = 0)
 rogers_1997_rep2 <- scatter$`242_Rogers_1997_fig12.png` # rep rate (cubs per adult?)
 rogers_1997_rep2_clean <- scat.clean(rogers_1997_rep2, dec = 0)
 
-rogers_1997_rep3<- scatter$`242_Rogers_1997_fig13.png` # Cubs / breeding fem
-rogers_1997_rep3_clean <- scat.clean(rogers_1997_rep3, dec = 0)
-rogers_1997_rep3_clean <- rename(rogers_1997_rep3_clean, "Cubs_per_breeding_fem"= "Number_of_cubs_per_breeding_female")
+rogers_1997_rep3 <- scatter$`242_Rogers_1997_fig13.png` # Cubs / breeding fem
+rogers_1997_rep3_clean <- scat.clean(rogers_1997_rep3, "Cubs_per_breeding_fem", dec = 0)
 rogers_1997_rep3_clean$Cubs_per_breeding_fem[2] <- NA # removing outlier point
 
 
@@ -123,54 +113,59 @@ rogers_1997_rep4_clean$Year <- as.numeric(rogers_1997_rep4_clean$Year)  # must b
 rogers_1997_rep <- full_join(rogers_1997_rep, rogers_1997_rep4_clean,
                              by= "Year")
 
-rogers_1997_s$Year <- as.numeric(rogers_1997_s$Year)
-rogers_1997_data <- full_join(rogers_1997_s, rogers_1997_rep, by= "Year")
-rogers_1997_data <- full_join(rogers_1997_data, rogers_1997_popsize_wide, by= "Year")
+rogers_1997_data <- full_join(rogers_1997_rep, rogers_1997_popsize_wide, by= "Year")
+rogers_1997_data <- rename(rogers_1997_data, 
+                           "Adult_density" = "Total_Adult_Badgers", "Adult_fem_density" = "Adult_Female_Badgers", "Adult_male_density" ="Adult_Male_Badgers", "Cub_density" = "Badger_Cubs")
 
 # visualising 
-rogers_N_plot <- plot(x=rogers_1997_data$Year, y=rogers_1997_data$Total_Adult_Badgers)  # pop size over time increases linearly
+rogers_N_plot <- ggplot(rogers_1997_data, aes(x= Year, y= Adult_density, na.rm + TRUE)) +
+  geom_point() +
+  stat_smooth(method = 'glm', method.args=list(family="binomial"), se=F)     # pop size over time increases sigmoidally
 
 # variables with density 
-rogers_breeding_plot <- ggplot(rogers_1997_data, aes(x=Total_Adults, y= Percentage_of_Adult_Females_Breeding)) +
-                                 geom_point()+
-                                 geom_smooth(method = 'lm', formula = y~x, se= FALSE) +
-    theme_classic() 
+rogers_breeding_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y= Percentage_of_Adult_Females_Breeding)) +
+  geom_point()+
+  geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
+  ylab("% adult fems breeding") +
+  theme_classic() 
                            
 rogers_reprate_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Reproductive_rate)) +
   geom_point()+
-  geom_smooth(method = 'lm', formula = y~x, se= FALSE) +
+  geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
     theme_classic()  # decline
 
 rogers_fec_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Cubs_per_breeding_fem)) +
-                             geom_point()+ 
-    geom_smooth(method = 'lm', formula = y~x, se= FALSE) +
-    theme_classic() 
+  geom_point()+ 
+  geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
+  ylab("Cubs per breeding female") +
+  theme_classic() 
                              
                        
 rogers_fems_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Av_reproducing_fems)) +
-    geom_point()+ 
-    geom_smooth(method = 'lm', formula = y~x, se= FALSE) +
-    theme_classic() # breeding fems per social group increases over time
+  geom_point()+ 
+  geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
+  ylab("Average reproducing fems per social group") +
+  theme_classic() # breeding fems per social group increases over time
 
 grid.arrange(rogers_breeding_plot, rogers_reprate_plot, rogers_fec_plot, rogers_fems_plot, nrow=2, ncol=2)
 # fairly constant % fems breeding in pop, and cohort size
 # Rep rate decreases with density, reproducing fems per social group increases
 
 breeding.lm <- lm(Percentage_of_Adult_Females_Breeding~Adult_density, data= rogers_1997_data)  # does density affect percentage adult fems reproducing
-summary(breeding.lm)  # intercept sig, slope not. Low r squared, not important
+summary(breeding.lm)  # intercept sig, slope not. Low r squared, not important. # estimate consistently 30% of all adult fems will breed?
 
-cohort.lm <- lm(Number_of_cubs_per_breeding_female~Adult_density, data= rogers_1997_data)  # does density affect litter size
+cohort.lm <- lm(Cubs_per_breeding_fem~Adult_density, data= rogers_1997_data)  # does density affect litter size
 summary(cohort.lm)  # intercept sig, slope not. Low r squared. Int = 2.206774   
+summary(rogers_1997_data$Cubs_per_breeding_fem, na.rm = TRUE) #mean = 2.299102, max = 3.144 ,similar to intercept
 
 fecundity.lm <- lm(Reproductive_rate~Adult_density, data= rogers_1997_data)  # does density affect recruitment
 summary(fecundity.lm)  # non significant
 
 fems.lm <- lm(Av_reproducing_fems~Adult_density, data= rogers_1997_data)  # does pop size affect reproducing females per group?
-summary(fems.lm) # sign positive slope - grr!
+summary(fems.lm) # sig positive slope - makes sense, the relative abundance should increase as numbers increase
 
 
 # Next paper - Macdonald 2013----
-
 # extracting pop size and lambda from sup info instead of fig
 library(readr)
 mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))
@@ -234,8 +229,7 @@ tuyttens_fig5_clean <- scat.clean(tuyttens_fig5, remove.id= FALSE, dec = NULL) #
 tuyttens_fig5_clean$Percentage_adult_fems_lactating[2] <- 100  # rounding one data point to 100 (down)
 
 tuyttens_fig6b <- scatter$`567_Tuyttens_2000_fig6b.png`
-tuyttens_fig6b_clean <- scat.clean(tuyttens_fig6b, remove.id= FALSE, dec = NULL)
-tuyttens_fig6b_clean <- rename(tuyttens_fig6b_clean, "Fem_cubs_per_Fem_adults"= "Fem_cubs/_Fem_adults") 
+tuyttens_fig6b_clean <- scat.clean(tuyttens_fig6b, "Fem_cubs_per_Fem_adults", remove.id= FALSE, dec = NULL)
 tuyttens_fig6b_clean$Cubs_per_Fem_adults <- 2*(tuyttens_fig6b_clean$`Fem_cubs_per_Fem_adults`) # assuming equal sex ratio
 
 tuyttens_fig6c <- scatter$`567_Tuyttens_2000_fig6c.png`
@@ -250,38 +244,42 @@ tuyttens_rep <- full_join(tuyttens_rep, tuyttens_fig6c_clean, by = c("id", "Year
 tuyttens_data <- full_join(tuyttens1_long, tuyttens_rep, by = c("Year", "Site"))
 
 # Linking changes in total or adult density to rep params - visualising
-par(mfrow = c(2,2))
-(breedingfems_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Percentage_adult_fems_lactating, col = Site)) +
+breedingfems_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Percentage_adult_fems_lactating, col = Site)) +
                              geom_point() +  # correlating adult density and 
-                             geom_smooth(method = 'lm'))
-(fec_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Cubs_per_Fem_adults, col = Site)) +
+                             geom_smooth(method = 'lm')
+fec_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Cubs_per_Fem_adults, col = Site)) +
   geom_point() +
-  geom_smooth(method= 'lm'))
+  geom_smooth(method= 'lm')
 
-(litter_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Cubs_per_lactating_fem, col = Site)) +
+litter_plot <- ggplot(tuyttens_data, aes(x = Total_density, y = Cubs_per_lactating_fem, col = Site)) +
     geom_point() +
-    geom_smooth(method= 'lm'))
-
+    geom_smooth(method= 'lm')
+grid.arrange(breedingfems_plot, fec_plot, litter_plot, nrow = 2, ncol = 2)
 # linear models to get parameter estimates
-fec.lm <- lm(Cubs_per_Fem_adults~Total_density + Site, data = tuyttens_data)  # linear model for fecundity (cubs / adult fem) and density, 
-                                                                              # site as a covariate
+fec.lm <- lm(Cubs_per_Fem_adults~Total_density + Site, data = tuyttens_data)  # lm for fecundity and density, site as a covariate
 summary(fec.lm) # Intercept (0.84), slope 0.07
+summary(tuyttens_data$Cubs_per_Fem_adults) # mean =0.8156999, max= 3.1340  This includes survival and producion!
 
-litter.lm <- lm(Cubs_per_lactating_fem~Total_density + Site, data = tuyttens_data)  # linear model for cohort size (cubs / breeding fem) and density, 
-                                                                                    # site as a covariate
+litter.lm <- lm(Cubs_per_lactating_fem~Total_density + Site, data = tuyttens_data)  # lm for cohort size (cubs / breeding fem) and density, site as a covariate
 summary(litter.lm)  # intercept 1.8, slope = 0.187. using max cohort size as cohort size when density = 0
-
-breeding.lm <- lm(Percentage_adult_fems_lactating~Total_density + Site, data = tuyttens_data)  # linear model for percemtage reproducing and density, 
-                                                                                               # site as a covariate
+summary(tuyttens_data$Cubs_per_lactating_fem) # mean = 1.7869, max = 3.1340 
+breeding.lm <- lm(Percentage_adult_fems_lactating~Total_density + Site, data = tuyttens_data)  # lm  percemtage reproducing and density, site as a covariate
 summary(breeding.lm)  # intercept = 68.7, slope = 3.31  
 
+# should we use estimates when density is 0 is this is a positive relationship? Take max values?
 
 # Next paper- Bright Ross 2020-----
 bright_fig2 <- scatter$`3307_Bright_2020_fig2.png`
 bright_fig2_clean <- scat.clean(bright_fig2, remove.id = FALSE, dec=0)  # years are not in order :(
 bright_fig2_wide <- spread(bright_fig2_clean, "id", "Density")  # MNA for Adult males and fems, and total 
-# can't spread?
-# ----
+# can't spread? doesn't matter, only estimating survival from this, non density dependent
+plot(data = bright_fig2_clean, x= "Year", y= "Density")
+
+ggplot(data = bright_fig2_clean, aes(x = Year, y = Density, colour = id))+  # colour code by id?
+         geom_point()
+# In geom_point() :
+#  All aesthetics have length 1, but the data has 86 rows.
+# ℹ Please consider using `annotate()` or provide this layer with data containing a single row.
 
 bright_fig3ai <- scatter$`3307_Bright_2020_fig3ai.png`
 bright_fig3ai_clean <- scat.clean(bright_fig3ai, remove.id= FALSE)    # survival rates
@@ -308,9 +306,10 @@ bright_fig3a.1 <- full_join(bright_fig3ai_wide, bright_fig3aii_wide, by= "Year")
 bright_fig3a.2 <- full_join(bright_fig3aiii_wide, bright_fig3aiv_wide, by= "Year")
 bright_survival <- full_join(bright_fig3a.1, bright_fig3a.2, by= "Year")
 
+# qs - how does percent producing offspring by age change with density?
 
 
-# Rep by year
+# Rep by year - not needed? Better way to link density and percentage reproducing ----
 bright_fig3bi <- scatter$`3307_Bright_2020_fig3bi.png`
 bright_fig3bi_clean <- scat.clean(bright_fig3bi, remove.id= FALSE)  # percentage producing offspring - need to keep ids seperated
 
@@ -322,7 +321,8 @@ bright_fig3biii_clean <- scat.clean(bright_fig3biii, remove.id= FALSE)
 
 bright_fig3biv <- scatter$`3307_Bright_2020_fig3biv.png`
 bright_fig3biv_clean <- scat.clean(bright_fig3biv, remove.id= FALSE)
-
+# any negative points set to 0 - percentage must be 0-1
+bright_fig3biv_clean$Percentage_producing_offspring[bright_fig3biv_clean$Percentage_producing_offspring < 0] <- 0
 
 # widen to seperate sex in col, age in col to join df
 bright_fig3bi_wide <- widen(bright_fig3bi_clean, "Percentage_producing_offspring")
@@ -333,35 +333,43 @@ bright_fig3biii_wide <- widen(bright_fig3biii_clean, "Percentage_producing_offsp
 
 bright_fig3biv_wide <- widen(bright_fig3biv_clean, "Percentage_producing_offspring")
 
+
 # joining into reproduction df (percentage producing offspring)
-bright_fig3.1 <- full_join(bright_fig3bi_wide, bright_fig3bii_wide, by= "Year")
-bright_fig3.2 <- full_join(bright_fig3biii_wide, bright_fig3biv_wide, by= "Year")
-bright_rep <- full_join(bright_fig3.1, bright_fig3.2, by= "Year")
+bright_fig3b.1 <- full_join(bright_fig3bi_wide, bright_fig3bii_wide, by= "Year")
+bright_fig3b.2 <- full_join(bright_fig3biii_wide, bright_fig3biv_wide, by= "Year")
+bright_rep <- full_join(bright_fig3b.1, bright_fig3b.2, by= "Year")
+
+
 
 names(bright_survival)
-names(bright_rep)  # cols dont match first in s is 1-2, rep has only 2+
+names(bright_rep)  # cols dont match first in s is 1-2, rep has only 2+  # also dont really need rep df?
+# improved = cols year, sex, age, param
 
-# survival rate estimation (average)
+# visualising rep by density
+
+
+# survival rate estimation (average) ----
+bright_survival <- rename(bright_survival, "Female_8+_yrs" = "Female_8+")
 yf_s <- mean(bright_survival$Female_1_2yrs) # av of 1-2 year survival rates - currently a character, need as numeric
 ym_s <- mean(bright_survival$Male_1_2yrs)   
 af_s <- mean(c(bright_survival$Female_3_4yrs, bright_survival$Female_5_7yrs, bright_survival$`Female_8+`)) # mean of all adult survival rates
 am_s <- mean(c(bright_survival$Male_3_4yrs, bright_survival$Male_5_7yrs, bright_survival$`Male_8+yrs`))
 
+survival.table <- (c(yf_s, ym_s, af_s, am_s))
+
 
 # Mcdonald 2002 Wytham paper ----
 macdonald_fig2 <- scatter$Macdonald_2002_fig2.png
-macdonald_fig2_clean <- scat.clean(macdonald_fig2)
-macdonald_fig2_clean <- rename(macdonald_fig2_clean, "Total_MNA" = "Number_of_badgers") 
+macdonald_fig2_clean <- scat.clean(macdonald_fig2, "Total_MNA")
 
 macdonald_fig7 <- scatter$Macdonald_2002_fig7.png
 macdonald_fig7_clean <- scat.clean(macdonald_fig7)
 
 macdonald_fig8 <- scatter$Macdonald_2002_fig8.png
-macdonald_fig8_clean <- scat.clean(macdonald_fig8)
-macdonald_fig8_clean <- rename(macdonald_fig8_clean, "Net_reproductive_rate" = "Reproductive_rates") 
+macdonald_fig8_clean <- scat.clean(macdonald_fig8, "Net_reproductive_rate")
 
 macdonald_fig8b <- scatter$Macdonald_2002_fig8b.png
-macdonald_fig8b_clean <- scat.clean(macdonald_fig8b)
+macdonald_fig8b_clean <- scat.clean(macdonald_fig8b, "Cubs_per_rep_fem")  # cubs per reproducing fems
 
 # combining into large dataframe
 macdonald_data <- full_join(macdonald_fig2_clean, macdonald_fig7_clean, by= "Year")
@@ -370,8 +378,22 @@ macdonald_data <- full_join(macdonald_data, macdonald_fig8b_clean, by= "Year")
 macdonald_data <- arrange(macdonald_data, Year) #reorder by ascending year 
 
 # visualising
-plot(macdonald_data$Year, y=macdonald_data$Total_MNA)
-plot(macdonald_data$Total_MNA, y=macdonald_data$Mean_group_size_MNA) # increasing group size with higher pop size
-plot(macdonald_data$Total_MNA, y=macdonald_data$Net_reproductive_rate)
-plot(macdonald_data$Total_MNA, y=macdonald_data$Number_of_cubs_per_reproductive_fem) 
+mac_N <- ggplot(macdonald_data, aes(x= Year, y= Total_MNA))+
+  geom_point()+
+  geom_smooth(method = 'lm', aes(col = "linear"))+
+  geom_smooth(method = 'loess', aes(col = "LOESS"))
+# slight sigmoidal curve - fit this equation (how?)
+
+mac_group <- ggplot(macdonald_data, aes(x= Year, y= Mean_group_size_MNA))+  # group size by year
+  geom_point()
+
+mac_rep <- ggplot(macdonald_data, aes(x= Total_MNA, y= Net_reproductive_rate))+  # rep rates size by density
+  geom_point()
+
+
+mac_litter <- ggplot(macdonald_data, aes(x= Total_MNA, y= Cubs_per_rep_fem))+  # rep rates size by density
+  geom_point()
+grid.arrange (mac_rep, mac_litter, nrow = 1, ncol =2) # not enough points to fit model, 
+                                                      # we want max cubs per rep fem before density dependence
+summary(macdonald_data$Cubs_per_rep_fem, na.rm = TRUE) # mean = 1.618605, max = 2.452 cubs / reproducing fem - rough match to prev estimate?
 # increasing reproduction with group size??
