@@ -3,52 +3,46 @@
 
 # WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
 
-dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
-                  Umat,   # MAX SURVIVAL
-                  initial, 
-                  params, 
-                  stagenames, 
-                  time, 
-                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                  DDapply="matrix", 
-                  Mfunction= "Min",
-                  return.vec= TRUE) 
-{
+dd.proj <- function(Umat,   # MAX SURVIVAL
+                    initial, # pop structure vec
+                    params,  # dd params
+                    stagenames, 
+                    time,     # how far to project
+                    memberN=NULL,  # which individuals contribute to pop size? (as vec)
+                    DDapply="matrix",  
+                    Mfunction= "Min",
+                    return.vec= TRUE) {   # return Fmat from mating func
   # Time 
-  if (time<=1) stop("Time must be a positive integer")
-   else(time <- as.integer(time))
+  if(time<=1) stop("Time must be a positive integer")
+  else(time <- as.integer(time))
   
-  if (is.null(initial)) stop("You must provide initial population vector for each stage abundance")
-   else(n0 <- as.numeric(initial))
+  if(is.null(initial)) stop("You must provide initial population vector for each stage abundance")
+  else(n0 <- as.numeric(initial))
   
   
-  if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
+  if(length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
   if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimensions")
+  if(is.null(params)) stop("You must provide the parameters that match your selected function for density-dependent reproduction.")
   
-  if (is.null(params)) stop("You must provide the parameters that match your selected function for density-dependent reproduction.")
   
-  
-  nStages<-length(stagenames)/2      # how many stages
+  nStages<-length(stagenames)/2      # how many stages in lifecycle
   
   # population size
   if (is.null(memberN)){
     memberN <- 1:length(stagenames)   # all members contribute to pop size
     
-  } else if(length(memberN) >= 1){
-    memberN <- c(memberN) 
+  } else if(length(memberN) >= 1){ 
+    memberN <- c(memberN)       # vector of stages in lifecycle incl (in case, 2,4 = adult f and m)
   }
   
   # Calculating Unions with mating function
-    Nf <- n0[nStages]       # pulls adult female entry from initial vector
-    Nm <- n0[2*nStages]      # adult male in vector (final entry)
-    
-    # mating func gives initial Fmat for first year
-    mating.out <- mating.func(params, stagenames, Nf, Nm, Mfunction,  return.mat= TRUE)  # Npairs and fmat given 
-    U <- mating.out$U 
-    Fmat <- mating.out$Fmat
-    
-  # creating Amat - too early?
-  Amat <- Fmat+Umat
+  Nf <- n0[nStages]       # pulls adult female entry from initial vector
+  Nm <- n0[2*nStages]      # adult male in vector (final entry)
+  
+  # mating func gives initial Fmat for first year
+  mating.out <- mating.func(params, stagenames, Nf, Nm, Mfunction,  return.mat= TRUE)  # Npairs and Fmat given 
+  U <- mating.out$U 
+  Fmat <- mating.out$Fmat 
   
   # Initialize the output for population vector:
   out<- list(pop=vector(), vec=matrix(), mat=matrix())
@@ -64,22 +58,21 @@ dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
   for (i in 1:time) {  
     
     # Mating Fmat creation 
-      thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix - should sum yearlings and adults!
-      thisNm <- Vec[i,2*nStages]  # Nm 
-       
+    thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix - should sum yearlings and adults!
+    thisNm <- Vec[i,2*nStages]  # Nm 
+    
     # apply mating func to calculate pairs
     thisMating<- mating.func(params, stagenames, thisNf, thisNm, Mfunction, return.mat=TRUE)     # how to use?
     
     thisFmat <-thisMating$Fmat
     thisU <- thisMating$U
-      
+    
     # ricker density dependence each year
     thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
     thisAmat <- apply.DD(params, thisFmat, Umat, thisN, DDapply)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
     
     Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
     Pop[i + 1] <- sum(Vec[(i + 1), ])
-    # add thisU ?
   }
   
   # out objects
@@ -94,19 +87,21 @@ dd.proj<-function(# Fmat,  # MAX FERTILITY MATRIX - needed or calculated later?
 }
 
 # Notes----
-# Function name- DD.proj
-# Inputs
-# Fmat: blank matrix that is filled using mating system function for vital rates based on pop structure
-# Umat: max predicted survival rates
-# initial: population vector for abundance of each stage class
-# params: defined in other funcs, importantly b, 
-# stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 6)
-# time: projection interval
-# memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
-# AdultNx= are adults/ oldest class the only individuals included in Nf and Nm? If elderly incl and yearlings not, tweaks needed. TRUE default includes only oldest age class, FALSE incl all stages except first 
-# DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
-# return.vec= abundance stage class matrix returned? defualts FALSE
-
+# Function name - DD.proj
+# Inputs - 
+#  Umat: max predicted survival rates
+#  initial: population vector for abundance of each stage class
+#  params: defined in other funcs, importantly b, 
+#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
+#  time: projection interval
+#  memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
+#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
+#  return.vec= abundance stage class matrix returned? defaults FALSE
+# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
+# Outputs - out
+#  $pop: vector of total population size each year
+#  $vec: matrix of abundance of each stage each year
+#  $mat: returns final Amat produced
 
 
 

@@ -7,7 +7,7 @@
 # - dd projection plot function
 
 ##  Ricker function and matrix application ------
-apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix") {   # apply ricker to whole matrix, survival or fertility
+apply.DD <- function(params, Fmat, Umat, N, DDapply="fertility") {   # apply ricker to whole matrix, survival or fertility
  
   # making sure mats match 
   if (sum(dim(Fmat)==dim(Umat))!=2){
@@ -55,7 +55,7 @@ apply.DD <- function(params, Fmat, Umat, N, DDapply="matrix") {   # apply ricker
 
 ##  Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph (single sex)
+                        stagenames,   # Stages in life cycle graph 
                         Nf,        # Adult and yearling females
                         Nm,             # Adult and yearling males
                         Mfunction= "min",       # mating function applied
@@ -124,191 +124,20 @@ mating.func <- function(params,     # density dependent parameters
 #  Return.mat: whether Fmat is given in results
 # 
 # Use: Returns max possible number of pairs formed based on male and female abundance. 
-# Caveats- h may increase with increasing density, then plateau
+# Outputs
 
 ##  DD projection function
 
 # WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
 
-dd.proj <- function(Umat,   # MAX SURVIVAL
-                    initial, # pop structure vec
-                    params,  # dd params
-                    stagenames, 
-                    time,     # how far to project
-                    memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                    DDapply="matrix",  
-                    Mfunction= "Min",
-                    return.vec= TRUE) {   # return Fmat from mating func
-  # Time 
-  if(time<=1) stop("Time must be a positive integer")
-  else(time <- as.integer(time))
-  
-  if(is.null(initial)) stop("You must provide initial population vector for each stage abundance")
-  else(n0 <- as.numeric(initial))
-  
-  
-  if(length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
-  if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimensions")
-  if(is.null(params)) stop("You must provide the parameters that match your selected function for density-dependent reproduction.")
-  
-  
-  nStages<-length(stagenames)/2      # how many stages in lifecycle
-  
-  # population size
-  if (is.null(memberN)){
-    memberN <- 1:length(stagenames)   # all members contribute to pop size
-    
-  } else if(length(memberN) >= 1){ 
-    memberN <- c(memberN)       # vector of stages in lifecycle incl (in case, 2,4 = adult f and m)
-  }
-  
-  # Calculating Unions with mating function
-  Nf <- n0[nStages]       # pulls adult female entry from initial vector
-  Nm <- n0[2*nStages]      # adult male in vector (final entry)
-  
-  # mating func gives initial Fmat for first year
-  mating.out <- mating.func(params, stagenames, Nf, Nm, Mfunction,  return.mat= TRUE)  # Npairs and Fmat given 
-  U <- mating.out$U 
-  Fmat <- mating.out$Fmat 
-  
-  # Initialize the output for population vector:
-  out<- list(pop=vector(), vec=matrix(), mat=matrix())
-  
-  Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
-  Pop <- rep(NA, (time + 1))       # vector to fill with total pop size each year
-  colnames(Vec) <- stagenames   # naming cols matrix as stages 
-  rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- n0                   
-  Pop[1] <- sum(n0)    
-  
-  # Loop = density dependent matrix application for each year
-  for (i in 1:time) {  
-    
-    # Mating Fmat creation 
-    thisNf <- Vec[i,nStages]    # Nf is mid col in Vec matrix - should sum yearlings and adults!
-    thisNm <- Vec[i,2*nStages]  # Nm 
-    
-    # apply mating func to calculate pairs
-    thisMating<- mating.func(params, stagenames, thisNf, thisNm, Mfunction, return.mat=TRUE)     # how to use?
-    
-    thisFmat <-thisMating$Fmat
-    thisU <- thisMating$U
-    
-    # ricker density dependence each year
-    thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
-    thisAmat <- apply.DD(params, thisFmat, Umat, thisN, DDapply)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
-    
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-  }
-  
-  # out objects
-  out$pop <- Pop
-  if (isTRUE(return.vec)) {
-    out$vec <- Vec        
-  } 
-  
-  out$mat <- thisAmat
-  
-  return(out)
-}
-
-# Notes----
-# Function name - DD.proj
-# Inputs - 
-#  Umat: max predicted survival rates
-#  initial: population vector for abundance of each stage class
-#  params: defined in other funcs, importantly b, 
-#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
-#  time: projection interval
-#  memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
-#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
-#  return.vec= abundance stage class matrix returned? defaults FALSE
-# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
-# Outputs - out
-#  $pop: vector of total population size each year
-#  $vec: matrix of abundance of each stage each year
-#  $mat: returns final Amat produced
-
-
-
-
-
-
-# Projection plotting function ---- 
-dd_plot <- function(out,   # output obj of dd.proj
-                    y_val= "N",   # plot type - N or Vec 
-                    ylab = "abundance", 
-                    xlab = "time (t)",
-                    theme = theme_classic(), 
-                    cols= "black",    # can be vector of 2 cols
-                    legend.pos = "topright",
-                    cex.legend = 0.8){
-  # loading required libraries
-  library(tidyr)
-  library(ggplot2)
-  
-  # creating time vector for n years
-  t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
-  time <- as.numeric(c(0:t))       # vector 0:t
-  
-  # for pop size over time graph
-  if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-    plot <- ggplot(data = out, aes(x= time, y= pop)) +  # start form year = 0
-                      geom_point() +
-                      xlab(xlab) +
-                      ylab(ylab) +
-                      geom_smooth()+
-                      theme_bw()
-    
-  } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
-    x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
-    # turning into dataframe
-    df <- as.data.frame(out$vec)
-    df$Year <- time    # year column from 0 to t years
-    # tidy data - converting to long format so each row is a single observation 
-    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x_val)   # creating a stage col in df with abundance
-    df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
-    
-    # plotting graph with ggplot2 
-    plot <- ggplot(data= df_long, aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage))+  # sexes diff cols, shapes and lines diff for stages
-      geom_point(position= "jitter", alpha=0.8)+  # jitter to avoid overlap of yearlings
-      geom_line(data= df_long, alpha=0.7) +
-      scale_colour_manual(values=cols,
-                          labels=c("Female", "Male")) +
-      labs(title = "Stage Abundance over Time", 
-           x = xlab, y = ylab) + 
-      theme
-    
-  }
-  return(plot)
-  
- }
-# NOTES ----
-# Function name = dd_plot
-# Inputs 
-#  out: output obj from dd_proj function, including structure vec or popsize (N)
-#  y_val= plot type. N = total pop size by year, Vec = stage abundance by year 
-#  ylab : defaults "abundance", 
-#  xlab : defaults "time (t)"
-#  col: "black",    colours used for sexes in graph, should be length 2
-#  legend.pos: "topright",   legend position on graph
-#  cex.legend: legend size
-# Use - Take output from projection and plot with ggplot, [including custom theme if desired]
-# Required packages = ggplot2, tidyr
-# IMPROVE = ADD LINE AT REM YEAR
-
-
 # Removal function (eventually replace ddproj) ------
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
                      params, 
-                     stagenames, 
                      time, 
                      memberN=NULL,  # which individuals contribute to pop size? (as vec)
-                     DDapply="matrix", 
+                     DDapply="fertility", 
                      Mfunction= "Min",
-                     #   removal = FALSE,  # allows function versitility, proj without removals
                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                      remyear = NULL,  # removal year = decrease from following year
                      return.vec= TRUE, 
@@ -321,10 +150,10 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
   else(n0 <- as.numeric(initial))
   
+  stagenames <- c(rownames(Umat))
   
   if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
-  if(is.null(stagenames) || length(stagenames)== 0) stop("stagenames must be provided for correct matrix dimensions")
-  
+
   if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
   
   
@@ -412,11 +241,10 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   if (is.numeric(intensity)){
     # ------------------------------------------------
     # removal year 
-    Rem <- Pop[ry + 1] * intensity/100   # ry +1 IS ROW REPRESENTING YEAR remyear! Nremoved by calculating latest N, multiplying by percentage 
-    
     #generating the distribution
     prop <- rnorm(length(stagenames), mean = intensity/100, sd= intensity/1000)  # 4 samples from dist mean 0.5, sd 0.05
     rem_vec <- Vec[ry+1,] * prop    # remaining <- Vec[ry+1] - rem_vec
+    Rem <- sum(rem_vec)  # ry +1 IS ROW REPRESENTING YEAR remyear! 
     
     Vec[ry + 2,] <- Vec[ry + 1,]  - rem_vec  # year after remyear = 2 rows later filled with new stage vec
     Pop[ry + 2] <- sum(Vec[ry + 2]) # filling in total pop size
@@ -475,57 +303,130 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   return(out)
 }
 
+# Notes----
+# Function name - rem.proj
+# Inputs - 
+#  Umat: max predicted survival rates
+#  initial: population vector for abundance of each stage class
+#  params: defined in other funcs, importantly b, 
+#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
+#  time: projection interval
+#  memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
+#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
+#  return.vec= abundance stage class matrix returned? defaults FALSE
+# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
+# Outputs - out
+#  $pop: vector of total population size each year
+#  $vec: matrix of abundance of each stage each year
+#  $mat: returns final Amat produced
+#  $Nremoved = total of pop removed
+#  $rem_vec = optional vector of removals per class
 
 
-# Meta matrix creation ----
-meta.mat <- function(Umat,  
-                     Fmat1, 
-                     Dmat1,
-                     Fmat2, 
-                     Dmat2,
-                     patches = 2){    
-  nStages<- ncol(Umat)/2  # number of stages
-  stagenames <- c(colnames(Umat))
+
+
+# Projection plotting function ---- needs updating to plot N by year and red line for removal
+dd_plot <- function(out,   # output obj of dd.proj
+                    y_val= "N",   # plot type - N or Vec 
+                    ylab = "abundance", 
+                    xlab = "time (t)",
+                    rem_year = NULL,
+                    theme = theme_classic(), 
+                    cols= "black",    # can be vector of 2 cols
+                    legend.pos = "topright",
+                    cex.legend = 0.8){
+  # loading required libraries
+  library(tidyr)
+  library(ggplot2)
   
-  # setting base for Amat
-  Amat <- matrix(0, ncol= ncol(Umat), nrow= nrow(Umat))  
+  # creating time vector for n years
+  t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
+  time <- as.numeric(c(0:t))       # vector 0:t
   
-  # filling off diags
-  # Patch 1 to 2
-  Amat_off1 <- Amat   # creating patch 1 -> 2 amat
-  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-    Amat_off1[,i] <- Umat[,i] * Dmat1[2,i]  # second row = leaving patch 
-  } 
-  # patch 2 to 1  
-  Amat_off2 <- Amat  # creating patch 2 -> 1 amat
-  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-    Amat_off2[,i] <- Umat[,i] * Dmat2[2,i] 
+  # for pop size over time graph
+  if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
+    plot <- ggplot(data = out, aes(x= time, y= pop)) +  # start form year = 0
+                      geom_point() +
+                      xlab(xlab) +
+                      ylab(ylab) +
+                      geom_smooth()+
+                      theme_bw()
+    
+  } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
+    x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
+    # turning into dataframe
+    df <- as.data.frame(out$vec)
+    df$Year <- time    # year column from 0 to t years
+    # tidy data - converting to long format so each row is a single observation 
+    df_long <- gather(df, key= "Stage", value = "Abundance", 1:x_val)   # creating a stage col in df with abundance
+    df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
+    
+    # plotting graph with ggplot2 
+    plot <- ggplot(data= df_long, aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage))+  # sexes diff cols, shapes and lines diff for stages
+      geom_point(position= "jitter", alpha=0.8)+  # jitter to avoid overlap of yearlings
+      geom_line(data= df_long, alpha=0.7) +
+      scale_colour_manual(values=cols,
+                          labels=c("Female", "Male")) +
+      labs(title = "Stage Abundance over Time", 
+           x = xlab, y = ylab) + 
+      theme
+    if(is.numeric(rem_year)){
+      geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
+                 colour = "red", linetype = "dashed", size=1) 
+    }
+    
   }
+  return(plot)
   
+ }
+# NOTES ----
+# Function name = dd_plot
+# Inputs 
+#  out: output obj from dd_proj function, including structure vec or popsize (N)
+#  y_val= plot type. N = total pop size by year, Vec = stage abundance by year 
+#  ylab : defaults "abundance", 
+#  xlab : defaults "time (t)"
+#  col: "black",    colours used for sexes in graph, should be length 2
+#  legend.pos: "topright",   legend position on graph
+#  cex.legend: legend size
+# Use - Take output from projection and plot with ggplot, [including custom theme if desired]
+# Required packages = ggplot2, tidyr
+# IMPROVE = ADD LINE AT REM YEAR
+
+
+
+# growth rate function
+growth.rate <- function(out){
+  N <- out$pop    # isolating pop size vector
+  lambda <- N[2:length(N)]/N[1:(length(N)-1)]
   
-  # for diagonals
-  Amat1 <- Umat  # creating original amat combining fert and survival
-  Amat1[1,2] <- Fmat1[1,2]
-  Amat1[3,2] <- Fmat1[3,2]
-  
-  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-    Amat1[,i] <- Amat1[,i] * Dmat1[1,i]  # first row of Dmat = stay, each col for stage
-  }
-  
-  Amat2 <- Umat  # creating original amat combining fert and survival
-  Amat2[1,2] <- Fmat2[1,2]
-  Amat2[3,2] <- Fmat2[3,2]
-  for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-    Amat2[,i] <- Amat2[,i] * Dmat2[1,i]  # first row of Dmat = stay, each col for stage
-  }
-  
-  # combining Amats - patch 1 stay, next to it patch 2 move
-  meta_mat <- cbind(Amat1, Amat_off2)   # leaving fertility blank in second mat
-  meta_mat_low <- cbind(Amat_off1, Amat2) 
-  meta_mat <- rbind(meta_mat, meta_mat_low) 
-  colnames(meta_mat) <- rep(stagenames, 2)
-  return(meta_mat)
+  return(lambda)
 }
+
+# NOTES
+# Inputs = out : output of proj function (without extracting vars)
+# Function calculates this pop size over prev year pop size per year
+# Outputs : vector of growth rates per year 
+
+
+# Stage distribution calculation
+ssd <- function(out) {     # input projected matrix
+  # separating a matrix from out obj
+  mat <- out$vec  
+  stageMat<- matrix(0, ncol=ncol(mat), nrow=nrow(mat))    # empty matrix to fill
+  for(i in 1:nrow(mat)) {   # loop for each column 
+    stageMat[i,]<- mat[i,]/sum(mat[i,])          # column i of matrix filled with row i divided by col sum
+  } 
+  return(stageMat)   # returns matrix of each stage as proportion of total pop
+}
+
+# NOTES
+# Inputs = out : output of proj function (without extracting vars)
+# Function calculates proportion of each stage as abundance over total pop size per year
+# Outputs : matrix of proportions for each stage by year
+
+
+
 # NOTES ----
 # Function name = meta.mat
 # Inputs 

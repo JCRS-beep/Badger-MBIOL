@@ -20,7 +20,7 @@ prop.stage(project1)   # SUCCESS!
 
 
 # Updating function to match output of ddproj obj
-prop.stage<- function(out) {     # input projected matrix
+ssd <- function(out) {     # input projected matrix
   # separating a matrix from out obj
   mat <- out$vec  
   stageMat<- matrix(0, ncol=ncol(mat), nrow=nrow(mat))    # empty matrix to fill

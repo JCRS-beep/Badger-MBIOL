@@ -19,7 +19,7 @@ growth(project1)  # SUCCESS!
 
 # creating similar function that works with my output format in DDproj
 growth.rate <- function(out){
-  N <- out$pop
+  N <- out$pop    # isolating pop size vector
   lambda <- N[2:length(N)]/N[1:(length(N)-1)]
   
   return(lambda)
