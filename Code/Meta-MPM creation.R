@@ -11,7 +11,7 @@ params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female
                     Sc_m_max=0.65,
                     b=0.004,       # temp value- must be calculated from provided datasets
                     rep_K= 1.8,          #litter size (K)
-                    h= 6 )  # harem size per male
+                    h= 6)  # harem size per male
 
 # stating with 2 patches, dispersal between at different rates ----
 # n(t+1) = A * D * n0 
@@ -69,8 +69,6 @@ Dmat2[2,] <- 1 - stay2
 # n0 for all patches (also needed for projection)
 # Create Fmat (matingfunc w/ Nf and Nm)
 # Dmat creation using movement probs for each class from each patch calculation (distance and sex ratio and group size)
-# 
-
 
 # function trials
 meta.mat <- function(Umat,   # vector of stage names
@@ -78,16 +76,19 @@ meta.mat <- function(Umat,   # vector of stage names
                      Dmat1,
                      Fmat2, 
                      Dmat2,
-                     patches = 2){    # i
+                     return.mats = FALSE){    # i
   nStages<- ncol(Umat)/2  # number of stages
   stagenames <- c(colnames(Umat))
+  
+  # setting up out obj
+  meta_out <- list(meta_mat = matrix(), Amat1 = matrix(), Amat2 = matrix(), Amat_move1 = matrix(), Amat_move2 = matrix())
   
   # setting base for Amat
     Amat <- matrix(0, ncol= ncol(Umat), nrow= nrow(Umat))  
 
     # filling off diags
     # Patch 1 to 2
-     Amat_off1 <- Amat   # creating patch 1 -> 2 amat
+     Amat_off1 <- Amat   # creating patch 1 -> 2 amat - will be BELOW stay 1
       for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
         Amat_off1[,i] <- Umat[,i] * Dmat1[2,i]  # second row = leaving patch 
         } 
@@ -119,7 +120,16 @@ meta.mat <- function(Umat,   # vector of stage names
       meta_mat_low <- cbind(Amat_off1, Amat2) 
       meta_mat <- rbind(meta_mat, meta_mat_low) 
       colnames(meta_mat) <- rep(stagenames, 2)
-    return(meta_mat)
+      
+      meta_out$meta_mat <- meta_mat
+      if(isTRUE(return.mats)){
+        meta_out$Amat1 <- Amat1
+        meta_out$Amat2 <- Amat2
+        meta_out$Amat_move1 <- Amat_off1
+        meta_out$Amat_move2 <- Amat_off2
+      }
+      
+    return(meta_out)
   }
   
 mattest <- meta.mat(Umat,   
@@ -127,13 +137,19 @@ mattest <- meta.mat(Umat,
                     Dmat1,
                     Fmat2, 
                     Dmat2,
-                    patches = 2)
-# SUCCESS!
+                    return.mats = TRUE)
+# SUCCESS!   why do we need this? project begins with base Amat and Umat
+
+
 
 # next steps = adapting this function for multiple patch inputs = only once i create Dmat automatically from distance and Nf and Nm (logit link)
 
 # diserpsal prob and dmat creation
 # using distance to link p(move) = 0 or 1
-# predictor variables = sex, stage, distance, density and sex ratio
-# step 1 : load rogers movement data for movement and group size av distance for moves?
- 
+# additional predictor variables = sex, stage, density and sex ratio
+
+# then load rogers movement data for movement and group size av distance for moves?
+
+# linking distance and movement
+# hypothetical = 2 patches, 100m apart
+# average nearest neighbour dist = 595m, average movers under 1000m
