@@ -1,5 +1,7 @@
 # Removal methods
 # 31.12.2025
+# 
+library(tidyverse)
 
 # vec structure = yf, af, ym, am (25, 10, 25, 10)
 stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
@@ -219,6 +221,14 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        cols= col_vec,    # can be vector of cols
                        legend.pos = "topright",
                        cex.legend = 0.8))
+N0_plot <- dd_plot(proj0, 
+                   y_val= "N", 
+                   ylab = "Pop size", 
+                   xlab = "Time (t)",
+                   theme = theme_classic(), 
+                   cols= col_vec,    # can be vector of cols
+                   legend.pos = "topright",
+                   cex.legend = 0.8)
 
 proj2 <- rem.proj(Umat,   # MAX SURVIVAL
                   initial = n0, 
@@ -261,11 +271,20 @@ proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                        y_val= "Vec", 
                        ylab = "Abundance", 
                        xlab = "Time (t)",
+                       rem_year = 10,
                        theme = theme_classic(), 
                        cols= col_vec,    # can be vector of cols
                        legend.pos = "topright",
                        cex.legend = 0.8))
-
+N3_plot <- dd_plot(proj3, 
+                  y_val= "N", 
+                  ylab = "Pop size", 
+                  xlab = "Time (t)",
+                  rem_year = 10,
+                  theme = theme_classic(), 
+                  cols= col_vec,    # can be vector of cols
+                  legend.pos = "topright",
+                  cex.legend = 0.8)
 # almost works fine - ' Error in if (sum(thisAmat < 0) > 0) { : 
 # missing value where TRUE/FALSE needed ' when values below 0?
 
@@ -273,10 +292,13 @@ proj3 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
 # lambda and SSD 
 lambda2 <- growth.rate(proj2)
 summary(lambda2)
-lambda3 <- growth.rate(proj3)
-  # lambda against pop size - too many rows for pop size - exclude initial?
-N3 <- c(proj3$pop[2:length(proj3$pop)])     # remove entry 1
-plot(lambda3, N3) # not enough variation in lambda for plot to show anything useful
+
+lambda3 <- growth.rate(proj3, vis = TRUE) # lambda value of 24 following rem year?
+lambda3$lamb
+
+  
+lamb3 <- plot(x= 1:length(lambda3), y= lambda3) 
+lines(lambda3, col= "black")
 
 ssd3 <- SSD(proj3)
 # way to plot prop of each stage per year?

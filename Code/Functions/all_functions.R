@@ -336,21 +336,35 @@ dd_plot <- function(out,   # output obj of dd.proj
                     legend.pos = "topright",
                     cex.legend = 0.8){
   # loading required libraries
-  library(tidyr)
-  library(ggplot2)
-  
+ require(tidyr)
+ require(ggplot2)
   # creating time vector for n years
   t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
   time <- as.numeric(c(0:t))       # vector 0:t
   
-  # for pop size over time graph
+  # for pop size over time graph - must be as df
   if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-    plot <- ggplot(data = out, aes(x= time, y= pop)) +  # start form year = 0
+    pop <- out$pop
+    pop_df <- as.data.frame(pop) # converting pop to a df
+    
+    if (is.null(rem_year)){
+    plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
                       geom_point() +
                       xlab(xlab) +
                       ylab(ylab) +
-                      geom_smooth()+
-                      theme_bw()
+                      geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
+                      theme_bw() 
+    
+   } else if (is.numeric(rem_year)){
+      plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
+        geom_point() +
+        geom_line(data = pop_df, alpha = 0.7)
+        xlab(xlab) +
+        ylab(ylab) +   # doesn't fit so well fofr removals!
+        theme_bw() +
+        geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
+                   colour = "red3", linetype = "dashed", size= 1, alpha = 0.5) 
+    }
     
   } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
     x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
@@ -361,21 +375,34 @@ dd_plot <- function(out,   # output obj of dd.proj
     df_long <- gather(df, key= "Stage", value = "Abundance", 1:x_val)   # creating a stage col in df with abundance
     df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
     
+    if(is.null(rem_year)) {
     # plotting graph with ggplot2 
-    plot <- ggplot(data= df_long, aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage))+  # sexes diff cols, shapes and lines diff for stages
-      geom_point(position= "jitter", alpha=0.8)+  # jitter to avoid overlap of yearlings
+    plot <- ggplot(data= df_long, 
+                   aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
+      geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
       geom_line(data= df_long, alpha=0.7) +
       scale_colour_manual(values=cols,
                           labels=c("Female", "Male")) +
       labs(title = "Stage Abundance over Time", 
            x = xlab, y = ylab) + 
       theme
-    if(is.numeric(rem_year)){
-      geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
-                 colour = "red", linetype = "dashed", size=1) 
-    }
     
-  }
+    } else if(is.numeric(rem_year)){
+      plot <- ggplot(data= df_long, 
+                     aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
+        geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
+        geom_line(data= df_long, alpha=0.7) +
+        scale_colour_manual(values=cols,
+                            labels=c("Female", "Male")) +
+        labs(title = "Stage Abundance over Time", 
+             x = xlab, y = ylab) + 
+        theme +
+       geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
+                 colour = "red3", linetype = "dashed", size=0.8, alpha = 0.5) 
+   
+       } 
+    
+  } 
   return(plot)
   
  }
