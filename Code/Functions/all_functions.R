@@ -66,8 +66,8 @@ mating.func <- function(params,     # density dependent parameters
   # naming objects 
   K <- params$rep_K      # MAX litter size
   h <- params$h          # harem size
-  Sf<- params$Sc_f_max    # assumes different survival for male and female cubs
-  Sm<- params$Sc_m_max 
+  S<- params$Sc_max    # assumes different survival for male and female cubs
+
   
   
   # creating the output obj 
@@ -105,8 +105,8 @@ mating.func <- function(params,     # density dependent parameters
   
   if(return.mat==TRUE) {
     nStages <- length(stagenames)/2 # number stages for each sex
-    Fmat[1,nStages] <- 0.5* f* Sf    # female cub production by females
-    Fmat[nStages+1, nStages] <- 0.5* f* Sm  # male cub production by females
+    Fmat[1,nStages] <- 0.5* f* S    # female cub production by females
+    Fmat[nStages+1, nStages] <- 0.5* f* S  # male cub production by females
     out$Fmat <- Fmat
   }
   
@@ -133,7 +133,8 @@ mating.func <- function(params,     # density dependent parameters
 # Removal function (eventually replace ddproj) ------
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
-                     params, 
+                     params,
+                     stagenames, # needed for mating func
                      time, 
                      memberN=NULL,  # which individuals contribute to pop size? (as vec)
                      DDapply="fertility", 
@@ -149,8 +150,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
   else(n0 <- as.numeric(initial))
-  
-  stagenames <- c(rownames(Umat))
   
   if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
 
@@ -349,19 +348,17 @@ dd_plot <- function(out,   # output obj of dd.proj
     
     if (is.null(rem_year)){
     plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
-                      geom_point() +
-                      xlab(xlab) +
-                      ylab(ylab) +
-                      geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
-                      theme_bw() 
+      geom_point() +
+      labs(title = "Pop size over time", x = xlab, y = ylab)  
+      geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
+      theme
     
    } else if (is.numeric(rem_year)){
       plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
         geom_point() +
-        geom_line(data = pop_df, alpha = 0.7)
-        xlab(xlab) +
-        ylab(ylab) +   # doesn't fit so well fofr removals!
-        theme_bw() +
+        geom_line(data = pop_df, alpha = 0.7) +
+        labs(title = "Pop size oever time", x = xlab, y = ylab) +
+        theme +
         geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
                    colour = "red3", linetype = "dashed", size= 1, alpha = 0.5) 
     }
@@ -381,7 +378,7 @@ dd_plot <- function(out,   # output obj of dd.proj
                    aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
       geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
       geom_line(data= df_long, alpha=0.7) +
-      scale_colour_manual(values=cols,
+      scale_colour_manual(values= cols,
                           labels=c("Female", "Male")) +
       labs(title = "Stage Abundance over Time", 
            x = xlab, y = ylab) + 
@@ -418,39 +415,93 @@ dd_plot <- function(out,   # output obj of dd.proj
 #  cex.legend: legend size
 # Use - Take output from projection and plot with ggplot, [including custom theme if desired]
 # Required packages = ggplot2, tidyr
-# IMPROVE = ADD LINE AT REM YEAR
 
 
 
-# growth rate function
-growth.rate <- function(out){
+# growth rate calculate with output format in DDproj
+growth.rate <- function(out, vis = FALSE, rem_year = NULL){
   N <- out$pop    # isolating pop size vector
   lambda <- N[2:length(N)]/N[1:(length(N)-1)]
+  # output proj
+  lambda_out <- list(lambda = vector(), lamb = NA)
+  lambda_out$lambda <- lambda
   
-  return(lambda)
+  if(is.numeric(rem_year)){
+    ry <- rem_year
+  }
+  
+  if(!isFALSE(vis)){
+    lamb <- plot(x= 1:length(lambda), y= lambda, 
+                 xlab = "Year", 
+                 ylab = "lambda") 
+    lines(lambda, col= "#94D673")     # keeping cols consistent - red = removals, green = growth rates
+    
+    title("Pop Growth rate per year", )
+    
+    lambda_out$lamb <- lamb   # issue here - not loading plot as object within list
+  }
+  
+  return(lambda_out)
 }
+# Function name : growth.rate
+# Arguments : 
+# dd_proj or rem_proj output
+# vis = TRUE or FALSE for whether you want graph plotted
+# Use : generates growth rate per year (gr) by dividing pop size by previous year 
 
-# NOTES
-# Inputs = out : output of proj function (without extracting vars)
-# Function calculates this pop size over prev year pop size per year
-# Outputs : vector of growth rates per year 
 
 
 # Stage distribution calculation
-ssd <- function(out) {     # input projected matrix
+# Updating function to match output of ddproj obj
+ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
   # separating a matrix from out obj
-  mat <- out$vec  
+  mat <- out$vec   
+  
   stageMat<- matrix(0, ncol=ncol(mat), nrow=nrow(mat))    # empty matrix to fill
+  rownames(stageMat) <- rownames(mat)
+  colnames(stageMat) <- colnames(mat)
+  
+  # out obj is a list with matrix and plot
+  ssd_out <- list(stageMat = matrix(), plot = NA)
+  
   for(i in 1:nrow(mat)) {   # loop for each column 
     stageMat[i,]<- mat[i,]/sum(mat[i,])          # column i of matrix filled with row i divided by col sum
   } 
-  return(stageMat)   # returns matrix of each stage as proportion of total pop
+  ssd_out$stageMat <- stageMat
+  
+  if(!isFALSE(vis)){
+    # stageMat as df
+    nStage <- ncol(stageMat)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
+    # turning into dataframe
+    df <- as.data.frame(stageMat)
+    df$Year <- as.numeric(rownames(stageMat))    # year column from 0 to t years
+    
+    # tidy data - converting to long format so each row is a single observation 
+    df_long <- gather(df, key= "Stage", value = "Proportion", 1:nStage)   # creating a stage col in df with abundance
+    df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
+    
+    plot <- ggplot(data= df_long, 
+                   aes(x= Year, y = Proportion, colour = Sex,  # qhy has year ordered so weird?
+                       linetype = Stage, shape = Stage)) +  # sexes diff cols, shapes and lines diff for stages
+      geom_line(data= df_long, position= "jitter") + # why is this not joining as other 
+      scale_colour_manual(values=col_vec,
+                          labels=c("Female", "Male")) +
+      labs(title = "Stage Proportions over Time", 
+           x = "xlab", y = "ylab") 
+    
+    ssd_out$plot <- plot   # issue here - not loading plot as object within list
+  }
+  
+  return(ssd_out)   # returns matrix of each stage as proportion of total pop
+  
 }
+# Function name= prop.stage
+# Arguments: 
+# out = stage abundance matrix over a time interval, produced by proj function
+# vis = whether to print graph
+# cols = vector of 2 colours for each sex
+# Purpose:  Calculates the proportion of each stage class out of the total pop size in a given year
 
-# NOTES
-# Inputs = out : output of proj function (without extracting vars)
-# Function calculates proportion of each stage as abundance over total pop size per year
-# Outputs : matrix of proportions for each stage by year
 
 
 

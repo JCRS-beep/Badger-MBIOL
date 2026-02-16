@@ -21,11 +21,18 @@ growth.rate <- function(out, vis = FALSE, rem_year = NULL){
     
     title("Pop Growth rate per year", )
     
+    if(is.numeric(rem_year)){
+      ry <- rem_year
+      lamb <- lamb + lines(x= ry, col = "red3", lty =2)
+    }
+    
     lambda_out$lamb <- lamb   # issue here - not loading plot as object within list
   }
   
   return(lambda_out)
 }
-# Function name: growth.rate
-# Arguments    : dd_proj or rem_proj output, vis = TRUE or FALSE for whether you want graph plotted
-# Purpose      : generates growth rate per year (gr) by dividing pop size by previous year 
+# Function name : growth.rate
+# Arguments : 
+# dd_proj or rem_proj output
+# vis = TRUE or FALSE for whether you want graph plotted
+# Use : generates growth rate per year (gr) by dividing pop size by previous year 
