@@ -2,6 +2,7 @@
 # 31.12.2025
 # 
 library(tidyverse)
+library(ggplot2)
 
 # vec structure = yf, af, ym, am (25, 10, 25, 10)
 stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
@@ -10,23 +11,23 @@ n0 <- c(25, 10, 25, 10)
 # first time using params from extraction 
 # Creating my control - population projected over 100 years
 Umat <- matrix(0, nrow=4, ncol=4)
-Umat[2,1]<- 0.851   # yearling f survival
-Umat[2,2]<- 0.851   # adult f survival
+rownames(Umat) <- stages
+Umat[2,1]<- 0.851 # yearling f survival
+Umat[2,2]<- 0.803  # adult f survival
 Umat[4,3]<- 0.809   # yearling m survival
 Umat[4,4]<- 0.749   # adult m survival
 
 params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female) 
-                    Sc_f_max=0.65,   # max cub survival (equal for sexes)
-                    Sc_m_max=0.65,
+                    Sc_max=0.76,   # max cub survival (equal for sexes)
                     b=0.004,       # temp value- must be calculated from provided datasets
-                    rep_K= 1.8,          #litter size (K)
+                    rep_K= 2.299,          #litter size (K)
                     h= 6   # harem size per male
                     )
 
 
 # reaches plateau around 20 years - removal at year = 25?
 
-#removal funcs similar to DDproj - replacement? Need to stop simulation once pop reaches 0 - in some cases becomes negative 
+#removal funcs similar to DDproj - replacement? Need to stop simulation once pop reaches 0 - in some cases becomes negative ----
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
                      params, 
@@ -197,11 +198,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   return(out)
 }
-# testing no removal scenario
-proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stocasticity needed?
+
+# testing no removal scenario----
+proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                   initial = n0, 
                   params, 
-                  stagenames = stages, 
+                  stagenames = stages,
                   time = 30, 
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
@@ -238,7 +240,7 @@ proj2 <- rem.proj(Umat,   # MAX SURVIVAL
                   memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
                   Mfunction= "Min",
-                  intensity= 50,  # percentage you want REMOVED from pop at time t=ry
+                  intensity= 70,  # percentage you want REMOVED from pop at time t=ry
                   remyear = 10,  # removal year = decrease from following year
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
@@ -247,11 +249,12 @@ proj2 <- rem.proj(Umat,   # MAX SURVIVAL
                      y_val= "Vec", 
                      ylab = "Abundance", 
                      xlab = "Time (t)",
+                     rem_year= 10,
                      theme = theme_classic(), 
                      cols= col_vec,    # can be vector of cols
                      legend.pos = "topright",
                      cex.legend = 0.8))
-# NOTES - population very quickly returns to plateu - some environmental stochasticity needed?
+# NOTES - population very quickly returns to plateau - some environmental stochasticity needed?
 #         Update plot function to draw red dotted line at remyear
 
 
@@ -290,18 +293,26 @@ N3_plot <- dd_plot(proj3,
 
 
 # lambda and SSD 
-lambda2 <- growth.rate(proj2)
-summary(lambda2)
+lambda0 <- growth.rate(proj0, vis = TRUE)
+summary(lambda0$lambda)
+lambda2 <- growth.rate(proj2, vis = TRUE, rem_year = 10)
+summary(lambda2$lambda)
+
 
 lambda3 <- growth.rate(proj3, vis = TRUE) # lambda value of 24 following rem year?
-lambda3$lamb
 
-  
-lamb3 <- plot(x= 1:length(lambda3), y= lambda3) 
-lines(lambda3, col= "black")
+ssd0 <- ssd(proj0, vis = TRUE, cols = col_vec)
+ssd2 <- ssd(proj2, vis = TRUE, cols = col_vec)
+# how to compare? sapply doesn't work on matrix
+ssd0_df <- as.data.frame(ssd0$stageMat)
+sapply(ssd0_df, mean, 1)
 
-ssd3 <- SSD(proj3)
-# way to plot prop of each stage per year?
+ssd2_df <- as.data.frame(ssd2$stageMat)
+sapply(ssd2_df, mean, 1)
+
+
+
+
 
 
 # Multiple removals? rem_year 1, rem_year 2 

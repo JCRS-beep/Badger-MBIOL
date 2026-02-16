@@ -118,9 +118,6 @@ rogers_1997_data <- rename(rogers_1997_data,
                            "Adult_density" = "Total_Adult_Badgers", "Adult_fem_density" = "Adult_Female_Badgers", "Adult_male_density" ="Adult_Male_Badgers", "Cub_density" = "Badger_Cubs")
 
 # visualising 
-rogers_N_plot <- ggplot(rogers_1997_data, aes(x= Year, y= Adult_density, na.rm + TRUE)) +
-  geom_point() +
-  stat_smooth(method = 'glm', method.args=list(family="binomial"), se=F)     # pop size over time increases sigmoidally
 
 # variables with density 
 rogers_breeding_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y= Percentage_of_Adult_Females_Breeding)) +
@@ -134,7 +131,7 @@ rogers_reprate_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Reproduct
   geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
     theme_classic()  # decline
 
-rogers_fec_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Cubs_per_breeding_fem)) +
+rogers_K_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Cubs_per_breeding_fem)) +
   geom_point()+ 
   geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
   ylab("Cubs per breeding female") +
@@ -145,31 +142,57 @@ rogers_fems_plot <- ggplot(rogers_1997_data, aes(x=Adult_density, y=Av_reproduci
   geom_point()+ 
   geom_smooth(method = 'lm', formula = y~x, se= TRUE) +
   ylab("Average reproducing fems per social group") +
-  theme_classic() # breeding fems per social group increases over time
+  theme_classic() # breeding fems per social group increases over time- obv there are more fems
 
-grid.arrange(rogers_breeding_plot, rogers_reprate_plot, rogers_fec_plot, rogers_fems_plot, nrow=2, ncol=2)
+grid.arrange(rogers_breeding_plot, rogers_reprate_plot, rogers_K_plot, rogers_fems_plot, nrow=2, ncol=2)
 # fairly constant % fems breeding in pop, and cohort size
 # Rep rate decreases with density, reproducing fems per social group increases
 
 breeding.lm <- lm(Percentage_of_Adult_Females_Breeding~Adult_density, data= rogers_1997_data)  # does density affect percentage adult fems reproducing
 summary(breeding.lm)  # intercept sig, slope not. Low r squared, not important. # estimate consistently 30% of all adult fems will breed?
+summary(rogers_1997_data$Percentage_of_Adult_Females_Breeding, na.rm = TRUE)
 
 cohort.lm <- lm(Cubs_per_breeding_fem~Adult_density, data= rogers_1997_data)  # does density affect litter size
 summary(cohort.lm)  # intercept sig, slope not. Low r squared. Int = 2.206774   
-summary(rogers_1997_data$Cubs_per_breeding_fem, na.rm = TRUE) #mean = 2.299102, max = 3.144 ,similar to intercept
+summary(rogers_1997_data$Cubs_per_breeding_fem, na.rm = TRUE) # mean = 2.299102, max = 3.144 ,similar to intercept
 
-fecundity.lm <- lm(Reproductive_rate~Adult_density, data= rogers_1997_data)  # does density affect recruitment
-summary(fecundity.lm)  # non significant
+rep.lm <- lm(Reproductive_rate~Adult_density, data= rogers_1997_data)  # does density affect recruitment
+summary(fec.lm)  # non significant
 
 fems.lm <- lm(Av_reproducing_fems~Adult_density, data= rogers_1997_data)  # does pop size affect reproducing females per group?
 summary(fems.lm) # sig positive slope - makes sense, the relative abundance should increase as numbers increase
+
+
+# estimating lambda
+rogers_N_plot <- ggplot(rogers_1997_data, aes(x= Year, y= Adult_density, na.rm + TRUE)) +
+  geom_point() +
+  geom_smooth(method = 'glm', method.args=list(family="binomial"), se=F) # linear for now, later use sigmoidal
+
+# stat_smooth(method = 'glm', method.args=list(family="binomial"), se=F)     # pop size over time increases sigmoidally
+
+lambda <- lm(Adult_density~Year, data= rogers_1997_data)
+summary(lambda)  # each year, increase 9.948, intercept = -1.962e+04
+
+# NOT NEEDED - provided in data -----
+#creating 'expected' df to estimate cub survival - how any more cubs we expect produced, how many actually?
+ex.df <- as.data.frame(select(rogers_1997_data, -c("Adult_male_density", "error", "Av_reproducing_fems"))) # link nf, pop size by year  removing selected rows
+# removing row 17 for all data
+ex.df <- ex.df[1:16,]
+# replacing NA cub value with mean
+ex.df$Cubs_per_breeding_fem[is.na(ex.df$Cubs_per_breeding_fem)] <- mean(ex.df$Cubs_per_breeding_fem, na.rm = TRUE)
+
+# recruitment values - expected and observed changes in cub numbers
+ex.df$expected <- (ex.df$Percentage_of_Adult_Females_Breeding/100)* ex.df$Cubs_per_breeding_fem* ex.df$Adult_fem_density       # K * % rep *Nf  for each row
+observed <- ex.df$Cub_density[2:length(ex.df$Cub_density)] - ex.df$Cub_density[1:(length(ex.df$Cub_density)-1)]          # change in cub density year t+1 - t
+ex.df$observed <- NA 
+ex.df$observed[1:15] <- observed # lambda for current prev, first entry NA
+cub_mortality <- ex.df$expected - ex.df$observed
 
 
 # Next paper - Macdonald 2013----
 # extracting pop size and lambda from sup info instead of fig
 library(readr)
 mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))
-mcdonald_demo$pop_size
 
 # fig 2a covariate effect estimate
 mcdonald_fig2a <- mean_err$`443_Mcdonald_2016_fig2a.jpg`  # this is on log scale, convert back to value?
@@ -178,19 +201,29 @@ mcdonald_fig2a_clean <-  rename(mcdonald_fig2a_clean, "log_mean" = "mean")
   
 mcdonald_fig2 <-scatter$`443_Mcdonald_2016_figS2.png`
 mcdonald_fig2_clean <- select(mcdonald_fig2, -c("id", "group", "col",  "pch", "x_variable", "y_variable"))  # effect of density on recruitment
-mcdonald_fig2_clean <-  rename(mcdonald_fig2_clean, "Standardised_density" = "x", "Recruitment" = "y") 
+mcdonald_fig2_clean <-  rename(mcdonald_fig2_clean, "Standardised_density" = "x", "log_Recruitment" = "y") 
 
 
 plot(x= mcdonald_demo$Year, y= mcdonald_demo$pop_size)  # decline at 170 indivs = K?
-plot(x= mcdonald_fig2_clean$`Standardised Density`, y= mcdonald_fig2_clean$Recruitment, ylab= "Recruitment", xlab= "Standardised density") # issue - standardised density, how to convert back?
+plot(x= mcdonald_fig2_clean$Standardised_density, y= mcdonald_fig2_clean$Recruitment, ylab= "Recruitment", xlab= "Standardised density") # issue - standardised density, how to convert back?
+ddplot <- ggplot(data= mcdonald_fig2_clean, aes(x=Standardised_density, y= Recruitment)) +
+  geom_point() +
+  geom_smooth()# lm between 
 
 # how to convert standardised density to absolute? can't merge df, recruitment recordings not ordered by year
 # rescaling pop size to mean 0 and sd 1. 
-mcdonald_fig2_clean$Standardised_density
-scaled_density <- scale(mcdonald_demo$pop_size) # values do not match - paper values have lower negative range  
-sort(scaled_density, decreasing = FALSE) 
+density <- mcdonald_demo$pop_size
 
+stdDens<-c((density-mean(density))/sd(density))   # method from mcdonald email - still doesn't match!
+sort(stdDens, decreasing = FALSE) 
 
+logrec_paper <- mcdonald_fig2_clean$log_Recruitment   # values from paper
+mu <- mean(logrec_paper)
+beta <- -0.239  # ?
+
+logrec_calc <- mu+beta* mcdonald_fig2_clean$Standardised_density
+logrec <- mu+beta*stdDens # + (other_variables)+ noise     
+# none of these recruitment values match!
 
 # Next = Tuyttens 2000----
 # link density each year (av?) to changes in reproduction and social group size
@@ -339,8 +372,6 @@ bright_fig3b.1 <- full_join(bright_fig3bi_wide, bright_fig3bii_wide, by= "Year")
 bright_fig3b.2 <- full_join(bright_fig3biii_wide, bright_fig3biv_wide, by= "Year")
 bright_rep <- full_join(bright_fig3b.1, bright_fig3b.2, by= "Year")
 
-
-
 names(bright_survival)
 names(bright_rep)  # cols dont match first in s is 1-2, rep has only 2+  # also dont really need rep df?
 # improved = cols year, sex, age, param
@@ -355,7 +386,7 @@ ym_s <- mean(bright_survival$Male_1_2yrs)
 af_s <- mean(c(bright_survival$Female_3_4yrs, bright_survival$Female_5_7yrs, bright_survival$`Female_8+`)) # mean of all adult survival rates
 am_s <- mean(c(bright_survival$Male_3_4yrs, bright_survival$Male_5_7yrs, bright_survival$`Male_8+yrs`))
 
-survival.table <- (c(yf_s, ym_s, af_s, am_s))
+survival.table <- (c(yf_s, af_s, ym_s, am_s)) # order as vital rates - yf, af, ym ,am
 
 
 # Mcdonald 2002 Wytham paper ----
