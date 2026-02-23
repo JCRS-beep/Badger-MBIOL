@@ -1,77 +1,28 @@
-## All required functions
-# Run this script before any additional code. (Ctrl + A, Ctrl Ent)
-# Includes
-# - ricker/ dd application function
-# - Mating system function
-# - dd projection function
-# - dd projection plot function
+# RUN script
+# 23/02/25
+# Can be run enturely in order
 
-##  Ricker function and matrix application ------
-apply.DD <- function(params, 
-                     Umat, 
-                     N,   # yearling and adults
-                     DDapply="fertility", 
-                     stagenames,   # Stages in life cycle graph 
-                     Nf,        # Adult female abundance
-                     Nm,             # Adult males
-                     Mfunction= "min",       # mating function applied
-                     return.mat= FALSE) {   # apply ricker to whole matrix, survival or fertility
-  
-  ricker <- function(params, N){   # Using params (b) and population size input
-    dd_fun <- exp(-params$b*N)
-    return(dd_fun)      # returns value of multiplier
-  }
-  rick <- ricker(params, N)    # ricker function embedded - only this part needed?
-  # Function ricker
-  # params, incl b = strength of density dependence
-  # N= population size (can be total, NAdults, other, but explain in comments) 
-  # Use: returns dd_fun multiplier.
-  
-  # mating func embedded
-  mating <- mating.func(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph 
-                        Nf,        # Adult and yearling females
-                        Nm,             # Adult and yearling males
-                        Mfunction= "min",       # mating function applied
-                        return.mat= FALSE) 
-  
-  f <- mating$f 
-  
-  # constructing Amat
-  Amat <- Umat
-  S <- params$Sc_max
-  Amat[1,2] <- 0.5* f* S 
-  Amat[3,2] <- 0.5* f* S 
-  
-  # applying based on method
-  if(DDapply %in% c("matrix", "Matrix"))  {
-    Amat_N <- Amat*rick  
-    
-  } else if(DDapply %in% c("Survival", "survival", "Umat")){
-    Umat_N <- Umat*rick
-    Amat_N <- Amat + Umat_N # how to combine?
-    
-  } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
-    # embedd mating func?
-    f_N <- f*rick
-    Amat_N <- Amat
-    Amat_N[1,2] <- 0.5 * f_N * S 
-    Amat_N[3,2] <- 0.5 * f_N * S 
-  }
-  
-  return(Amat_N) 
-}
-# Function name= applyDD
-# Inputs:  
-#  params: incl b for ricker
-#  N: effective pop size (can be total, NAdults, other, but explain in comments) 
-#  Fmat: matrix with reproductive params (can be created by mating.func) 
-#  Umat: survival matrix
-#  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
-# Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
+# loading required packages
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(readr)
+
+# data extraction
+mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
+
+dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
+dens_posterior_mean <- mean(dens_posterior)
+dens_posterior_sd <- sd(dens_posterior)
+
+beta_reported <- -0.239  # from paper 
+
+beta_rawdens <- (beta_reported*(1-dens_posterior_mean))/dens_posterior_sd  # gives raw beta value multiplied by pop size (?)
+# needs updating based on new maths
 
 
-##  Mating systems function ----  when Nm or Nf = 0 U = 0
+# required functions ------
+# Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
                         stagenames,   # Stages in life cycle graph 
                         Nf,        # Adult and yearling females
@@ -131,24 +82,74 @@ mating.func <- function(params,     # density dependent parameters
   
   return(out) 
 }
-# Function name= Mating.func
-# Inputs:
-#  params: density dependent parameters, including k (max litter size),  h (harem size), max cub survival 
-#  stagenames Stages in life cycle , where length()= rows of matrix
-#  Nf: Number of Adult females in population (can incl yearlings if desired)
-#  Nm: Number of Adult males
-#  Mfunc: Mating function, can be Harmonic mean, minimum or mod harmonic mean
-#  Return.mat: whether Fmat is given in results
-# 
-# Use: Returns max possible number of pairs formed based on male and female abundance. 
-# Outputs:
-# f = cub production per female
 
-##  DD projection function
 
-# WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
+#  Ricker function and matrix application - must return functional Amat for proj
+apply.DD <- function(params, 
+                     Umat, 
+                     N,   # yearling and adults
+                     DDapply="fertility", 
+                     stagenames,   # Stages in life cycle graph 
+                     Nf,        # Adult female abundance
+                     Nm,             # Adult males
+                     Mfunction= "min",       # mating function applied
+                     return.mat= FALSE) {   # apply ricker to whole matrix, survival or fertility
+  
+  ricker <- function(params, N){   # Using params (b) and population size input
+    dd_fun <- exp(-params$b*N)
+    return(dd_fun)      # returns value of multiplier
+  }
+  rick <- ricker(params, N)    # ricker function embedded - only this part needed?
+  # Function ricker
+  # params, incl b = strength of density dependence
+  # N= population size (can be total, NAdults, other, but explain in comments) 
+  # Use: returns dd_fun multiplier.
+  
+  # mating func embedded
+  mating <- mating.func(params,     # density dependent parameters
+              stagenames,   # Stages in life cycle graph 
+              Nf,        # Adult and yearling females
+              Nm,             # Adult and yearling males
+              Mfunction= "min",       # mating function applied
+              return.mat= FALSE) 
+  
+  f <- mating$f 
+  
+  # constructing Amat
+  Amat <- Umat
+  S <- params$Sc_max
+  Amat[1,2] <- 0.5* f* S 
+  Amat[3,2] <- 0.5* f* S 
+  
+  # applying based on method
+  if(DDapply %in% c("matrix", "Matrix"))  {
+    Amat_N <- Amat*rick  
+    
+  } else if(DDapply %in% c("Survival", "survival", "Umat")){
+    Umat_N <- Umat*rick
+    Amat_N <- Amat + Umat_N # how to combine?
+    
+  } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
+    # embedd mating func?
+    f_N <- f*rick
+    Amat_N <- Amat
+    Amat_N[1,2] <- 0.5 * f_N * S 
+    Amat_N[3,2] <- 0.5 * f_N * S 
+  }
+  
+  return(Amat_N) 
+}
+# Function name= applyDD
+# Inputs:  
+#  params: incl b for ricker
+#  N: effective pop size (can be total, NAdults, other, but explain in comments) 
+#  Fmat: matrix with reproductive params (can be created by mating.func) 
+#  Umat: survival matrix
+#  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
+# Use:  Creates a density dependent Amat depending on DDapplication to existing Umat, calculates f values to add in amat
 
-# Removal function (eventually replace ddproj) ------
+
+# Removal function - allows bias for age and sex
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
                      params,
@@ -372,29 +373,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   return(out)
 }
 
-# Notes----
-# Function name - rem.proj
-# Inputs - 
-#  Umat: max predicted survival rates
-#  initial: population vector for abundance of each stage class
-#  params: defined in other funcs, importantly b, 
-#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
-#  time: projection interval
-#  memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
-#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
-#  return.vec= abundance stage class matrix returned? defaults FALSE
-# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
-# Outputs - out
-#  $pop: vector of total population size each year
-#  $vec: matrix of abundance of each stage each year
-#  $mat: returns final Amat produced
-#  $Nremoved = total of pop removed
-#  $rem_vec = optional vector of removals per class
-
-
-
-
-# Projection plotting function ---- needs updating to plot N by year and red line for removal
 dd_plot <- function(out,   # output obj of dd.proj
                     y_val= "N",   # plot type - N or Vec 
                     ylab = "abundance", 
@@ -405,8 +383,8 @@ dd_plot <- function(out,   # output obj of dd.proj
                     legend.pos = "topright",
                     cex.legend = 0.8){
   # loading required libraries
- require(tidyr)
- require(ggplot2)
+  require(tidyr)
+  require(ggplot2)
   # creating time vector for n years
   t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
   time <- as.numeric(c(0:t))       # vector 0:t
@@ -417,13 +395,13 @@ dd_plot <- function(out,   # output obj of dd.proj
     pop_df <- as.data.frame(pop) # converting pop to a df
     
     if (is.null(rem_year)){
-    plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
-      geom_point() +
-      labs(title = "Pop size over time", x = xlab, y = ylab)  
+      plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
+        geom_point() +
+        labs(title = "Pop size over time", x = xlab, y = ylab)  
       geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
-      theme
-    
-   } else if (is.numeric(rem_year)){
+        theme
+      
+    } else if (is.numeric(rem_year)){
       plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
         geom_point() +
         geom_line(data = pop_df, alpha = 0.7) +
@@ -443,17 +421,17 @@ dd_plot <- function(out,   # output obj of dd.proj
     df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
     
     if(is.null(rem_year)) {
-    # plotting graph with ggplot2 
-    plot <- ggplot(data= df_long, 
-                   aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
-      geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
-      geom_line(data= df_long, alpha=0.7) +
-      scale_colour_manual(values= cols,
-                          labels=c("Female", "Male")) +
-      labs(title = "Stage Abundance over Time", 
-           x = xlab, y = ylab) + 
-      theme
-    
+      # plotting graph with ggplot2 
+      plot <- ggplot(data= df_long, 
+                     aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
+        geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
+        geom_line(data= df_long, alpha=0.7) +
+        scale_colour_manual(values= cols,
+                            labels=c("Female", "Male")) +
+        labs(title = "Stage Abundance over Time", 
+             x = xlab, y = ylab) + 
+        theme
+      
     } else if(is.numeric(rem_year)){
       plot <- ggplot(data= df_long, 
                      aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
@@ -464,29 +442,15 @@ dd_plot <- function(out,   # output obj of dd.proj
         labs(title = "Stage Abundance over Time", 
              x = xlab, y = ylab) + 
         theme +
-       geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
-                 colour = "red3", linetype = "dashed", size=0.8, alpha = 0.5) 
-   
-       } 
+        geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
+                   colour = "red3", linetype = "dashed", size=0.8, alpha = 0.5) 
+      
+    } 
     
   } 
   return(plot)
   
- }
-# NOTES ----
-# Function name = dd_plot
-# Inputs 
-#  out: output obj from dd_proj function, including structure vec or popsize (N)
-#  y_val= plot type. N = total pop size by year, Vec = stage abundance by year 
-#  ylab : defaults "abundance", 
-#  xlab : defaults "time (t)"
-#  col: "black",    colours used for sexes in graph, should be length 2
-#  legend.pos: "topright",   legend position on graph
-#  cex.legend: legend size
-# Use - Take output from projection and plot with ggplot, [including custom theme if desired]
-# Required packages = ggplot2, tidyr
-
-
+}
 
 # growth rate calculate with output format in DDproj
 growth.rate <- function(out, vis = FALSE, rem_year = NULL){
@@ -573,3 +537,120 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 # Purpose:  Calculates the proportion of each stage class out of the total pop size in a given year
 
 
+
+# projections (model 1) -----
+stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
+n0 <- c(25, 10, 25, 10)  # vec structure = yf, af, ym, am 
+
+# first time using params from extraction 
+Umat <- matrix(0, nrow=4, ncol=4)
+rownames(Umat) <- stages
+Umat[2,1]<- 0.851 # yearling f survival
+Umat[2,2]<- 0.803  # adult f survival
+Umat[4,3]<- 0.809   # yearling m survival
+Umat[4,4]<- 0.749   # adult m survival
+
+params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female) - needed?
+                    Sc_max=0.76,   # max cub survival (equal for sexes), rogers 1997
+                    b=0.007677,       # calculated from mcdonald 2016
+                    rep_K= 2.7,          # max litter size (K), 
+                    h= 6   # harem size per male
+)
+
+# control plot----
+proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                  initial = n0, 
+                  params, 
+                  stagenames = stages,
+                  time = 30, 
+                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
+                  DDapply="Fmat", 
+                  Mfunction= "Min",
+                  intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                  remyear = NULL, 
+                  rem_strat =NULL ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                  bias = NULL ,
+                  return.vec= TRUE, 
+                  return.remvec = FALSE) 
+
+col_vec <- c("#FF6A6A", "#87CEEB")
+
+(proj0_plot <- dd_plot(proj0, 
+                       y_val= "Vec", 
+                       ylab = "Abundance", 
+                       xlab = "Time (t)",
+                       theme = theme_classic(), 
+                       cols= col_vec,    # can be vector of cols
+                       legend.pos = "topright",
+                       cex.legend = 0.8))
+
+
+# Scenario 1 = 70% removal trial at year 10
+proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                  initial = n0, 
+                  params, 
+                  stagenames = stages,
+                  time = 30, 
+                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
+                  DDapply="Fmat", 
+                  Mfunction= "Min",
+                  intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                  remyear = 10, 
+                  rem_strat = "random" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                  bias = NULL ,
+                  return.vec= TRUE, 
+                  return.remvec = TRUE) 
+
+(proj1_plot <- dd_plot(proj1, 
+                       y_val= "Vec", 
+                       ylab = "Abundance", 
+                       xlab = "Time (t)",
+                       rem_year = 10,
+                       theme = theme_classic(), 
+                       cols= col_vec,    # can be vector of cols
+                       legend.pos = "topright",
+                       cex.legend = 0.8))
+
+# scenario 2 - biased female removals
+proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                  initial = n0, 
+                  params, 
+                  stagenames = stages,
+                  time = 30, 
+                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
+                  DDapply="Fmat", 
+                  Mfunction= "Min",
+                  intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                  remyear = 10, 
+                  rem_strat = "females" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                  bias = 0.15 ,
+                  return.vec= TRUE, 
+                  return.remvec = TRUE) 
+
+(proj2_plot <- dd_plot(proj2, 
+                       y_val= "Vec", 
+                       ylab = "Abundance", 
+                       xlab = "Time (t)",
+                       rem_year = 10,
+                       theme = theme_classic(), 
+                       cols= col_vec,    # can be vector of cols
+                       legend.pos = "topright",
+                       cex.legend = 0.8))
+
+
+# comparisons 
+lambda0 <- growth.rate(proj0, vis = TRUE)
+summary(lambda0$lambda)
+
+lambda1 <- growth.rate(proj1, vis = TRUE, rem_year = 10)
+summary(lambda1$lambda)
+
+lambda2 <- growth.rate(proj2, vis = TRUE, rem_year = 10)
+summary(lambda2$lambda)
+
+ssd0 <- ssd(proj0, vis = TRUE, cols = col_vec)
+ssd1 <- ssd(proj1, vis = TRUE, cols = col_vec)
+ssd2 <- ssd(proj2, vis = TRUE, cols = col_vec)
+
+# next steps - META MAT PROJECTION
+# 
