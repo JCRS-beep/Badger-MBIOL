@@ -68,7 +68,7 @@ widen <- function(df, y_val) {
 
 # manually digitising figs ----
 figs <- metaDigitise(dir ="C:/Users/jaycr/OneDrive - Nexus365/UNI/Masters/Project resources/Badger-MBIOL/Data/FigExtraction",
-                     summary = FALSE)# summary = false imports raw data
+                     summary = FALSE)    # summary = false imports raw data
 
 # splitting into plot types is easier to work with
 scatter <- figs$scatterplot
@@ -189,10 +189,10 @@ ex.df$observed[1:15] <- observed # lambda for current prev, first entry NA
 cub_mortality <- ex.df$expected - ex.df$observed
 
 
-# Next paper - Macdonald 2013----
-# extracting pop size and lambda from sup info instead of fig
+# Next paper - Mcdonald 2013----
+# extracting pop size and lambda from sup info instead of fig - results are model outputs, not raw data
 library(readr)
-mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))
+mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
 
 # fig 2a covariate effect estimate
 mcdonald_fig2a <- mean_err$`443_Mcdonald_2016_fig2a.jpg`  # this is on log scale, convert back to value?
@@ -212,18 +212,20 @@ ddplot <- ggplot(data= mcdonald_fig2_clean, aes(x=Standardised_density, y= Recru
 
 # how to convert standardised density to absolute? can't merge df, recruitment recordings not ordered by year
 # rescaling pop size to mean 0 and sd 1. 
-density <- mcdonald_demo$pop_size
+dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
+dens_posterior_mean <- mean(dens_posterior)
+dens_posterior_sd <- sd(dens_posterior)
 
-stdDens<-c((density-mean(density))/sd(density))   # method from mcdonald email - still doesn't match!
-sort(stdDens, decreasing = FALSE) 
+logrec_reported <- mcdonald_fig2_clean$log_Recruitment   # values from paper
+beta_reported <- -0.239  # from paper 
 
-logrec_paper <- mcdonald_fig2_clean$log_Recruitment   # values from paper
-mu <- mean(logrec_paper)
-beta <- -0.239  # ?
+beta_rawdens <- (beta_reported*(1-dens_posterior_mean))/dens_posterior_sd  # gives raw beta value multiplied by pop size (?)
+   
+# our use of beta - vaue to input for e^-BN, multiply FEC (max cubs * rep fems / Nf). Papers max f not used
+# perhaps need the paper def of fec instead, so this beta is suitable?
 
-logrec_calc <- mu+beta* mcdonald_fig2_clean$Standardised_density
-logrec <- mu+beta*stdDens # + (other_variables)+ noise     
-# none of these recruitment values match!
+
+
 
 # Next = Tuyttens 2000----
 # link density each year (av?) to changes in reproduction and social group size

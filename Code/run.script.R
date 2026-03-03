@@ -5,20 +5,20 @@
 # loading required packages
 library(ggplot2)
 library(tidyr)
+library(tidyverse)
 library(dplyr)
 library(readr)
 
 # data extraction
-mcdonald_demo <- as.data.frame(read_csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
+mcdonald_demo <- as.data.frame(read.csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
 
 dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
 dens_posterior_mean <- mean(dens_posterior)
 dens_posterior_sd <- sd(dens_posterior)
 
-beta_reported <- -0.239  # from paper 
+beta_reported <- 0.239  # from paper 
 
-beta_rawdens <- (beta_reported*(1-dens_posterior_mean))/dens_posterior_sd  # gives raw beta value multiplied by pop size (?)
-# needs updating based on new maths
+beta <- beta_reported/dens_posterior_sd  # explain maths in appendix!
 
 
 # required functions ------
@@ -552,7 +552,7 @@ Umat[4,4]<- 0.749   # adult m survival
 
 params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female) - needed?
                     Sc_max=0.76,   # max cub survival (equal for sexes), rogers 1997
-                    b=0.007677,       # calculated from mcdonald 2016
+                    b= beta,       # calculated from mcdonald 2016
                     rep_K= 2.7,          # max litter size (K), 
                     h= 6   # harem size per male
 )
