@@ -52,11 +52,9 @@ apply.DD <- function(params,
     Amat_N <- Amat + Umat_N # how to combine?
     
   } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
-    # embedd mating func?
-    f_N <- f*rick
     Amat_N <- Amat
-    Amat_N[1,2] <- 0.5 * f_N * S 
-    Amat_N[3,2] <- 0.5 * f_N * S 
+    Amat_N[1,2] <- 0.5 * f*rick * S 
+    Amat_N[3,2] <- 0.5 * f*rick * S 
   }
   
   return(Amat_N) 
@@ -73,13 +71,13 @@ apply.DD <- function(params,
 
 ##  Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph 
+                        stagenames = NULL,   # Stages in life cycle graph 
                         Nf,        # Adult and yearling females
                         Nm,             # Adult and yearling males
                         Mfunction= "min",       # mating function applied
                         return.mat= FALSE) {       # Fmat output?
   
-  if(is.null(stagenames) || length(stagenames)== 0 & return.mat==TRUE) stop("stagenames must be provided for correct matrix dimension calculations")
+  if(is.null(stagenames) || length(stagenames)== 0 && return.mat==TRUE) stop("stagenames must be provided for correct matrix dimension calculations")
   
   # naming objects 
   K <- params$rep_K      # MAX litter size
@@ -89,7 +87,6 @@ mating.func <- function(params,     # density dependent parameters
   
   # creating the output obj 
   out<- list(f=numeric(), Fmat=matrix())
-  f <- NA    # blank 
   Fmat <- matrix(0, ncol= length(stagenames), nrow= length(stagenames)) # blank matrix
   rownames(Fmat) <- stagenames
   colnames(Fmat) <- stagenames
@@ -107,7 +104,7 @@ mating.func <- function(params,     # density dependent parameters
     } else if(Nm*h < Nf){
       U <- Nm*h
     } 
-    f<- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
+    f <- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
     
     # Mod Harmonic mean mating function
   } else if(Mfunction %in% c("Modified Hamonic Mean Mating Function", "modified harmonic mean mating function", "ModHarmonic", "modharmonic"))   {
@@ -156,7 +153,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                      time, 
                      memberN=NULL,  # which individuals contribute to pop size? (as vec)
                      DDapply="fertility", 
-                     Mfunction= "Min",
                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                      remyear = NULL,  # removal year = decrease from following year
                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -188,14 +184,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     memberN <- c(memberN) 
   }
   
-  # Calculating Unions with mating function
-  Nf <- n0[nStages]     # pulls ONLY adult female entry from initial vector
-  Nm <- n0[2*nStages]      # adult male in vector (final entry)
-  
-  # mating func gives initial Fmat for first year
-  mating.out <- mating.func(params, stagenames, Nf, Nm, Mfunction,  return.mat= FALSE)  # return f value only  
-  f <- mating.out$f
-  
+
   # Set up the output
   out <- list(pop = vector(), 
               vec = matrix(), 
@@ -223,13 +212,13 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   for (i in 1:ry) {   # normal projection until remyear (if removal at t=5, project until t=5, final entry inserted to row 6) remember vec[5,] holds entries for year=4 (0:time)
     
     # f value per year creation
-    thisNf <- sum(Vec[i,nStages-1], Vec[i,nStages])    # Nf sums yearling and adult fems in Vec matrix
-    thisNm <- sum(Vec[i,2*nStages-1],Vec[i,2*nStages])   # Nm 
+    thisNf <- Vec[i,nStages]    # Nf = adult fems in Vec matrix
+    thisNm <- Vec[i,2*nStages]  # Nm 
     
     thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
     
     # ricker density dependence each year
-    thisAmat <- apply.DD(params, Umat, thisN, DDapply= "fertility", stagenames,   
+    thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                          thisNf,        
                          thisNm,            
                          Mfunction= "min",       
@@ -322,14 +311,9 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       thisNf <- sum(Vec[j,nStages-1], Vec[j,nStages-1])    # Nf is mid col in Vec matrix
       thisNm <- sum(Vec[j,2*nStages-1],Vec[j,2*nStages])   # Nm 
       
-      # apply mating func to calculate pairs
-      thisMating<- mating.func(params, stagenames, thisNf, thisNm, Mfunction, return.mat=TRUE)     # how to use?
-      
-      thisFmat <-thisMating$Fmat
-      
       # ricker density dependence each year
       thisN <- sum(Vec[j,memberN])  # pop sizes sums row i for cols included in N
-      thisAmat <- apply.DD(params, Umat, thisN, DDapply= "fertility", stagenames,   
+      thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                            thisNf,        
                            thisNm,            
                            Mfunction= "min",       
@@ -573,3 +557,5 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 # Purpose:  Calculates the proportion of each stage class out of the total pop size in a given year
 
 
+
+# Function for sex ratio over time?
