@@ -19,7 +19,7 @@ Umat[4,3]<- 0.8093391    # yearling m survival
 Umat[4,4]<- 0.7490891  # adult m survival
 
 # stating with 2 patches, dispersal between at different rates ----
-n0 <- list(c(10, 5, 3, 2), c(3, 2, 2, 2))
+initial <- list(c(10, 5, 3, 2), c(3, 2, 2, 2))
 
 # creating Fmat for site 1 based on abundance ----
 Fmat1_out <- mating.func(params,     # density dependent parameters
@@ -36,8 +36,8 @@ Fmat2_out <- mating.func(params,
                          Mfunction= "min",  
                          return.mat= TRUE)    # both Fmats identical!
 
-Fmat1 <- Fmat1_out$Fmat # same lol
-Fmat2 <- Fmat2_out$Fmat
+Fmat1 <- Fmat1_out$f # same lol
+Fmat2 <- Fmat2_out$f
 # no mating in dispersing individuals: count -> breed -> move
 
 #  streamline this section with function for Dmat creation based on distance and patch numbers
@@ -64,22 +64,22 @@ metamat <- meta.mat(Umat,   # vector of stage names
                     return.mats= TRUE)
 
 
-# projection of 2 sub pops with this - outputs needed are vector per patch, abundance per patch, total abundance
+# projection of sub pops - outputs vector per patch, abundance per patch, total abundance
 meta.proj <- function(Umat,   # vector of stage names
                       params, # created each year instead?
                       stagenames,
                       initial,   # list of initial abundances
-                      Dmat1,  # generated each year instead
-                      Dmat2,
+                      Dmat1 = NULL,  # generated each year instead
+                      Dmat2 = NULL,
                       time = 30,
-                      return.mats= TRUE){
+                      return.vec = TRUE,
+                      return.mats= FALSE){
   # Time 
-  if (time<=1) stop("Time must be a positive integer")
+  if (time <= 1) stop("Time must be a positive integer")
   else(time <- as.integer(time))
   
   if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
-  else(n0 <- as.numeric(initial))   # renaming for simplicity
-  
+
   if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
   
   if(is.list(initial)){   # when initial abundances is a list of vectors, we have more than 1 patch 
@@ -88,128 +88,169 @@ meta.proj <- function(Umat,   # vector of stage names
     patches = 1
     stop("only one vector of abundances provided. Provide abundances per patch as a list, or use rem.proj for single patch projections")
   }
- # if (sum(length(n0[1]), length(n0[2])) != length(stages)) stop("initial pop vector must equal length(stages)")
- # depending on patch number, will not sum to length stages
 
-  nStages <- length(stages)/2      # how many stages
+  nStages <- length(stagenames)/2      # how many stages
   
-  # Calculating Unions with mating function
-  Nf_v <- n0[[1:patches]][nStages]     # pulls ONLY adult female entry from initial vector - vec of Nfs per patch
-  Nm_v <- n0[[1:patches]][2*nStages]      # adult male in vector (final entry) - vec of Nms per patch
-  
+  Nf_v <- rep(NA, patches) # vector length patches to fill with adult fem abundance by year
+  Nm_v <- rep(NA, patches)
   
  
-  # fmat creation first year - how to repeat for each patch
-  mate <- list(matrix(0, ncol = ncol(Umat), nrow= nrow(Umat)))
-  mating_out <- rep(mate, patches)   # blank Fmats to fill
-  for (i in 1:patches) { # repeat for each patch
-    fmat <- mating.func(params,     # density dependent parameters
-                        stages,   # Stages in life cycle graph (single sex)
-                        Nf_v[i],        # Adult and yearling females  
-                        Nm_v[i],             # Adult and yearling males
-                        Mfunction= "min", 
-                        return.mat= TRUE)
+  for (i in 1:patches) {           # filling each list within vector with Nf and Nm at that patch initially
+    Nf_v[i] <- initial[[i]][nStages]   
+    Nm_v[i] <- initial[[i]][2*nStages]      # adult male in vector (final entry) - vec of Nms per patch
+  }
+
+ 
+  # f calculation first year - how to repeat for each patch
+  f_v <- rep(NA, patches)   # blank vec to fill  before adding fertility values straight to amat - f values per patch f[p] 
+
+  for (j in 1:patches) { # repeat for each patch
+    mat <- mating.func(params,     # density dependent parameters
+                       stagenames,   # Stages in life cycle graph (single sex)
+                       Nf_v[j],        # Adult and yearling females  
+                       Nm_v[j],             # Adult and yearling males
+                       Mfunction= "min", 
+                       return.mat= FALSE) # don't return mat, just f value
     
-    mating_out[i] <- fmat$Fmat   # adding appropriate Fmat to list 
-    return(mating_out)  # returns list of Fmats. length= no patches
+    f_v[j] <- mat$f   # adding appropriate fertility rates to list, where entry = patch  
   } 
  
   # Set up the output - how to set up if multiple patches? Lists within lists...
+  # differs from AI suggested - change to simplify?
+#{
   out <- list(pop = list(rep(NA, (time + 1))),    #  list of vectors per patch
-              vec = list(matrix(0, ncol = length(stages), nrow = time + 1)))    # list of matrices per patch - can't list!
-
-  Vec <- rep(vec, patches)  # matrices to fill with stage abundance.  row= time, col= stage. can't list matrix
-  Pop <- rep(pop, patches)       # vector to fill with total pop size each year
-
+              vec = list(matrix(0, ncol = length(stagenames), nrow = time + 1)),    # list of matrices per patch
+              Nremoved = (rep(NA, 2*nStages)), # total removed in rem year, NO LIST, vec length = num patches
+              remvec = list(rep(NA, 2*nStages)))    # vector of length(stages) per patch - list
   
-  colnames(Vec) <- stages   # naming cols matrix as stages 
-  rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
+  # renaming before repeating
+  colnames(out$vec[[1]]) <- stagenames   # naming cols matrix as stages - cant name lists of obj
+  rownames(out$vec[[1]]) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or initial
+  
+  
+  Vec <- rep(out$vec, patches)  # matrices to fill with stage abundance.  row= time, col= stage. out$vec or just vec?
+  Pop <- rep(out$pop, patches)       # vector to fill with total pop size each year
+  remVec <- rep(out$remvec, patches) # list of vectors per patch, only 1 year 
+  
+  # filling first row of pop size and abundance vecs
+  pop_sizes <- sapply(initial, sum)  # gives total pop size per patch in initial year
   
   for (m in 1:patches){  # filling first row of each list vec and pop size 
-  Vec[[m]][1,] <- n0[[m]]          # for each list in Vec, first row is initial         
-  
-  Pop[[m]][1] <- lapply(n0, sum)  # each list is sum of n0
+    Vec[[m]][1,] <- initial[[m]]          # for each list in Vec, first row is initial         
+    
+    Pop[[m]][1] <- pop_sizes[m]   # each list row 1 is sum of n0 - issues in plugging into pop
   }
-  
-  
-  # Loop = matrix proj each year
+# } all simplified into fewer lines
+
+  # Loop = matrix proj each year  --------
   for (i in 1:time) {   # repeat for as many years as we have
-
-        # Mating Fmat creation 
-    thisNf <- as.vector(rep(NA, length(stages)))
-    for (n in 1:patches){
-    Nf <- sum(Vec[[i]][i,nStages-1], Vec[[i]][i,nStages])    # Nf sums yearling and adult fems in Vec matrix 
-    thisNf[[i]] <- Nf  # inputting calculated value to appr place in vec
-    return(thisNf)  # returns a vector of no. fems per patch
-  }
-  
-  thisNm <- as.vector(rep(NA, length(stages)))
-  for (n in 1:patches) {
-    Nm <- sum(Vec[[i]][i,(2*nStages-1)], Vec[[i]][i,2*nStages])    # Nf sums yearling and adult fems in Vec matrix 
-  thisNm[[i]] <- Nm  # inputting calculated value to appr place in vec
-  return(thisNm)
-  }
-
-
-    # apply mating func to calculate pairs per patch 
-  thisMating <- list(matrix(0, ncol = ncol(Umat), nrow= nrow(Umat)))
-  thisMating <- rep(thisMating, patches)        # list of repeated matrix 
-  for (m in 1:patches) { # repeat for each patch
-    fmat <- mating.func(params,     # density dependent parameters
-                        stages,   # Stages in life cycle graph (single sex)
-                        thisNf[m],        # Adult and yearling females  
-                        thisNm[m],             # Adult and yearling males
-                        Mfunction= "min", 
-                        return.mat= TRUE)
     
-    thisMating[m] <- fmat$Fmat   # adding appropriate Fmat to list 
-    return(thisMating)  # returns list of Fmats. length= no patches
-  } 
-
-  
-  # UPDATES NEEDED -----------
-    # ricker density dependence each year - pop size 
-   N <- list(rep(NA, 11))
-   Nlist <- rep(N, 2)
-   
-   for (k in 1:patches) {
-    n <- rowSums(list[[k]])
-    Nlist[[k]] <- n 
-  
-  return(Nlist) 
+    # Mating Fmat creation - f values per patch
+    thisNf <- as.vector(rep(NA, patches))  # vec of current Nf for each patch
+    thisNm <- as.vector(rep(NA, patches))
+    
+    for (n in 1:patches){  # loop for each patch this year
+      thisNf[n] <- Vec[[n]][i,nStages]  # inputting calculated value to appr place in vec. Issues with using both n and i in this loop 
+      thisNm[n] <-  Vec[[n]][i,2*nStages]                                  #repeat for each patch, but as we loop through years will have to update row  of vec selected
+      # return(thisNf)  # returns a vector of no. fems per patch
     }
-   thisN <- Nlist[i]
     
-   # loop needed to calculate Amat each year - will vary by patch 
+    # apply mating func to calculate pairs per patch 
+    thisMating <- rep(NA, patches)        # list of repeated matrix 
+    for (p in 1:patches) { # repeat for each patch
+      mat_out <- mating.func(params,     # density dependent parameters
+                          stagenames,   # Stages in life cycle graph (single sex)
+                          thisNf[p],        # Adult and yearling females  
+                          thisNm[p],             # Adult and yearling males
+                          Mfunction= "min", 
+                          return.mat= FALSE)
+      
+      thisMating[p] <- mat_out$f  # adding appropriate Fmat to list 
+    } 
+    
+        # ricker density dependence each year - total pop size by patch
+ 
+#  pop_year <- sapply(Vec, rowSums)   # pop size this given year per patch, will calculate rows for all years?
+   # will row sums work if mat is empty?
+    
+  thisN <- rep(NA, patches)  # vector length patches to fill with current pop size each patch 
+  for (p in 1:patches){
+  thisN[p] <- sum(Vec[[p]][i, ])   # length patches, entries = pop size that year. this N entry [1] is pop size(row = year, col = p)
+  }
+   # Amat each year will vary by patch 
    thisAmat <- list(matrix(0, ncol = ncol(Umat), nrow= nrow(Umat)))
    thisAmat <- rep(thisAmat, patches)        # list of repeated matrix 
-    for (p in 1:patches){
-      amat <- apply.DD(params, thisMating[p], Umat, thisN[p], "fertility")  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
-      thisAmat[p] <- amat
-      return(thisAmat)
-    }
     
-    # If the projection matrix has any negative values in it, stop iterating but
+   for (p in 1:patches){
+      amat <- apply.DD(params, 
+                       Umat, 
+                       thisN[p],   # yearling and adults
+                       DDapply="fertility", 
+                       stagenames,   # Stages in life cycle graph 
+                       thisNf[p],        # Adult female abundance
+                       thisNm[p],             # Adult males
+                       Mfunction= "min",       # mating function applied
+                       return.mat= FALSE)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
+   
+        thisAmat[[p]] <- amat
+      } 
+  
+    
+    # If the projection matrix has any negative values in it, stop iterating and
     # return the projection up until this point.
-    if (sum(thisAmat<0)>0){
-      warning(paste("Projection stopped at time step", i, "because the density-dependent projection matrix has negative values."))
-      break
-    }
-    # if pop size <= 0, stop and return
-    if(Pop[i]<= 0){
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0)) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-    }
+   
+   for (p in 1:patches) {
+     if (any(sapply(thisAmat, function(m) any(m < 0, na.rm = TRUE)))) {
+       warning(paste("Projection stopped at time step", i, "because the density-dependent matrix has negative values."))
+       year_end <- year
+       break
+     }
+   }
+    
     
    # ------ needs updating
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
+   for (p in 1:patches){
+    Vec[[p]][(i + 1), ] <- thisAmat[[p]] %*% Vec[[p]][i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
+    Pop[[p]][i + 1] <- sum(Vec[[p]][(i + 1), ])   # lapply or sapply? issues running this section - no Pop obj returned
+   }
+   
+   # if pop size <= 0, stop and return
+   total_pop<- sum(sapply(Pop, function(x) x[i + 1]))
+   if (total_pop <= 0) {
+     warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
+     break
+   }
+   # if any stage becomes negative, set to zero and continue
+  if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
+    warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
+    Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
+  }
+  }
+  # out objects
+  out$pop <- Pop # total group size per patch, do we also want total pop size of pop?
+  
+  if (isTRUE(return.vec)) {
+    out$vec <- Vec        
   }
 
-}  
+  return(out)
+  }
 
+# SUCCESS!!!!!!
+
+# testing function
+n3 <- list(c(17:20), c(3:6), c(12:15))
+
+test <- meta.proj(Umat,   # vector of stage names
+params, # should beta vary by patch?
+stagenames = stages,
+initial = n3,   # list of initial abundances
+# Dmat1,  # generated each year instead
+# Dmat2,
+time = 30,
+return.vec = TRUE,
+return.mats= FALSE)
+ 
+ 
+# NEXT STEPS WITH FUNCTION = adding dispersal 
+# Dmats for each patch created with movement function, multiply amats by dmat entries then project and calculate number of individuals added
