@@ -9,18 +9,6 @@ library(tidyverse)
 library(dplyr)
 library(readr)
 
-# data extraction
-mcdonald_demo <- as.data.frame(read.csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
-
-dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
-dens_posterior_mean <- mean(dens_posterior)
-dens_posterior_sd <- sd(dens_posterior)
-
-beta_reported <- 0.239  # from paper 
-
-beta <- beta_reported/dens_posterior_sd  # explain maths in appendix!
-
-
 # required functions ------
 # Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
@@ -155,9 +143,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                      params,
                      stagenames, # needed for mating func
                      time, 
-                     memberN=NULL,  # which individuals contribute to pop size? (as vec)
                      DDapply="fertility", 
-                     Mfunction= "Min",
                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                      remyear = NULL,  # removal year = decrease from following year
                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -179,24 +165,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   
   nStages <- length(stagenames)/2      # how many stages
-  
-  
-  # population size
-  if (is.null(memberN)){
-    memberN <- 1:length(stagenames)   # NULL = all members contribute to pop size
-    
-  } else if(length(memberN) >= 1){
-    memberN <- c(memberN) 
-  }
-  
-  # Calculating Unions with mating function
-  Nf <- n0[nStages]     # pulls ONLY adult female entry from initial vector
-  Nm <- n0[2*nStages]      # adult male in vector (final entry)
-  
-  # mating func gives initial Fmat for first year
-  mating.out <- mating.func(params, stagenames, Nf, Nm, Mfunction,  return.mat= FALSE)  # return f value only  
-  f <- mating.out$f
-  
+
   # Set up the output
   out <- list(pop = vector(), 
               vec = matrix(), 
@@ -224,13 +193,13 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   for (i in 1:ry) {   # normal projection until remyear (if removal at t=5, project until t=5, final entry inserted to row 6) remember vec[5,] holds entries for year=4 (0:time)
     
     # f value per year creation
-    thisNf <- sum(Vec[i,nStages-1], Vec[i,nStages])    # Nf sums yearling and adult fems in Vec matrix
-    thisNm <- sum(Vec[i,2*nStages-1],Vec[i,2*nStages])   # Nm 
+    thisNf <- Vec[i,nStages]    # Nf = adult fems in Vec matrix
+    thisNm <- Vec[i,2*nStages]  # Nm 
     
-    thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
+    thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
     
     # ricker density dependence each year
-    thisAmat <- apply.DD(params, Umat, thisN, DDapply= "fertility", stagenames,   
+    thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                          thisNf,        
                          thisNm,            
                          Mfunction= "min",       
@@ -323,14 +292,9 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       thisNf <- sum(Vec[j,nStages-1], Vec[j,nStages-1])    # Nf is mid col in Vec matrix
       thisNm <- sum(Vec[j,2*nStages-1],Vec[j,2*nStages])   # Nm 
       
-      # apply mating func to calculate pairs
-      thisMating<- mating.func(params, stagenames, thisNf, thisNm, Mfunction, return.mat=TRUE)     # how to use?
-      
-      thisFmat <-thisMating$Fmat
-      
       # ricker density dependence each year
-      thisN <- sum(Vec[j,memberN])  # pop sizes sums row i for cols included in N
-      thisAmat <- apply.DD(params, Umat, thisN, DDapply= "fertility", stagenames,   
+      thisN <- sum(Vec[j,])  # pop sizes sums row i for cols included in N
+      thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                            thisNf,        
                            thisNm,            
                            Mfunction= "min",       
@@ -397,15 +361,15 @@ dd_plot <- function(out,   # output obj of dd.proj
     if (is.null(rem_year)){
       plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
         geom_point() +
-        labs(title = "Pop size over time", x = xlab, y = ylab)  
-      geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
+        labs(title = "Pop size over time", x = xlab, y = ylab) +  
+      geom_smooth(alpha= 0.7, se= FALSE)+   # doesn't fit so well for removals!
         theme
       
     } else if (is.numeric(rem_year)){
       plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
         geom_point() +
         geom_line(data = pop_df, alpha = 0.7) +
-        labs(title = "Pop size oever time", x = xlab, y = ylab) +
+        labs(title = "Pop size over time", x = xlab, y = ylab) +
         theme +
         geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
                    colour = "red3", linetype = "dashed", size= 1, alpha = 0.5) 
@@ -518,7 +482,7 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
                    aes(x= Year, y = Proportion, colour = Sex,  # qhy has year ordered so weird?
                        linetype = Stage, shape = Stage)) +  # sexes diff cols, shapes and lines diff for stages
       geom_line(data= df_long, position= "jitter") + # why is this not joining as other 
-      scale_colour_manual(values=col_vec,
+      scale_colour_manual(values=cols,
                           labels=c("Female", "Male")) +
       labs(title = "Stage Proportions over Time", 
            x = "xlab", y = "ylab") 
@@ -538,11 +502,21 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 
 
 
-# projections (model 1) -----
-stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
-n0 <- c(25, 10, 25, 10)  # vec structure = yf, af, ym, am 
 
-# first time using params from extraction 
+# data extraction
+mcdonald_demo <- as.data.frame(read.csv("Data/mcdonald_2016_supinfo.csv"))  # posterior estimates from IPM
+
+dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
+dens_posterior_mean <- mean(dens_posterior)
+dens_posterior_sd <- sd(dens_posterior)
+
+beta_reported <- 0.239  # from paper 
+
+beta <- beta_reported/dens_posterior_sd  # explain maths in appendix!
+
+# setting up parametrs and vital rates
+stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
+
 Umat <- matrix(0, nrow=4, ncol=4)
 rownames(Umat) <- stages
 Umat[2,1]<- 0.851 # yearling f survival
@@ -557,15 +531,16 @@ params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female
                     h= 6   # harem size per male
 )
 
-# control plot----
+# projections (model 1) -----
+n0 <- c(25, 10, 25, 10)  # vec structure = yf, af, ym, am 
+
+# baseline = 20 year projection
 proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                   initial = n0, 
                   params, 
                   stagenames = stages,
-                  time = 30, 
-                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
+                  time = 20, 
                   DDapply="Fmat", 
-                  Mfunction= "Min",
                   intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                   remyear = NULL, 
                   rem_strat =NULL ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -583,6 +558,14 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        cols= col_vec,    # can be vector of cols
                        legend.pos = "topright",
                        cex.legend = 0.8))
+(proj0_Nplot <- dd_plot(proj0, 
+                      y_val= "N", 
+                      ylab = "Abundance", 
+                      xlab = "Time (t)",
+                      theme = theme_classic(), 
+                      cols= col_vec,    # can be vector of cols
+                      legend.pos = "topright",
+                      cex.legend = 0.8))
 
 
 # Scenario 1 = 70% removal trial at year 10
@@ -591,9 +574,7 @@ proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   params, 
                   stagenames = stages,
                   time = 30, 
-                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
-                  Mfunction= "Min",
                   intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                   remyear = 10, 
                   rem_strat = "random" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -617,9 +598,7 @@ proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   params, 
                   stagenames = stages,
                   time = 30, 
-                  memberN=NULL,  # which individuals contribute to pop size? (as vec)
                   DDapply="Fmat", 
-                  Mfunction= "Min",
                   intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                   remyear = 10, 
                   rem_strat = "females" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -653,4 +632,172 @@ ssd1 <- ssd(proj1, vis = TRUE, cols = col_vec)
 ssd2 <- ssd(proj2, vis = TRUE, cols = col_vec)
 
 # next steps - META MAT PROJECTION
-# 
+meta.proj <- function(Umat,   # vector of stage names
+                      params2, # adjusted beta = 
+                      stagenames,
+                      initial,   # list of initial abundances
+                      Dmat = list(), 
+                      time = 20,
+                      return.vec = TRUE,
+                      return.mats= FALSE){
+  # Time 
+  if (time <= 1) stop("Time must be a positive integer")
+  else(time <- as.integer(time))
+  
+  if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
+  
+  if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
+  
+  if(is.list(initial)){   # when initial abundances is a list of vectors, we have more than 1 patch 
+    patches = length(initial)
+  } else if(is.list(initial) == FALSE ){  # if a vector/ not list, only 1 patch
+    patches = 1
+    stop("only one vector of abundances provided. Provide abundances per patch as a list, or use rem.proj for single patch projections")
+  }
+  
+  nStages <- length(stagenames)/2      # how many stages
+  
+  Nf_v <- rep(NA, patches) # vector length patches to fill with adult fem abundance by year
+  Nm_v <- rep(NA, patches)
+  
+  
+  for (i in 1:patches) {           # filling each list within vector with Nf and Nm at that patch initially
+    Nf_v[i] <- initial[[i]][nStages]   
+    Nm_v[i] <- initial[[i]][2*nStages]      # adult male in vector (final entry) - vec of Nms per patch
+  }
+  
+  
+  # f calculation first year - how to repeat for each patch
+  f_v <- rep(NA, patches)   # blank vec to fill  before adding fertility values straight to amat - f values per patch f[p] 
+  
+  for (j in 1:patches) { # repeat for each patch
+    mat <- mating.func(params,     # density dependent parameters
+                       stagenames,   # Stages in life cycle graph (single sex)
+                       Nf_v[j],        # Adult and yearling females  
+                       Nm_v[j],             # Adult and yearling males
+                       Mfunction= "min", 
+                       return.mat= FALSE) # don't return mat, just f value
+    
+    f_v[j] <- mat$f   # adding appropriate fertility rates to list, where entry = patch  
+  } 
+  
+  # Set up the output - how to set up if multiple patches? Lists within lists...
+  # differs from AI suggested - change to simplify?
+  #{
+  out <- list(pop = list(rep(NA, (time + 1))),    #  list of vectors per patch
+              vec = list(matrix(0, ncol = length(stagenames), nrow = time + 1)),    # list of matrices per patch
+              Nremoved = (rep(NA, 2*nStages)), # total removed in rem year, NO LIST, vec length = num patches
+              remvec = list(rep(NA, 2*nStages)))    # vector of length(stages) per patch - list
+  
+  # renaming before repeating
+  colnames(out$vec[[1]]) <- stagenames   # naming cols matrix as stages - cant name lists of obj
+  rownames(out$vec[[1]]) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or initial
+  
+  
+  Vec <- rep(out$vec, patches)  # matrices to fill with stage abundance.  row= time, col= stage. out$vec or just vec?
+  Pop <- rep(out$pop, patches)       # vector to fill with total pop size each year
+  remVec <- rep(out$remvec, patches) # list of vectors per patch, only 1 year 
+  
+  # filling first row of pop size and abundance vecs
+  pop_sizes <- sapply(initial, sum)  # gives total pop size per patch in initial year
+  
+  for (m in 1:patches){  # filling first row of each list vec and pop size 
+    Vec[[m]][1,] <- initial[[m]]          # for each list in Vec, first row is initial         
+    
+    Pop[[m]][1] <- pop_sizes[m]   # each list row 1 is sum of n0 - issues in plugging into pop
+  }
+  # } all simplified into fewer lines
+  
+  # Loop = matrix proj each year  --------
+  for (i in 1:time) {   # repeat for as many years as we have
+    
+    # Mating Fmat creation - f values per patch
+    thisNf <- as.vector(rep(NA, patches))  # vec of current Nf for each patch
+    thisNm <- as.vector(rep(NA, patches))
+    
+    for (n in 1:patches){  # loop for each patch this year
+      thisNf[n] <- Vec[[n]][i,nStages]  # inputting calculated value to appr place in vec. Issues with using both n and i in this loop 
+      thisNm[n] <-  Vec[[n]][i,2*nStages]                                  #repeat for each patch, but as we loop through years will have to update row  of vec selected
+    }
+    
+    # apply mating func to calculate pairs per patch 
+    thisMating <- rep(NA, patches)        # list of repeated matrix 
+    for (p in 1:patches) { # repeat for each patch
+      mat_out <- mating.func(params,     # density dependent parameters
+                             stagenames,   # Stages in life cycle graph (single sex)
+                             thisNf[p],        # Adult and yearling females  
+                             thisNm[p],             # Adult and yearling males
+                             Mfunction= "min", 
+                             return.mat= FALSE)
+      
+      thisMating[p] <- mat_out$f  # adding appropriate Fmat to list 
+    } 
+    
+    # ricker density dependence each year - total pop size by patch
+    
+    thisN <- rep(NA, patches)  # vector length patches to fill with current pop size each patch 
+    for (p in 1:patches){
+      thisN[p] <- sum(Vec[[p]][i, ])   # length patches, entries = pop size that year. this N entry [1] is pop size(row = year, col = p)
+    }
+    # Amat each year will vary by patch 
+    thisAmat <- list(matrix(0, ncol = ncol(Umat), nrow= nrow(Umat)))
+    thisAmat <- rep(thisAmat, patches)        # list of repeated matrix 
+    
+    for (p in 1:patches){
+      amat <- apply.DD(params, 
+                       Umat, 
+                       thisN[p],   # yearling and adults
+                       DDapply="fertility", 
+                       stagenames,   # Stages in life cycle graph 
+                       thisNf[p],        # Adult female abundance
+                       thisNm[p],             # Adult males
+                       Mfunction= "min",       # mating function applied
+                       return.mat= FALSE)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
+      
+      thisAmat[[p]] <- amat
+    } 
+    
+    
+    # If the projection matrix has any negative values in it, stop iterating and
+    # return the projection up until this point.
+    
+    for (p in 1:patches) {
+      if (any(sapply(thisAmat, function(m) any(m < 0, na.rm = TRUE)))) {
+        warning(paste("Projection stopped at time step", i, "because the density-dependent matrix has negative values."))
+        year_end <- year
+        break
+      }
+    }
+    
+    remains <- vector("list", length(stages))   # list of remaining and abundances 
+    moves <- vector("list", length(stages))     # list of moves and abundances
+    
+    # projection for each patch
+    for (p in 1:patches){
+      remains[[p]] <- thisAmat[[p]] %*% Vec[[p]][i, ] %*% Dmat[[p]][1, ] # following year stage vector is this Amat*this abundance * p(stay) (row 1 of Dmat.p) in this patch - loop for patch 1 then 2?
+      moves[[p]] <- Umat %*% Vec[[p]][i, ] %*% Dmat[[p]][1, ]   # moving individuals = survival * abundance * p(move)
+      Vec[[p]][(i + 1), ] <- remains[[p]] + moves[[p]]
+      Pop[[p]][i + 1] <- sum(Vec[[p]][(i + 1), ])   # lapply or sapply? issues running this section - no Pop obj returned
+    }
+    
+    # if pop size <= 0, stop and return
+    total_pop<- sum(sapply(Pop, function(x) x[i + 1]))
+    if (total_pop <= 0) {
+      warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
+      break
+    }
+    # if any stage becomes negative, set to zero and continue
+    if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
+      warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
+      Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
+    }
+  }
+  # out objects
+  out$pop <- Pop # total group size per patch, do we also want total pop size of pop?
+  
+  if (isTRUE(return.vec)) {
+    out$vec <- Vec        
+  }
+  
+  return(out)
+}
