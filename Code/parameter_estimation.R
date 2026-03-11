@@ -168,25 +168,9 @@ rogers_N_plot <- ggplot(rogers_1997_data, aes(x= Year, y= Adult_density, na.rm +
   geom_point() +
   geom_smooth(method = 'glm', method.args=list(family="binomial"), se=F) # linear for now, later use sigmoidal
 
-# stat_smooth(method = 'glm', method.args=list(family="binomial"), se=F)     # pop size over time increases sigmoidally
 
 lambda <- lm(Adult_density~Year, data= rogers_1997_data)
 summary(lambda)  # each year, increase 9.948, intercept = -1.962e+04
-
-# NOT NEEDED - provided in data -----
-#creating 'expected' df to estimate cub survival - how any more cubs we expect produced, how many actually?
-ex.df <- as.data.frame(select(rogers_1997_data, -c("Adult_male_density", "error", "Av_reproducing_fems"))) # link nf, pop size by year  removing selected rows
-# removing row 17 for all data
-ex.df <- ex.df[1:16,]
-# replacing NA cub value with mean
-ex.df$Cubs_per_breeding_fem[is.na(ex.df$Cubs_per_breeding_fem)] <- mean(ex.df$Cubs_per_breeding_fem, na.rm = TRUE)
-
-# recruitment values - expected and observed changes in cub numbers
-ex.df$expected <- (ex.df$Percentage_of_Adult_Females_Breeding/100)* ex.df$Cubs_per_breeding_fem* ex.df$Adult_fem_density       # K * % rep *Nf  for each row
-observed <- ex.df$Cub_density[2:length(ex.df$Cub_density)] - ex.df$Cub_density[1:(length(ex.df$Cub_density)-1)]          # change in cub density year t+1 - t
-ex.df$observed <- NA 
-ex.df$observed[1:15] <- observed # lambda for current prev, first entry NA
-cub_mortality <- ex.df$expected - ex.df$observed
 
 
 # Next paper - Mcdonald 2013----
@@ -211,20 +195,6 @@ ddplot <- ggplot(data= mcdonald_fig2_clean, aes(x=Standardised_density, y= Recru
   geom_smooth()# lm between 
 
 # how to convert standardised density to absolute? can't merge df, recruitment recordings not ordered by year
-# rescaling pop size to mean 0 and sd 1. 
-dens_posterior <- mcdonald_demo$pop_size   # posterior estimate from model
-dens_posterior_mean <- mean(dens_posterior)
-dens_posterior_sd <- sd(dens_posterior)
-
-logrec_reported <- mcdonald_fig2_clean$log_Recruitment   # values from paper
-beta_reported <- -0.239  # from paper 
-
-beta_rawdens <- (beta_reported*(1-dens_posterior_mean))/dens_posterior_sd  # gives raw beta value multiplied by pop size (?)
-   
-# our use of beta - vaue to input for e^-BN, multiply FEC (max cubs * rep fems / Nf). Papers max f not used
-# perhaps need the paper def of fec instead, so this beta is suitable?
-
-
 
 
 # Next = Tuyttens 2000----
@@ -392,6 +362,10 @@ survival.table <- (c(yf_s, af_s, ym_s, am_s)) # order as vital rates - yf, af, y
 
 
 # Mcdonald 2002 Wytham paper ----
+macdonald_survival <- read.csv("Data/macdonald_2002_survival.csv")  # loading survival data
+# vis how cub survival varies by year
+
+
 macdonald_fig2 <- scatter$Macdonald_2002_fig2.png
 macdonald_fig2_clean <- scat.clean(macdonald_fig2, "Total_MNA")
 
@@ -408,7 +382,10 @@ macdonald_fig8b_clean <- scat.clean(macdonald_fig8b, "Cubs_per_rep_fem")  # cubs
 macdonald_data <- full_join(macdonald_fig2_clean, macdonald_fig7_clean, by= "Year")
 macdonald_data <- full_join(macdonald_data, macdonald_fig8_clean, by= "Year")
 macdonald_data <- full_join(macdonald_data, macdonald_fig8b_clean, by= "Year")
+macdonald_data <- full_join(macdonald_data, macdonald_survival, by= "Year")
 macdonald_data <- arrange(macdonald_data, Year) #reorder by ascending year 
+
+
 
 # visualising
 mac_N <- ggplot(macdonald_data, aes(x= Year, y= Total_MNA))+
@@ -430,3 +407,7 @@ grid.arrange (mac_rep, mac_litter, nrow = 1, ncol =2) # not enough points to fit
                                                       # we want max cubs per rep fem before density dependence
 summary(macdonald_data$Cubs_per_rep_fem, na.rm = TRUE) # mean = 1.618605, max = 2.452 cubs / reproducing fem - rough match to prev estimate?
 # increasing reproduction with group size??
+
+# survival changes with pop size
+mac_cubs <-  ggplot(macdonald_data, aes(x= Total_MNA, y= total_cub_survival))+  # rep rates size by density
+  geom_point()
