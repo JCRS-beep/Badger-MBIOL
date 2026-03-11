@@ -1,83 +1,20 @@
 ## All required functions
 # Run this script before any additional code. (Ctrl + A, Ctrl Ent)
 # Includes
-# - ricker/ dd application function
 # - Mating system function
-# - dd projection function
+# - ricker/ dd application function
+# - dd projection and removal function
 # - dd projection plot function
-
-##  Ricker function and matrix application ------
-apply.DD <- function(params, 
-                     Umat, 
-                     N,   # yearling and adults
-                     DDapply="fertility", 
-                     stagenames,   # Stages in life cycle graph 
-                     Nf,        # Adult female abundance
-                     Nm,             # Adult males
-                     Mfunction= "min",       # mating function applied
-                     return.mat= FALSE) {   # apply ricker to whole matrix, survival or fertility
-  
-  ricker <- function(params, N){   # Using params (b) and population size input
-    dd_fun <- exp(-params$b*N)
-    return(dd_fun)      # returns value of multiplier
-  }
-  rick <- ricker(params, N)    # ricker function embedded - only this part needed?
-  # Function ricker
-  # params, incl b = strength of density dependence
-  # N= population size (can be total, NAdults, other, but explain in comments) 
-  # Use: returns dd_fun multiplier.
-  
-  # mating func embedded
-  mating <- mating.func(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph 
-                        Nf,        # Adult and yearling females
-                        Nm,             # Adult and yearling males
-                        Mfunction= "min",       # mating function applied
-                        return.mat= FALSE) 
-  
-  f <- mating$f 
-  
-  # constructing Amat
-  Amat <- Umat
-  S <- params$Sc_max
-  Amat[1,2] <- 0.5* f* S 
-  Amat[3,2] <- 0.5* f* S 
-  
-  # applying based on method
-  if(DDapply %in% c("matrix", "Matrix"))  {
-    Amat_N <- Amat*rick  
-    
-  } else if(DDapply %in% c("Survival", "survival", "Umat")){
-    Umat_N <- Umat*rick
-    Amat_N <- Amat + Umat_N # how to combine?
-    
-  } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
-    Amat_N <- Amat
-    Amat_N[1,2] <- 0.5 * f*rick * S 
-    Amat_N[3,2] <- 0.5 * f*rick * S 
-  }
-  
-  return(Amat_N) 
-}
-# Function name= applyDD
-# Inputs:  
-#  params: incl b for ricker
-#  N: effective pop size (can be total, NAdults, other, but explain in comments) 
-#  Fmat: matrix with reproductive params (can be created by mating.func) 
-#  Umat: survival matrix
-#  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
-# Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
-
 
 ##  Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
-                        stagenames = NULL,   # Stages in life cycle graph 
+                        stagenames,   # Stages in life cycle graph 
                         Nf,        # Adult and yearling females
                         Nm,             # Adult and yearling males
                         Mfunction= "min",       # mating function applied
                         return.mat= FALSE) {       # Fmat output?
   
-  if(is.null(stagenames) || length(stagenames)== 0 && return.mat==TRUE) stop("stagenames must be provided for correct matrix dimension calculations")
+  if(is.null(stagenames) || length(stagenames)== 0 & return.mat==TRUE) stop("stagenames must be provided for correct matrix dimension calculations")
   
   # naming objects 
   K <- params$rep_K      # MAX litter size
@@ -87,6 +24,7 @@ mating.func <- function(params,     # density dependent parameters
   
   # creating the output obj 
   out<- list(f=numeric(), Fmat=matrix())
+  f <- NA    # blank 
   Fmat <- matrix(0, ncol= length(stagenames), nrow= length(stagenames)) # blank matrix
   rownames(Fmat) <- stagenames
   colnames(Fmat) <- stagenames
@@ -104,7 +42,7 @@ mating.func <- function(params,     # density dependent parameters
     } else if(Nm*h < Nf){
       U <- Nm*h
     } 
-    f <- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
+    f<- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
     
     # Mod Harmonic mean mating function
   } else if(Mfunction %in% c("Modified Hamonic Mean Mating Function", "modified harmonic mean mating function", "ModHarmonic", "modharmonic"))   {
@@ -141,6 +79,74 @@ mating.func <- function(params,     # density dependent parameters
 # Outputs:
 # f = cub production per female
 
+
+
+##  Ricker function and matrix application ------
+apply.DD <- function(params, 
+                     Umat, 
+                     N,   # yearling and adults
+                     DDapply="fertility", 
+                     stagenames,   # Stages in life cycle graph 
+                     Nf,        # Adult female abundance
+                     Nm,             # Adult males
+                     Mfunction= "min",       # mating function applied
+                     return.mat= FALSE) {   # apply ricker to whole matrix, survival or fertility
+  
+  ricker <- function(params, N){   # Using params (b) and population size input
+    dd_fun <- exp(-params$b*N)
+    return(dd_fun)      # returns value of multiplier
+  }
+  rick <- ricker(params, N)    # rick = multiplier
+  # Function ricker
+  # params, incl b = strength of density dependence
+  # N= population size (can be total, NAdults, other, but explain in comments) 
+
+  
+  # mating func embedded
+  mating <- mating.func(params,     # density dependent parameters
+                        stagenames,   # Stages in life cycle graph 
+                        Nf,        # Adult and yearling females
+                        Nm,             # Adult and yearling males
+                        Mfunction= "min",       # mating function applied
+                        return.mat= FALSE) 
+  
+  f <- mating$f 
+  
+  # constructing Amat
+  Amat <- Umat
+  S <- params$Sc_max
+  Amat[1,2] <- 0.5* f* S 
+  Amat[3,2] <- 0.5* f* S 
+  
+  # applying based on method
+  if(DDapply %in% c("matrix", "Matrix"))  {
+    Amat_N <- Amat*rick  
+    
+  } else if(DDapply %in% c("Survival", "survival", "Umat")){
+    Umat_N <- Umat*rick
+    Amat_N <- Amat + Umat_N # how to combine?
+    
+  } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
+    # embedd mating func?
+    f_N <- f*rick
+    Amat_N <- Amat
+    Amat_N[1,2] <- 0.5 * f_N * S 
+    Amat_N[3,2] <- 0.5 * f_N * S 
+  }
+  
+  return(Amat_N) 
+}
+# Function name= applyDD
+# Inputs:  
+#  params: incl b for ricker
+#  N: effective pop size (can be total, NAdults, other, but explain in comments) 
+#  Fmat: matrix with reproductive params (can be created by mating.func) 
+#  Umat: survival matrix
+#  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
+# Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
+
+
+
 ##  DD projection function
 
 # WARNING: MUST RUN MATING SYSTEM FUNCTION BEFORE THIS FUNCTION
@@ -151,7 +157,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                      params,
                      stagenames, # needed for mating func
                      time, 
-                     memberN=NULL,  # which individuals contribute to pop size? (as vec)
                      DDapply="fertility", 
                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                      remyear = NULL,  # removal year = decrease from following year
@@ -175,20 +180,10 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   nStages <- length(stagenames)/2      # how many stages
   
-  
-  # population size
-  if (is.null(memberN)){
-    memberN <- 1:length(stagenames)   # NULL = all members contribute to pop size
-    
-  } else if(length(memberN) >= 1){
-    memberN <- c(memberN) 
-  }
-  
 
   # Set up the output
   out <- list(pop = vector(), 
               vec = matrix(), 
-              mat = matrix(), 
               Nremoved = numeric(), # how to leave blank if no removals?
               remvec = vector())  # including number removed and removals from each stage
   
@@ -215,7 +210,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     thisNf <- Vec[i,nStages]    # Nf = adult fems in Vec matrix
     thisNm <- Vec[i,2*nStages]  # Nm 
     
-    thisN <- sum(Vec[i,memberN])  # pop sizes sums row i for cols included in N
+    thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
     
     # ricker density dependence each year
     thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
@@ -252,17 +247,17 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     if(rem_strat == "random"){
       if (is.null(bias) == FALSE) paste("ignoring bias value since removal is random across ages and sexes")
       #generating the distribution - varies with rem strat
-      prop <- rnorm(length(stagenames), mean = intensity/100, sd= intensity/1000)  # 4 samples from dist mean 0.5, sd 0.05
+      prop <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.05
       
     } else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
       if (is.null(bias) == TRUE) stop("please provide strength of bias as value 0-")
       if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
-        y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = intensity/1000) 
-        a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = intensity/1000)    
+        y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.05) 
+        a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.05)    
       }
       else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
-        y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = intensity/1000) 
-        a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = intensity/1000) 
+        y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.05) 
+        a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.05) 
       }
       # col binding so each row represents stage
       bind <- cbind(y_rem, a_rem)
@@ -271,24 +266,23 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
       if (is.null(bias) == TRUE) stop("please provide strength of bias as value 0-")
       if(rem_strat %in% c("females", "Females", "female", "Female")){
-        f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = intensity/1000) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = intensity/1000) 
+        f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.05) # bias applied to females
+        m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.05) 
         
       } else if(rem_strat %in% c("males", "Males", "male", "Male")){
-        f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = intensity/1000) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = intensity/1000) 
+        f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.05) # bias applied to females
+        m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.05) 
       }
       bind <- cbind(f_rem, m_rem)
       prop <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
       
     } else if (is.numeric(intensity) && is.numeric(rem_strat)){
-      if (is.null(bias) == TRUE) stop("please provide strength of bias as value 0-")
+      if (is.null(bias) == TRUE) stop("please provide strength of bias as value")
       # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
-      # ex rem_strat = 3 (ym)
       bi <- length(rem_strat)  # how many elements provided
       
-      rem <- rnorm((1- bi), mean = ((1+bias)*intensity)/100, sd = intensity/1000)   # unbiased, 1- number of biased samples needed
-      rembi <- rnorm(bi, mean = ((1+bias)*intensity)/100, sd = intensity/1000)
+      rem <- rnorm((1- bi), mean = ((1+bias)*intensity)/100, sd = 0.05)   # unbiased, 1- number of biased samples needed
+      rembi <- rnorm(bi, mean = ((1+bias)*intensity)/100, sd = 0.05)
       
       # how to order? biased p pos matched to bias stage? 
       prop <- rep(NA, length(stagenames))
@@ -312,7 +306,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       thisNm <- sum(Vec[j,2*nStages-1],Vec[j,2*nStages])   # Nm 
       
       # ricker density dependence each year
-      thisN <- sum(Vec[j,memberN])  # pop sizes sums row i for cols included in N
+      thisN <- sum(Vec[j,])  # pop sizes sums row i for cols included in N
       thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                            thisNf,        
                            thisNm,            
@@ -351,7 +345,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   if (isTRUE(return.vec)) {
     out$vec <- Vec        
   } 
-  out$mat <- thisAmat
   
   return(out)
 }
@@ -364,7 +357,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
 #  params: defined in other funcs, importantly b, 
 #  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
 #  time: projection interval
-#  memberN= which stages included in total pop size count? Defautls NULL, all individuals included. Opts- c(a,b,c) will select those entries of initial vec
 #  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
 #  return.vec= abundance stage class matrix returned? defaults FALSE
 # Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
@@ -376,87 +368,279 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
 #  $rem_vec = optional vector of removals per class
 
 
+multi.rem <- function(Umat,   # MAX SURVIVAL
+                      initial, 
+                      params, 
+                      stagenames, 
+                      time, 
+                      DDapply="matrix", 
+                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                      remyears = integer(0),  # removal year = vector of years 
+                      return.vec= TRUE, 
+                      return.remvec = TRUE) 
+{
+  # input checks
+  if (time <= 1) stop("Time must be a positive integer")
+  else(time <- as.integer(time))
+  
+  if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
+  else(n0 <- as.numeric(initial))
+  
+  
+  if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
+  if(is.null(stagenames) || length(stagenames) == 0) stop("stagenames must be provided for correct matrix dimensions")
+  
+  if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
+  
+  
+  nStages <- length(stagenames)/2      # how many stages
+  ry <- remyears                 
+  
+  # ensure remyears are integers and between 1 - time
+  if (length(remyears) > 0) {
+    remyears <- unique(as.integer(remyears))
+    remyears <- remyears[remyears >= 1 & remyears <= time]
+    if (length(remyears) == 0) warning("No valid remyears in 1:time after filtering")
+  }
+  
+  
+  # Set up  output
+  out <- list(pop = vector(), 
+              vec = matrix(), 
+              Nremoved = numeric(length(remyears)), # must be a vector - length = number of removal years
+              remvec = vector("list", length(remyears)))  # including number removed and removals from each stage - must be a list - length number of removal years
+  
+  Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
+  Pop <- rep(NA, (time + 1))       # vector to fill with total pop size each year
+  Nremoved <- numeric(length(ry))
+  Remvec <- vector("list", length(ry))
+  
+  
+  colnames(Vec) <- stagenames   # naming cols matrix as stages 
+  rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
+  Vec[1, ] <- n0                   
+  Pop[1] <- sum(n0)    
+  
+  # Map removal year -> index into Remvec / Nremoved:
+  rem_index <- if (length(remyears) > 0) setNames(seq_along(remyears), remyears) # index contains number of rem years, links each remyear to a value in vector 
+  else integer(0)
+  
+  
+  # Loop = density dependent matrix application for each year UNTIL first rem year
+  for (i in 1:time) {   # normal projection until first entry of remyear - not needed?
+    # (if removal at t=5, project until t=5, final entry inserted to row 6 (remember vec[5,] holds entries for year=4 (rows 0:time))
+    
+    # Nf calculation
+    thisNf <- sum(Vec[i,nStages-1], Vec[i,nStages])    # Nf sums yearling and adult fems in Vec matrix
+    thisNm <- sum(Vec[i,2*nStages-1],Vec[i,2*nStages])   # Nm 
+    
+    # ricker density dependence each year
+    thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
+    thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
+                         thisNf,        
+                         thisNm,            
+                         Mfunction= "min",       
+                         return.mat= FALSE)    
+    
+    
+    # If the projection matrix has any negative values in it, stop iterating and
+    # return projection up until this point.
+    if (sum(thisAmat<0)>0){
+      warning(paste("Projection stopped at time step", i, "because the density-dependent projection matrix has negative values."))
+      break
+    }
+    # if pop size <= 0, stop and return
+    if(Pop[i]<= 0){
+      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+      break
+    }
+    # if any stage becomes negative, set to zero and continue
+    if (any(Vec < 0)) {
+      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+      Vec[Vec < 0] <- 0
+    }
+    
+    # multiplying to project
+    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  
+    # set any negatives to 0
+    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
+    
+    Pop[i + 1] <- sum(Vec[(i + 1), ])
+    
+    if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index, remove prob and add to following year
+      idx <- rem_index[as.character(i)]  
+      
+      # pop removal -------------------------
+      # haven't added bias yet - next once running
+      
+      thisProp <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.05
+      thisProp <- pmax(0, pmin(1, thisProp))  # clip to [0,1]
+      
+      thisRemvec <- Vec[i,] * thisProp   
+      thisRem <- sum(thisRemvec)  # total number removed 
+      
+      #  into outputs
+      Nremoved[idx] <- thisRem  # nth vector entry 
+      Remvec[[idx]] <- thisRemvec
+      
+      # new population size following removals
+      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
+      Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
+      Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
+    }
+  }
+  # -----------------------  
+  
+  # out objects
+  out$pop <- Pop
+  out$Nremoved <- Nremoved    
+  if (isTRUE(return.remvec)) {
+    out$remvec <- Remvec        # returns blank?
+  } 
+  
+  if (isTRUE(return.vec)) {
+    out$vec <- Vec        
+  } 
+  return(out)
+  
+}
+# NOTES 
+# Function name = multi.rem
 
 
-# Projection plotting function ---- needs updating to plot N by year and red line for removal
+
+# Projection plotting function ---- increasing text size and ensuring axis labelled 
 dd_plot <- function(out,   # output obj of dd.proj
                     y_val= "N",   # plot type - N or Vec 
                     ylab = "abundance", 
                     xlab = "time (t)",
                     rem_year = NULL,
-                    theme = theme_classic(), 
+                    mytheme = theme_classic(), 
                     cols= "black",    # can be vector of 2 cols
-                    legend.pos = "topright",
-                    cex.legend = 0.8){
+                    legend.pos = "top",
+                    base_size = 16){
   # loading required libraries
- require(tidyr)
- require(ggplot2)
+  require(tidyr)
+  require(ggplot2)
   # creating time vector for n years
   t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
   time <- as.numeric(c(0:t))       # vector 0:t
   
   # for pop size over time graph - must be as df
   if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-    pop <- out$pop
-    pop_df <- as.data.frame(pop) # converting pop to a df
+    pop_df <- data.frame(Year = time,
+                         Pop  = out$pop )# converting pop to a df
     
-    if (is.null(rem_year)){
-    plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
-      geom_point() +
-      labs(title = "Pop size over time", x = xlab, y = ylab)  
-      geom_smooth(alpha= 0.7)+   # doesn't fit so well for removals!
-      theme
-    
-   } else if (is.numeric(rem_year)){
-      plot <- ggplot(data = pop_df, aes(x= time, y= pop)) +  # start form year = 0
-        geom_point() +
-        geom_line(data = pop_df, alpha = 0.7) +
-        labs(title = "Pop size oever time", x = xlab, y = ylab) +
-        theme +
-        geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
-                   colour = "red3", linetype = "dashed", size= 1, alpha = 0.5) 
+    # creating pop projection plot
+      base.plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
+        geom_line(size = 1.2, colour = "grey30") +
+        geom_point(size = 2, colour = "black") +
+        labs(title = "Population Size Over Time",
+             x = xlab,
+             y = ylab) +
+        scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+        mytheme +
+        theme(
+          text = element_text(size = base_size),
+          plot.title = element_text(size = base_size + 2, face = "bold"),
+          axis.title = element_text(size = base_size),
+          axis.text = element_text(size = base_size - 2),
+          legend.position = legend.pos
+        ) 
+      
+     if (!is.null(rem_year)){
+      plot <- base.plot +
+        geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
+                   colour = "red3", 
+                   linetype = "dashed", linewidth = 1, 
+                   alpha = 0.5) 
+      
+     } else if (is.null(rem_year)){
+      plot <- base.plot 
     }
     
+      # alternative plot = vec abundance
   } else if(y_val %in% c("Vec", "Pop Structure", "Stages", "vec")){
     x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
     # turning into dataframe
     df <- as.data.frame(out$vec)
     df$Year <- time    # year column from 0 to t years
-    # tidy data - converting to long format so each row is a single observation 
+    # long format so each row is a single observation 
     df_long <- gather(df, key= "Stage", value = "Abundance", 1:x_val)   # creating a stage col in df with abundance
-    df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
+    df_long <- separate(df_long, 
+                        col= "Stage", 
+                        into= c("Stage", "Sex"), 
+                        sep='_')   # splitting by sex, separated by _
     
-    if(is.null(rem_year)) {
-    # plotting graph with ggplot2 
-    plot <- ggplot(data= df_long, 
-                   aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
-      geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
-      geom_line(data= df_long, alpha=0.7) +
-      scale_colour_manual(values= cols,
-                          labels=c("Female", "Male")) +
-      labs(title = "Stage Abundance over Time", 
-           x = xlab, y = ylab) + 
-      theme
-    
-    } else if(is.numeric(rem_year)){
-      plot <- ggplot(data= df_long, 
-                     aes(x=Year, y=Abundance, colour= Sex, linetype= Stage, shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
-        geom_point(position= "jitter", alpha=0.8) +  # jitter to avoid overlap of yearlings
-        geom_line(data= df_long, alpha=0.7) +
-        scale_colour_manual(values=cols,
+      # plotting graph 
+      base.plot <- ggplot(data= df_long, 
+                     aes(x=Year, 
+                         y=Abundance, 
+                         colour= Sex, 
+                         linetype= Stage, 
+                         shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
+        geom_point(position= "jitter", size = 2, alpha=0.8) +  # jitter to avoid overlap of yearlings
+        geom_line(data= df_long, size = 1.2, alpha=0.7) +
+        scale_colour_manual(values= cols,
                             labels=c("Female", "Male")) +
-        labs(title = "Stage Abundance over Time", 
-             x = xlab, y = ylab) + 
-        theme +
-       geom_vline(aes(xintercept = rem_year),                       # Adding a line to show removal year
-                 colour = "red3", linetype = "dashed", size=0.8, alpha = 0.5) 
-   
-       } 
+        labs(title = "Stage Abundance Over Time",
+             x = xlab,
+             y = ylab,
+             colour = "Sex",
+             linetype = "Stage",
+             shape = "Stage") +
+        scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+        mytheme +
+        theme(
+          text = element_text(size = base_size),
+          plot.title = element_text(size = base_size + 2, face = "bold"),
+          axis.title = element_text(size = base_size),
+          axis.text = element_text(size = base_size - 2),
+          legend.position = legend.pos,
+          # journal-style compact legend:
+          legend.direction = "horizontal",
+          legend.box = "horizontal",
+          legend.key = element_rect(fill = NA, colour = NA),
+          legend.key.size = unit(0.8, "lines"),
+          legend.title = element_text(face = "bold", size = base_size),
+          legend.text = element_text(size = base_size - 2),
+          legend.spacing.x = unit(0.2, "cm"),
+          legend.spacing.y = unit(0.1, "cm"),
+          legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
+        ) +
+        # make legend compact and show titles above keys (journal style)
+        guides(
+          colour = guide_legend(title.position = "top",
+                                title.hjust = 0.5,
+                                nrow = 1,
+                                byrow = TRUE,
+                                override.aes = list(size = 3, linetype = 1, shape = 16)),
+          linetype = guide_legend(title.position = "top",
+                                  title.hjust = 0.5,
+                                  nrow = 1,
+                                  byrow = TRUE,
+                                  override.aes = list(size = 1.2)),
+          shape = guide_legend(title.position = "top",
+                               title.hjust = 0.5,
+                               nrow = 1,
+                               byrow = TRUE,
+                               override.aes = list(size = 3))
+        )
+      
+     if(!is.null(rem_year)){   # if rem years a vector, can we loop geom_line addition?
+      plot <- base.plot +
+        geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
+                   colour = "red3", linetype = "dashed", size=0.8, alpha = 0.3) 
+      
+     } else if (is.null(rem_year)){
+       plot <- base.plot
+     }
+  }
     
-  } 
   return(plot)
   
- }
+}   
+
 # NOTES ----
 # Function name = dd_plot
 # Inputs 
@@ -470,7 +654,136 @@ dd_plot <- function(out,   # output obj of dd.proj
 # Use - Take output from projection and plot with ggplot, [including custom theme if desired]
 # Required packages = ggplot2, tidyr
 
-
+#chatgpt code works better
+dd_plot <- function(out,
+                    y_val = "N",
+                    ylab = "Abundance",
+                    xlab = "Time (t)",
+                    rem_year = NULL,
+                    theme = theme_classic(),
+                    cols = "black",
+                    legend.pos = "top",
+                    base_size = 16) {
+  
+  require(tidyr)
+  require(ggplot2)
+  
+  # Create time vector
+  t <- nrow(out$vec) - 1
+  time <- 0:t
+  
+  # ---------- POPULATION SIZE ----------
+  if (y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
+    
+    pop_df <- data.frame(
+      Year = time,
+      Pop  = out$pop
+    )
+    
+    plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
+      geom_line(size = 1.2, colour = "grey30") +
+      geom_point(size = 2, colour = "black") +
+      labs(title = "Population Size Over Time",
+           x = xlab,
+           y = ylab) +
+      scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+      theme +
+      theme(
+        text = element_text(size = base_size),
+        plot.title = element_text(size = base_size + 2, face = "bold"),
+        axis.title = element_text(size = base_size),
+        axis.text = element_text(size = base_size - 2),
+        legend.position = legend.pos
+      )
+    
+    if (!is.null(rem_year)) {
+      plot <- plot +
+        geom_vline(xintercept = rem_year,
+                   colour = "red3",
+                   linetype = "dashed",
+                   linewidth = 1,
+                   alpha = 0.6)
+    }
+    
+    # ---------- STAGE STRUCTURE ----------
+  } else if (y_val %in% c("Vec", "Pop Structure", "Stages", "vec")) {
+    
+    x_val <- ncol(out$vec)
+    
+    df <- as.data.frame(out$vec)
+    df$Year <- time
+    
+    df_long <- gather(df, key = "Stage", value = "Abundance", 1:x_val)
+    df_long <- separate(df_long,
+                        col = "Stage",
+                        into = c("Stage", "Sex"),
+                        sep = "_")
+    
+    plot <- ggplot(df_long,
+                   aes(x = Year,
+                       y = Abundance,
+                       colour = Sex,
+                       linetype = Stage)) +
+      geom_line(size = 1.1) +
+      geom_point(position= "jitter", alpha=0.8, size = 2.5) + 
+      scale_colour_manual(values = cols,
+                          labels = c("Female", "Male")) +
+      labs(title = "Stage Abundance Over Time",
+           x = xlab,
+           y = ylab,
+           colour = "Sex",
+           linetype = "Stage", 
+           shape = "Stage") +
+      scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+      theme +
+      theme(
+        text = element_text(size = base_size),
+        plot.title = element_text(size = base_size + 2, face = "bold"),
+        axis.title = element_text(size = base_size),
+        axis.text = element_text(size = base_size - 2),
+        legend.position = legend.pos,
+        # journal-style compact legend:
+        legend.direction = "horizontal",
+        legend.box = "horizontal",
+        legend.key = element_rect(fill = NA, colour = NA),
+        legend.key.size = unit(0.8, "lines"),
+        legend.title = element_text(face = "bold", size = base_size),
+        legend.text = element_text(size = base_size - 2),
+        legend.spacing.x = unit(0.2, "cm"),
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
+      ) +
+      # make legend compact and show titles above keys (journal style)
+      guides(
+        colour = guide_legend(title.position = "top",
+                              title.hjust = 0.5,
+                              nrow = 1,
+                              byrow = TRUE,
+                              override.aes = list(size = 3, linetype = 1, shape = 16)),
+        linetype = guide_legend(title.position = "top",
+                                title.hjust = 0.5,
+                                nrow = 1,
+                                byrow = TRUE,
+                                override.aes = list(size = 1.2)),
+        shape = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             nrow = 1,
+                             byrow = TRUE,
+                             override.aes = list(size = 3))
+      )
+    
+    if (!is.null(rem_year)) {
+      plot <- plot +
+        geom_vline(xintercept = rem_year,
+                   colour = "red3",
+                   linetype = "dashed",
+                   linewidth = 1,
+                   alpha = 0.6)
+    }
+  }
+  
+  return(plot)
+}
 
 # growth rate calculate with output format in DDproj
 growth.rate <- function(out, vis = FALSE, rem_year = NULL){
