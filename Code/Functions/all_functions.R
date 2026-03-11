@@ -654,136 +654,8 @@ dd_plot <- function(out,   # output obj of dd.proj
 # Use - Take output from projection and plot with ggplot, [including custom theme if desired]
 # Required packages = ggplot2, tidyr
 
-#chatgpt code works better
-dd_plot <- function(out,
-                    y_val = "N",
-                    ylab = "Abundance",
-                    xlab = "Time (t)",
-                    rem_year = NULL,
-                    theme = theme_classic(),
-                    cols = "black",
-                    legend.pos = "top",
-                    base_size = 16) {
-  
-  require(tidyr)
-  require(ggplot2)
-  
-  # Create time vector
-  t <- nrow(out$vec) - 1
-  time <- 0:t
-  
-  # ---------- POPULATION SIZE ----------
-  if (y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
-    
-    pop_df <- data.frame(
-      Year = time,
-      Pop  = out$pop
-    )
-    
-    plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
-      geom_line(size = 1.2, colour = "grey30") +
-      geom_point(size = 2, colour = "black") +
-      labs(title = "Population Size Over Time",
-           x = xlab,
-           y = ylab) +
-      scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
-      theme +
-      theme(
-        text = element_text(size = base_size),
-        plot.title = element_text(size = base_size + 2, face = "bold"),
-        axis.title = element_text(size = base_size),
-        axis.text = element_text(size = base_size - 2),
-        legend.position = legend.pos
-      )
-    
-    if (!is.null(rem_year)) {
-      plot <- plot +
-        geom_vline(xintercept = rem_year,
-                   colour = "red3",
-                   linetype = "dashed",
-                   linewidth = 1,
-                   alpha = 0.6)
-    }
-    
-    # ---------- STAGE STRUCTURE ----------
-  } else if (y_val %in% c("Vec", "Pop Structure", "Stages", "vec")) {
-    
-    x_val <- ncol(out$vec)
-    
-    df <- as.data.frame(out$vec)
-    df$Year <- time
-    
-    df_long <- gather(df, key = "Stage", value = "Abundance", 1:x_val)
-    df_long <- separate(df_long,
-                        col = "Stage",
-                        into = c("Stage", "Sex"),
-                        sep = "_")
-    
-    plot <- ggplot(df_long,
-                   aes(x = Year,
-                       y = Abundance,
-                       colour = Sex,
-                       linetype = Stage)) +
-      geom_line(size = 1.1) +
-      geom_point(position= "jitter", alpha=0.8, size = 2.5) + 
-      scale_colour_manual(values = cols,
-                          labels = c("Female", "Male")) +
-      labs(title = "Stage Abundance Over Time",
-           x = xlab,
-           y = ylab,
-           colour = "Sex",
-           linetype = "Stage", 
-           shape = "Stage") +
-      scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
-      theme +
-      theme(
-        text = element_text(size = base_size),
-        plot.title = element_text(size = base_size + 2, face = "bold"),
-        axis.title = element_text(size = base_size),
-        axis.text = element_text(size = base_size - 2),
-        legend.position = legend.pos,
-        # journal-style compact legend:
-        legend.direction = "horizontal",
-        legend.box = "horizontal",
-        legend.key = element_rect(fill = NA, colour = NA),
-        legend.key.size = unit(0.8, "lines"),
-        legend.title = element_text(face = "bold", size = base_size),
-        legend.text = element_text(size = base_size - 2),
-        legend.spacing.x = unit(0.2, "cm"),
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
-      ) +
-      # make legend compact and show titles above keys (journal style)
-      guides(
-        colour = guide_legend(title.position = "top",
-                              title.hjust = 0.5,
-                              nrow = 1,
-                              byrow = TRUE,
-                              override.aes = list(size = 3, linetype = 1, shape = 16)),
-        linetype = guide_legend(title.position = "top",
-                                title.hjust = 0.5,
-                                nrow = 1,
-                                byrow = TRUE,
-                                override.aes = list(size = 1.2)),
-        shape = guide_legend(title.position = "top",
-                             title.hjust = 0.5,
-                             nrow = 1,
-                             byrow = TRUE,
-                             override.aes = list(size = 3))
-      )
-    
-    if (!is.null(rem_year)) {
-      plot <- plot +
-        geom_vline(xintercept = rem_year,
-                   colour = "red3",
-                   linetype = "dashed",
-                   linewidth = 1,
-                   alpha = 0.6)
-    }
-  }
-  
-  return(plot)
-}
+
+
 
 # growth rate calculate with output format in DDproj
 growth.rate <- function(out, vis = FALSE, rem_year = NULL){
@@ -871,4 +743,203 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 
 
 
-# Function for sex ratio over time?
+# meta.projection
+meta.proj <- function(Umat,   # vector of stage names
+                       params, # adjusted beta = 
+                       stagenames,
+                       initial,   # list of initial abundances
+                       Dmat = list(), 
+                       time = 20,
+                       return.vec = TRUE,
+                       return.mats= FALSE){
+  
+  # Time 
+  if (time <= 1) stop("Time must be a positive integer")
+  else(time <- as.integer(time))
+  
+  if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
+  
+  if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
+  
+  if(is.list(initial)){   # when initial abundances is a list of vectors, we have more than 1 patch 
+    patches = length(initial)
+  } else if(is.list(initial) == FALSE ){  # if a vector/ not list, only 1 patch
+    patches = 1
+    stop("only one vector of abundances provided. Provide abundances per patch as a list, or use rem.proj for single patch projections")
+  }
+  
+  nStages <- length(stagenames)/2      # how many stages
+  
+  Nf_v <- rep(NA, patches) # vector length patches to fill with adult fem abundance by year
+  Nm_v <- rep(NA, patches)
+  
+  
+  for (i in 1:patches) {           # filling each list within vector with Nf and Nm at that patch initially
+    Nf_v[i] <- initial[[i]][nStages]   
+    Nm_v[i] <- initial[[i]][2*nStages]      # adult male in vector (final entry) - vec of Nms per patch
+  }
+  
+  
+  # f calculation first year - how to repeat for each patch
+  f_v <- rep(NA, patches)   # blank vec to fill  before adding fertility values straight to amat - f values per patch f[p] 
+  
+  for (j in 1:patches) { # repeat for each patch
+    mat <- mating.func(params,     # density dependent parameters
+                       stagenames,   # Stages in life cycle graph (single sex)
+                       Nf_v[j],        # Adult and yearling females  
+                       Nm_v[j],             # Adult and yearling males
+                       Mfunction= "min", 
+                       return.mat= FALSE) # don't return mat, just f value
+    
+    f_v[j] <- mat$f   # adding appropriate fertility rates to list, where entry = patch  
+  } 
+  
+  # Set up the output - how to set up if multiple patches? Lists within lists...
+  # differs from AI suggested - change to simplify?
+  #{
+  out <- list(pop = list(rep(NA, (time + 1))),    #  list of vectors per patch
+              vec = list(matrix(0, ncol = length(stagenames), nrow = time + 1)),    # list of matrices per patch
+              Nremoved = (rep(NA, 2*nStages)), # total removed in rem year, NO LIST, vec length = num patches
+              remvec = list(rep(NA, 2*nStages)))    # vector of length(stages) per patch - list
+  
+  # renaming before repeating
+  colnames(out$vec[[1]]) <- stagenames   # naming cols matrix as stages - cant name lists of obj
+  rownames(out$vec[[1]]) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or initial
+  
+  
+  Vec <- rep(out$vec, patches)  # matrices to fill with stage abundance.  row= time, col= stage. out$vec or just vec?
+  Pop <- rep(out$pop, patches)       # vector to fill with total pop size each year
+  remVec <- rep(out$remvec, patches) # list of vectors per patch, only 1 year 
+  
+  # filling first row of pop size and abundance vecs
+  pop_sizes <- sapply(initial, sum)  # gives total pop size per patch in initial year
+  
+  for (m in 1:patches){  # filling first row of each list vec and pop size 
+    Vec[[m]][1,] <- initial[[m]]          # for each list in Vec, first row is initial         
+    
+    Pop[[m]][1] <- pop_sizes[m]   # each list row 1 is sum of n0 - issues in plugging into pop
+  }
+  # } all simplified into fewer lines
+  
+  # Loop = matrix proj each year  --------
+  for (i in 1:time) {   # repeat for as many years as we have
+    
+    # Mating Fmat creation - f values per patch
+    thisNf <- as.vector(rep(NA, patches))  # vec of current Nf for each patch
+    thisNm <- as.vector(rep(NA, patches))
+    
+    for (n in 1:patches){  # loop for each patch this year
+      thisNf[n] <- Vec[[n]][i,nStages]  # inputting calculated value to appr place in vec. Issues with using both n and i in this loop 
+      thisNm[n] <-  Vec[[n]][i,2*nStages]                                  #repeat for each patch, but as we loop through years will have to update row  of vec selected
+    }
+    
+    # apply mating func to calculate pairs per patch 
+    thisMating <- rep(NA, patches)        # list of repeated matrix 
+    for (p in 1:patches) { # repeat for each patch
+      mat_out <- mating.func(params,     # density dependent parameters
+                             stagenames,   # Stages in life cycle graph (single sex)
+                             thisNf[p],        # Adult and yearling females  
+                             thisNm[p],             # Adult and yearling males
+                             Mfunction= "min", 
+                             return.mat= FALSE)
+      
+      thisMating[p] <- mat_out$f  # adding appropriate Fmat to list 
+    } 
+    
+    # ricker density dependence each year - total pop size by patch
+    
+    thisN <- rep(NA, patches)  # vector length patches to fill with current pop size each patch 
+    for (p in 1:patches){
+      thisN[p] <- sum(Vec[[p]][i, ])   # length patches, entries = pop size that year. this N entry [1] is pop size(row = year, col = p)
+    }
+    # Amat each year will vary by patch 
+    thisAmat <- list(matrix(0, ncol = ncol(Umat), nrow= nrow(Umat)))
+    thisAmat <- rep(thisAmat, patches)        # list of repeated matrix 
+    
+    for (p in 1:patches){
+      amat <- apply.DD(params, 
+                       Umat, 
+                       thisN[p],   # yearling and adults
+                       DDapply="fertility", 
+                       stagenames,   # Stages in life cycle graph 
+                       thisNf[p],        # Adult female abundance
+                       thisNm[p],             # Adult males
+                       Mfunction= "min",       # mating function applied
+                       return.mat= FALSE)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
+      
+      thisAmat[[p]] <- amat
+    } 
+    
+    
+    # If the projection matrix has any negative values in it, stop iterating and
+    # return the projection up until this point.
+    
+    for (p in 1:patches) {
+      if (any(sapply(thisAmat, function(m) any(m < 0, na.rm = TRUE)))) {
+        warning(paste("Projection stopped at time step", i, "because the density-dependent matrix has negative values."))
+        year_end <- year
+        break
+      }
+    }
+    
+    remains <- vector("list", length(stages))   # list of remaining individual abundances 
+    moves <- vector("list", length(stages))     # list of moves individual abundances
+    
+    # projection for each patch before dispersal
+    for (p in 1:patches) {
+      current_vec <- as.numeric(Vec[[p]][i, ])         # current stage-abundance vector
+      
+      pStay <- as.numeric(Dmat[[p]][1, ])        # stage prob of staying in patch p
+      pMove <- as.numeric(Dmat[[p]][2, ])        # stage p(leave) patch p
+      
+      # abundance BEFORE  survival/rep
+      remains[[p]] <- current_vec * pStay        #  number who remain to breed
+      moves[[p]]  <- current_vec * pMove       # number who leave (no breeding)
+    }
+    
+    # Project stayers using Amat (they reproduce in original patch)
+    remains_proj <- vector("list", patches)
+    for (p in 1:patches) {
+      remains_proj[[p]] <- as.numeric(thisAmat[[p]] %*% remains[[p]])
+    }
+    
+    # moves:  leave BEFORE mating, only survive (Umat)
+    moves_surv <- vector("list", patches)
+    for (p in 1:patches) {
+      moves_surv[[p]] <- as.numeric(Umat %*% moves[[p]])
+    }
+    
+    # Assemble next-year vectors: each patch gets its own stayers_proj + incoming movers from the other patch
+    for (p in 1:patches) {
+      other <- ifelse(p == 1, 2, 1)
+      
+      next_vec <- remains_proj[[p]] + moves_surv[[other]]  # combine remaining abundances with those who leave other patch
+      
+      # guard against numeric noise/negatives
+      next_vec[next_vec < 0] <- 0
+      
+      Vec[[p]][i + 1, ] <- next_vec
+      Pop[[p]][i + 1] <- sum(Vec[[p]][i + 1, ])
+    }
+    
+    # if pop size <= 0, stop and return
+    total_pop<- sum(sapply(Pop, function(x) x[i + 1]))
+    if (total_pop <= 0) {
+      warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
+      break
+    }
+    # if any stage becomes negative, set to zero and continue
+    if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
+      warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
+      Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
+    }
+  }
+  # out objects
+  out$pop <- Pop # total group size per patch, do we also want total pop size of pop?
+  
+  if (isTRUE(return.vec)) {
+    out$vec <- Vec        
+  }
+  
+  return(out)
+}
