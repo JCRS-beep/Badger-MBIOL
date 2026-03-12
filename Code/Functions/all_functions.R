@@ -509,6 +509,8 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
 
 
 
+
+
 # Projection plotting function ---- increasing text size and ensuring axis labelled 
 dd_plot <- function(out,   # output obj of dd.proj
                     y_val= "N",   # plot type - N or Vec 
@@ -882,8 +884,8 @@ meta.proj <- function(Umat,   # vector of stage names
       }
     }
     
-    remains <- vector("list", length(stages))   # list of remaining individual abundances 
-    moves <- vector("list", length(stages))     # list of moves individual abundances
+    remains <- vector("list", length(stagenames))   # list of remaining individual abundances 
+    moves <- vector("list", length(stagenames))     # list of moves individual abundances
     
     # projection for each patch before dispersal
     for (p in 1:patches) {
@@ -943,3 +945,121 @@ meta.proj <- function(Umat,   # vector of stage names
   
   return(out)
 }
+
+
+
+
+# creating repeatable projections using proj functions, varying initial pop vector
+repeat.proj <- function(Umat,   # MAX SURVIVAL
+                        params,
+                        stagenames, # needed for mating func
+                        time = 20, 
+                        DDapply="fertility", 
+                        intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                        remyear = NULL,  # removal year = decrease from following year
+                        rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                        bias = NULL , # strength of bias as percentage (range??)
+                        return.vec= TRUE, 
+                        return.remvec = FALSE,
+                        reps = 10) {
+  # set up the ouput = a list, length = number of repeats, each containing the out obj of 
+  out <- vector("list", reps)
+  
+  # create our random initial vectors 
+  initial <- vector("list", reps)   # list to fill with initial vector for each repetition
+  
+  
+  for (t in 1:reps){
+    # seperate samples needed for adults and yearlings = 
+    a_init <- as.integer(runif(2, min = 0, max = 70))   # max fem size attained in projections  = 70 individuals
+    y_init <- as.integer(runif(2, min = 0, max = 25))   # yearlings always less abundant than adults
+    bind <- cbind(y_init, a_init)
+    initial[[t]] <- c(bind[1,], bind[2,])  # binding adult and yearlings in correct order
+    
+    out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                         initial[[t]], 
+                         params, 
+                         stagenames,
+                         time, 
+                         DDapply,
+                         intensity,  # percentage you want REMOVED from pop at time T=ry
+                         remyear,  # removal year = decrease from following year
+                         rem_strat,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                         bias,
+                         return.vec, 
+                         return.remvec) }
+  return(out)
+  
+} 
+# output syntax = out[[rep]]$pop[] or $vec[,]
+
+# calculating avaerage lambda, average pop size
+ av.growth.rate <- function(out_list  # apply growth rate function to list of out objs
+#  vis = FALSE, # boxplot?
+#  rem_year = NULL
+){
+  reps <- length(out_list)
+  N_list <- vector("list", reps)   # list of N vecs for each repeat
+  
+  
+  for (t in 1:reps){
+    N_list[[t]] <- out_list[[t]]$pop    # isolating pop size vector
+  }
+  
+  # lambda calculation as a function applied to pop size vec
+  lambda <- function(N){
+    N[2:length(N)]/N[1:(length(N)-1)]
+  } 
+  
+  lambda_list <- lapply(N_list , lambda) # calculate lambda vector per year per rep, return as list
+  
+  # averaging across years for each projection
+  
+  
+  # output proj
+  lambda_out <- list(lambda = vector(), av_lambda = vector())
+  lambda_out$lambda <- lambda_list  # lambda
+  lambda_out$av_lambda <- sapply(lambda_list, mean)
+  
+  return(lambda_out)
+}
+
+ av.ssd <-  function(out_list){     # input projected matrix
+   
+   reps <- length(out_list)
+   
+   # separating a matrix from out obj
+   abun_mat <- vector("list", reps)   # list of abundances for each repeat
+   
+   for (t in 1:reps){
+     abun_mat[[t]] <- out_list[[t]]$vec    # isolating pop size vector
+   }
+   
+   
+   mat <- matrix(0, ncol = ncol(abun_mat[[1]]), nrow = nrow(abun_mat[[1]]))    # list of empty matrix to fill with stage props
+   rownames(mat) <- rownames(abun_mat[[1]])
+   colnames(mat) <- colnames(abun_mat[[1]])
+   
+   stageMat <- vector("list", reps)   # fill each stage mats list with mat?
+   
+   # out obj is a list with matrix and av prop 1 row matrix
+   ssd_out <- list(stageMat = matrix(),  # number of matrices = rep, rows = time
+                   avProp = matrix ())
+   
+   for (t in 1:reps){
+     for(i in 1:nrow(abun_mat[[1]])) {   # loop for each column 
+       mat[i,] <- abun_mat[[t]][i,]/sum(abun_mat[[t]][i,])          # column i of matrix filled with row i divided by col sum
+     } 
+     stageMat[[t]] <- mat
+   }
+   
+   
+   avProp <- lapply(stageMat, colMeans)
+   
+   
+   ssd_out$stageMat <- stageMat
+   ssd_out$avProp <- avProp
+   
+   return(ssd_out)   # returns matrix of each stage as proportion of total pop
+   
+ }
