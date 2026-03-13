@@ -166,7 +166,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
   
-  if (!is.null(bias) && 1+bias > 1/(intensity/100)) stop("Bias value provided leads to p(removal) >1. Re-enter below", 1/intensity, "and repeat")
+  if (!is.null(bias) && 1+bias > 1/(intensity/100)) stop("Bias value provided leads to p(removal) >1. Re-enter below ", 1/(intensity/100), " and repeat")
   
   
   nStages <- length(stagenames)/2      # how many stages
@@ -249,12 +249,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     } else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
       if (is.null(bias) == TRUE) stop("please provide strength of bias")
       if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
-        y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.2) 
-        a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.2)    
+        y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+        a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05)    
       }
       else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
-        y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.2) 
-        a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.2) 
+        y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
+        a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
       }
       # col binding so each row represents stage
       bind <- cbind(y_rem, a_rem)
@@ -265,12 +265,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
       if (is.null(bias) == TRUE) stop("please provide strength of bias")
       if(rem_strat %in% c("females", "Females", "female", "Female")){
-        f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.2) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.2) 
+        f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) # bias applied to females
+        m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
         
       } else if(rem_strat %in% c("males", "Males", "male", "Male")){
-        f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd = 0.2) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd = 0.2) 
+        f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) # bias applied to females
+        m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
       }
       bind <- cbind(f_rem, m_rem)
       prop <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
@@ -282,12 +282,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
       bi <- length(rem_strat)  # how many elements provided
       
-      rem <- rnorm((1- bi), mean = ((1+bias)*intensity)/100, sd = 0.2)   # unbiased, 1- number of biased samples needed
-      rembi <- rnorm(bi, mean = ((1+bias)*intensity)/100, sd = 0.2)
+      rem <- rnorm((length(stagenames) - bi), mean = ((1 - bias)*intensity)/100, sd= 0.05)   # unbiased, 1- number of biased samples needed
+      rembi <- rnorm(bi, mean = ((1 + bias)*intensity)/100, sd= 0.05)
       
       # how to order? biased p pos matched to bias stage? 
       prop <- rep(NA, length(stagenames))
-      prop[rem_strat] <- rembi
+      prop[rem_strat] <- rembi   # biased value entry gets biased proportion - only works if length = 1?
       prop[-rem_strat] <- rem    # all non biased stages, add unbiased probs
     }
     # ------------------

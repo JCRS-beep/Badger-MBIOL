@@ -52,24 +52,6 @@ proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   return.vec= TRUE, 
                   return.remvec = FALSE) 
 
-col_vec <- c("#FF6A6A", "#87CEEB")
-
-(proj0_plot <- dd_plot(proj0, 
-                       y_val= "Vec", 
-                       ylab = "Abundance", 
-                       xlab = "Time (t)",
-                       mytheme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "top",
-                       base_size = 16))
-(proj0_Nplot <- dd_plot(proj0, 
-                        y_val= "N", 
-                        ylab = "Abundance", 
-                        xlab = "Time (t)",
-                        mytheme = theme_classic(), 
-                        cols= col_vec,    # can be vector of cols
-                        legend.pos = "top" ,
-                        base_size = 16))
 
 
 # Scenario 1 = 70% removal trial at year 10
@@ -98,29 +80,34 @@ proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
 
 
 
-# scenario 2 - biased female removals
-proj2 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# scenario 2 - biased male removals
+proj2 <- rem.proj(Umat,      
                   initial = n0, 
                   params, 
                   stagenames = stages,
                   time = 30, 
                   DDapply="Fmat", 
-                  intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                  intensity= 70,  # percentage you want REMOVED from pop at time=ry
                   remyear = 10, 
-                  rem_strat = "females" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                  rem_strat = "males" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
                   bias = 0.15 ,
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 
-(proj2_plot <- dd_plot(proj2, 
-                       y_val= "Vec", 
-                       ylab = "Abundance", 
-                       xlab = "Time (t)",
-                       rem_year = 10,
-                       mytheme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "topright",
-                       base_size = 16))
+proj3 <- rem.proj(Umat,      
+                  initial = n0, 
+                  params, 
+                  stagenames = stages,
+                  time = 30, 
+                  DDapply="Fmat", 
+                  intensity= 90,  # percentage you want REMOVED from pop at time=ry
+                  remyear = 10, 
+                  rem_strat = 2 ,  #2nd in list = adult fems
+                  bias = 0.11 ,
+                  return.vec= TRUE, 
+                  return.remvec = TRUE) 
+
+
 
 
 # comparisons 
