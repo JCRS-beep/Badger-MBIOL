@@ -81,10 +81,10 @@ rogers_1997_popsize <- scat.clean(rogers_1997_fig1, "MNA", remove.id = FALSE, de
 # rogers_1997_popsize <- arrange(rogers_1997_popsize, by= Year, group_by(id)) 
 
 # reorganising so fewer rows
-rogers_1997_popsize_wide <- spread(rogers_1997_popsize, id, MNA)
-rogers_1997_popsize_wide$Year <- as.numeric(rogers_1997_popsize_wide$Year)
+rogers_1997_popsize <- spread(rogers_1997_popsize, id, MNA)
+rogers_1997_popsize$Year <- as.numeric(rogers_1997_popsize$Year)
 # renaming rows
-names(rogers_1997_popsize_wide) <- gsub("\\s+", "_", names(rogers_1997_popsize_wide))
+names(rogers_1997_popsize) <- gsub("\\s+", "_", names(rogers_1997_popsize))
 
 # reproductive rates
 rogers_1997_rep3 <- scatter$`242_Rogers_1997_fig13.png` # Cubs / breeding fem
@@ -92,7 +92,7 @@ rogers_1997_rep3_clean <- scat.clean(rogers_1997_rep3, "Cubs_per_breeding_fem", 
 rogers_1997_rep3_clean$Cubs_per_breeding_fem[2] <- NA # removing outlier point
 
 
-rogers_1997_data <- full_join(rogers_1997_rep3_clean, rogers_1997_popsize_wide, by= "Year")
+rogers_1997_data <- full_join(rogers_1997_rep3_clean, rogers_1997_popsize, by= "Year")
 rogers_1997_data <- rename(rogers_1997_data, 
                            "Adult_density" = "Total_Adult_Badgers", "Adult_fem_density" = "Adult_Female_Badgers", "Adult_male_density" ="Adult_Male_Badgers", "Cub_density" = "Badger_Cubs")
 
@@ -122,16 +122,16 @@ bright_fig3aiv <- scatter$`3307_Bright_2020_fig3aiv.png`
 bright_fig3aiv_clean <- scat.clean(bright_fig3aiv, remove.id= FALSE)
 
 # converting to wide format
-bright_fig3ai_wide <- widen(bright_fig3ai_clean, "Survival") #correct - numeric and 
+bright_fig3ai <- widen(bright_fig3ai_clean, "Survival") #correct - numeric and 
 
-bright_fig3aii_wide <- widen(bright_fig3aii_clean, "Survival")
+bright_fig3aii <- widen(bright_fig3aii_clean, "Survival")
 
-bright_fig3aiii_wide <- widen(bright_fig3aiii_clean, "Survival")
+bright_fig3aiii <- widen(bright_fig3aiii_clean, "Survival")
 
-bright_fig3aiv_wide <- widen(bright_fig3aiv_clean, "Survival")
+bright_fig3aiv <- widen(bright_fig3aiv_clean, "Survival")
 
-bright_fig3a.1 <- full_join(bright_fig3ai_wide, bright_fig3aii_wide, by= "Year")
-bright_fig3a.2 <- full_join(bright_fig3aiii_wide, bright_fig3aiv_wide, by= "Year")
+bright_fig3a.1 <- full_join(bright_fig3ai, bright_fig3aii, by= "Year")
+bright_fig3a.2 <- full_join(bright_fig3aiii, bright_fig3aiv, by= "Year")
 bright_survival <- full_join(bright_fig3a.1, bright_fig3a.2, by= "Year")
 
 
