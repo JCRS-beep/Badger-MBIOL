@@ -309,10 +309,50 @@ av_proj1 <- pop.av(rep_proj1)
 av_proj2 <- pop.av(rep_proj2)
 av_proj3 <- pop.av(rep_proj3)
 
-# setting up dataframe for 
-lamb_df <- data.frame()
-lamb_df$pro1_av_lamb <- av_proj0$av_lambda
+proj0_lambda <- av_proj0$av_lambda
+proj1_lambda <- av_proj1$av_lambda
+proj2_lambda <- av_proj2$av_lambda
+proj3_lambda <- av_proj3$av_lambda
 
-av_testplot <- ggplot(lamb_df, aes(y = av_proj0$av_lambda, av_proj0$av_lambda))+
-  geom_boxplot()    # produce a boxplot for each scenario on x axis?
+# setting up dataframe for plots
+av_df <- data.frame(proj0_lambda, proj1_lambda, proj2_lambda, proj3_lambda) # spread so col for projection name, lamb value (later )
+# av_df %>% 
+#  pivot_longer(av_df, cols = c(proj0_lambda, proj1_lambda), 
+ #              names_to = "Projection",
+  #             values_to = "av_lambda")
 
+
+
+# av_testplot <- ggplot(av_df)+
+#  geom_boxplot(data = lamb_df, y= av_proj0$av_lambda)    # produce a boxplot for each scenario on x axis?
+
+
+# Meta population projection ---------
+# generating initial vec 
+rand <- runif(8, 0, 20) # likely not more than 20 individuals of a given stage in a group 
+init <- list(rand[1:4], rand[5:8])  
+
+Dmat <- matrix(0, ncol= length(stages), nrow = 2) # row = number patches
+colnames(Dmat) <- stages
+
+# prob individ in patch1 remains in patch 1 - rnorm
+stay1 <- rnorm(4,mean = 0.5, sd =0.2)  # vec of prob for each stage (4)
+Dmat1 <- Dmat
+Dmat1[1,] <- stay1 # stay for each class in patch 1 
+Dmat1[2,] <- 1- stay1   # for multiple patches, will need multiple values that sum to 1, can't use 1-p
+
+stay2 <- rnorm(4,mean = 0.5, sd =0.2)
+Dmat2 <- Dmat
+Dmat2[1,] <- stay2 # stay for each class in patch 2 
+Dmat2[2,] <- 1 - stay2 
+
+D_list <- list(Dmat1, Dmat2)
+
+meta_proj0 <- meta.proj(Umat,   # vector of stage names
+                        params, # adjusted beta = 
+                        stagenames = stages,
+                        initial = init,   # list of initial abundances
+                        Dmat = D_list, 
+                        time = 20,
+                        return.vec = TRUE,
+                        return.mats= FALSE)
