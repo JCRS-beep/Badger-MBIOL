@@ -1,10 +1,12 @@
 # Repetitions and analysis
+# 15.03.26
 
-# go to run script to get params and Umat
+# model projection script to get params and Umat, libraries and model scenarios
 
-# possible comparison - run models 100 repetitions, plot mean lambda, mean ssd for scenarios
+#  comparison - run models 100 repetitions, plot mean lambda, mean ssd for scenarios
 
 
+# Basline projection analysis
 test <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                     params, 
                     stagenames = stages,
@@ -19,7 +21,7 @@ test <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of
                     reps = 10) # looks better !
 
 
-test2N <- dd_plot(test[[2]], 
+testN <- dd_plot(test[[2]], 
                   y_val= "N",   # plot type - N or Vec 
                   ylab = "abundance", 
                   xlab = "time (t)",
@@ -29,7 +31,7 @@ test2N <- dd_plot(test[[2]],
                   legend.pos = "top",
                   base_size = 16)
 
-test2 <- dd_plot(test[[2]], 
+testV <- dd_plot(test[[2]], 
                  y_val= "Vec",   # plot type - N or Vec 
                  ylab = "abundance", 
                  xlab = "time (t)",
@@ -39,27 +41,9 @@ test2 <- dd_plot(test[[2]],
                  legend.pos = "top",
                  base_size = 16)
 
-test1N <- dd_plot(test[[1]], 
-                  y_val= "N",   # plot type - N or Vec 
-                  ylab = "abundance", 
-                  xlab = "time (t)",
-                  rem_year = NULL,
-                  mytheme = theme_classic(), 
-                  cols= col_vec,    # can be vector of 2 cols
-                  legend.pos = "top",
-                  base_size = 16)
 
-test1 <- dd_plot(test[[1]], 
-                 y_val= "Vec",   # plot type - N or Vec 
-                 ylab = "abundance", 
-                 xlab = "time (t)",
-                 rem_year = NULL,
-                 mytheme = theme_classic(), 
-                 cols= col_vec,    # can be vector of 2 cols
-                 legend.pos = "top",
-                 base_size = 16)
+grid.arrange(testN, testV)   # diff projections out of 10
 
-grid.arrange(test1N, test1, test2N, test2)   # diff projections out of 10
 
 # first removal scenario = 70% random
 proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
