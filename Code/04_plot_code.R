@@ -25,8 +25,9 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                         rem_year = NULL,
                         mytheme = theme_classic(), 
                         cols= col_vec,    # can be vector of cols
-                        legend.pos = "top" ,
+                        legend.pos = "top",
                         base_size = 16))
+
 
 
 # scenario 1 = 70% random removals 
@@ -51,6 +52,7 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        legend.pos = "top",
                        base_size = 16))
 
+
 # Scenario 2 = biased male removals (free shooting to target moving individuals)
 (proj2_plot <- dd_plot(proj2, 
                        y_val= "Vec", 
@@ -59,8 +61,9 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        rem_year = 10,
                        mytheme = theme_classic(), 
                        cols= col_vec,    # can be vector of cols
-                       legend.pos = "topright",
+                       legend.pos = "top",
                        base_size = 16))
+
 (proj2_plot <- dd_plot(proj2, 
                        y_val= "N", 
                        ylab = "Abundance", 
@@ -68,8 +71,9 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        rem_year = 10,
                        mytheme = theme_classic(), 
                        cols= col_vec,    # can be vector of cols
-                       legend.pos = "topright",
+                       legend.pos = "top",
                        base_size = 16))
+
 
 # Scenario 3 = Sett killings (adult females)
 (proj3_plot <- dd_plot(proj3, 
@@ -79,5 +83,19 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        rem_year = 10,
                        mytheme = theme_classic(), 
                        cols= col_vec,    # can be vector of cols
-                       legend.pos = "topright",
+                       legend.pos = "top",
                        base_size = 16))
+
+(proj3_plot <- dd_plot(proj3, 
+                       y_val= "N", 
+                       ylab = "Abundance", 
+                       xlab = "Time (t)",
+                       rem_year = 10,
+                       mytheme = theme_classic(), 
+                       cols= col_vec,    # can be vector of cols
+                       legend.pos = "top",
+                       base_size = 16))
+
+
+# plotting boxplots for repeated metric analysis
+#

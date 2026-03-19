@@ -13,10 +13,10 @@ library(here)
 
 
 # sourcing required functions
-source(here("Code/Functions/all_functions.R"))
+source(here("Code/Functions/01_all_functions.R"))
 
 # data extraction
-source(here("Code/data.extraction.R"))  # select options 2 (existing data) and 1 (all data)
+source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
 
 # setting up parameters and vital rates for demographic model
 stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
@@ -68,16 +68,6 @@ proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 
-(proj1_plot <- dd_plot(proj1, 
-                       y_val= "Vec", 
-                       ylab = "Abundance", 
-                       xlab = "Time (t)",
-                       rem_year = 5,
-                       mytheme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "top",
-                       base_size = 16))
-
 
 
 # scenario 2 - biased male removals
@@ -94,36 +84,86 @@ proj2 <- rem.proj(Umat,
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 
+
+# Scenario 3 - biased female adult removals
 proj3 <- rem.proj(Umat,      
                   initial = n0, 
                   params, 
                   stagenames = stages,
                   time = 30, 
                   DDapply="Fmat", 
-                  intensity= 90,  # percentage you want REMOVED from pop at time=ry
+                  intensity= 70,  # percentage you want REMOVED from pop at time=ry
                   remyear = 10, 
                   rem_strat = 2 ,  #2nd in list = adult fems
-                  bias = 0.11 ,
+                  bias = 0.2,  # bias too strong?
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
+# EXTINCTON! but why do individuals that develop into adults not breed at following timestep? issue with setting to 0?
+
+
+# Repeated projections, do not return long outputs !
+# Basline projection analysis
+rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                    params, 
+                    stagenames = stages,
+                    time = 20, 
+                    DDapply="Fmat", 
+                    intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                    remyear = NULL, 
+                    rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
+                    bias = NULL ,
+                    return.vec= TRUE, 
+                    return.remvec = FALSE, 
+                    reps = 10) # looks better !
 
 
 
+# first removal scenario = 70% random
+rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                     params, 
+                     stagenames = stages,
+                     time = 20, 
+                     DDapply="Fmat", 
+                     intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                     remyear = 5, 
+                     rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
+                     bias = 70 ,
+                     return.vec= TRUE, 
+                     return.remvec = TRUE, 
+                     reps = 100) # looks better !
 
-# comparisons 
-lambda0 <- growth.rate(proj0, vis = TRUE)
-summary(lambda0$lambda)
 
-lambda1 <- growth.rate(proj1, vis = TRUE, rem_year = 10)
-summary(lambda1$lambda)
+# Second scenario = 70% male biased 
+rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                     params, 
+                     stagenames = stages,
+                     time = 20, 
+                     DDapply="Fmat", 
+                     intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                     remyear = 5, 
+                     rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
+                     bias = 70 ,
+                     return.vec= TRUE, 
+                     return.remvec = TRUE, 
+                     reps = 100) 
 
-lambda2 <- growth.rate(proj2, vis = TRUE, rem_year = 10)
-summary(lambda2$lambda)
 
-ssd0 <- ssd(proj0, vis = TRUE, cols = col_vec)
-summary(ssd0$stageMat)
-ssd1 <- ssd(proj1, vis = TRUE, cols = col_vec)
-ssd2 <- ssd(proj2, vis = TRUE, cols = col_vec)
+# Third scenario = 90% female biased 
+rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                         params, 
+                         stagenames = stages,
+                         time = 20, 
+                         DDapply="Fmat", 
+                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         remyear = 5, 
+                         rem_strat = "female" ,  # if specified removals, "adults, females, yearling females... 
+                         bias = 70 ,
+                         return.vec= TRUE, 
+                         return.remvec = TRUE, 
+                         reps = 100) 
+
+
+
 
 
                            
