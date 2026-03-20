@@ -1000,22 +1000,48 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
 
 
 # calculating average lambda, av ssd in single function
-pop.av <- function(out_list,  # apply growth rate function to list of out objs  
+pop.av <- function(proj_list,   
+                   baseline_list = NULL, 
+                   relative_change = TRUE,  # must set false if getting metric for baseline
                    return.Lambda = FALSE, #  lambda per year
                    return.Mats = FALSE  # stage dist per year
-                   #  vis = FALSE, # boxplot?
-                   #  rem_year = NULL
+                  
 ){
-  reps <- length(out_list)
+  reps <- length(proj_list)
+  time <- length(proj_list[[1]]$pop)
   
-  # calculating lambda for each rep
   N_list <- vector("list", reps)   # list of N vecs for each repeat
+  base_list <- vector("list", reps)
   
   for (t in 1:reps){
-    N_list[[t]] <- out_list[[t]]$pop    # isolating pop size vector
+    N_list[[t]] <- proj_list[[t]]$pop    # isolating pop size vector
+    
+    if(relative_change == TRUE){
+    base_list[[t]] <- baseline_list[[t]]$pop
+    }
   }
   
-  # lambda calculation as a function applied to pop size vec
+  
+  if(relative_change == TRUE){
+  # calculating final pop size in each scenario  (av?)
+  fin_props <- vector(length = reps)   # vector of proportions
+  
+  for (t in 1:reps){
+    fin_props[t] <- N_list[[t]][time]/base_list[[t]][time]     #  list calculate proportions
+  }
+  
+  }
+  
+  # average pop size proportions
+  av_N <- sapply(N_list, mean)   # vector of means 
+  
+  if(relative_change == TRUE){
+  av_baseN <- sapply(base_list, mean)  
+  relative_meanN <- av_N/ av_baseN 
+  }
+  
+  
+  # calculating lambda for each rep lambda calculation as a function applied to pop size vec
   lambda <- function(N){
     N[2:length(N)]/N[1:(length(N)-1)]
   } 
@@ -1027,7 +1053,7 @@ pop.av <- function(out_list,  # apply growth rate function to list of out objs
   abun_mat <- vector("list", reps)   # list of abundances for each repeat
   
   for (t in 1:reps){
-    abun_mat[[t]] <- out_list[[t]]$vec    # isolating pop size vector
+    abun_mat[[t]] <- proj_list[[t]]$vec    # isolating pop size vector
   }
   
   
@@ -1038,8 +1064,7 @@ pop.av <- function(out_list,  # apply growth rate function to list of out objs
   stageMat <- vector("list", reps)   # fill each stage mats list with mat?
   
   # out obj is a list with matrix and av prop 1 row matrix
-  ssd_out <- list(stageMat = matrix(),  # number of matrices = rep, rows = time
-                  avProp = matrix ())
+  avProp = matrix()
   
   for (t in 1:reps){
     for(i in 1:nrow(abun_mat[[1]])) {   # loop for each column 
@@ -1048,10 +1073,14 @@ pop.av <- function(out_list,  # apply growth rate function to list of out objs
     stageMat[[t]] <- mat
   }
   
+  av_prop <- matrix(0, nrow = reps, ncol = 4)
+  av_prop <-  # each row filled with av proportions
   
   # output proj
-  pop_out <- list(lambda = vector(), av_lambda = vector(), 
-                  stageMat = matrix(), avProp = matrix ()) # number of matrices = rep, rows = time
+  pop_out <- list(fin_props = vector(), av_fin = vector(), 
+                  relative_meanN= vector(),
+                  ssdMat = matrix(), avProp = matrix (),
+                  lambda = vector(), av_lambda = vector()) # number of matrices = rep, rows = time
   
   if(return.Lambda == TRUE){
     pop_out$lambda <- lambda_list  # lambda = # OPT
@@ -1063,8 +1092,13 @@ pop.av <- function(out_list,  # apply growth rate function to list of out objs
     pop_out$ssdMat <- stageMat # OPT
   }
   
-  pop_out$avProp <- lapply(stageMat, colMeans)
+  pop_out$avProp <- sapply(stageMat, colMeans)
   
+  if(relative_change == TRUE){
+  pop_out$fin_props <- fin_props
+  pop_out$av_fin <- mean(fin_props, na.rm = TRUE)
+  pop_out$relative_meanN <- relative_meanN
+  }
   
   return(pop_out)
 }

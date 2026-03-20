@@ -103,7 +103,7 @@ proj1$remvec/proj1$vec[6,]  # replace row of vec with rem year + 1
 
 # plots
 # Stage Abundance
-(proj1_plot <- dd_plot(proj1, 
+proj1_plot <- dd_plot(proj1, 
                        y_val= "Vec", 
                        ylab = "Abundance", 
                        xlab = "Time (t)",
@@ -111,9 +111,9 @@ proj1$remvec/proj1$vec[6,]  # replace row of vec with rem year + 1
                        mytheme = theme_classic(), 
                        cols= col_vec,    # can be vector of cols
                        legend.pos = "top",
-                       base_size = 16))
+                       base_size = 16)
 # Population size
-(proj1_Nplot <- dd_plot(proj1, 
+proj1_Nplot <- dd_plot(proj1, 
                         y_val= "N", 
                         ylab = "Abundance", 
                         xlab = "Time (t)",
@@ -121,7 +121,7 @@ proj1$remvec/proj1$vec[6,]  # replace row of vec with rem year + 1
                         mytheme = theme_classic(), 
                         cols= col_vec,    # can be vector of cols
                         legend.pos = "top",
-                        base_size = 16))
+                        base_size = 16)
 grid.arrange(proj1_plot, proj1_Nplot)
 
 
@@ -248,7 +248,7 @@ rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          remyear = NULL, 
                          rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
                          bias = NULL ,
-                         return.vec= FALSE, 
+                         return.vec= TRUE, 
                          return.remvec = FALSE, 
                          reps = 100) 
 # why extinction?
@@ -304,10 +304,23 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          reps = 100) 
 
 # averages for each scenario
-av_proj0 <- pop.av(rep_proj0)
-av_proj1 <- pop.av(rep_proj1)
-av_proj2 <- pop.av(rep_proj2)
-av_proj3 <- pop.av(rep_proj3)
+av_proj0 <- pop.av(rep_proj0,  return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE)
+av_proj1 <- pop.av(rep_proj1,   
+                   baseline_list = proj0, 
+                   relative_change = TRUE,  # must set false if getting metric for baseline
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE )
+av_proj2 <- pop.av(rep_proj2,
+                   baseline_list = proj0, 
+                   relative_change = TRUE,  # must set false if getting metric for baseline
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE )
+av_proj3 <- pop.av(rep_proj3, 
+                   baseline_list = proj0, 
+                   relative_change = TRUE,  # must set false if getting metric for baseline
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE )
 
 proj0_lambda <- av_proj0$av_lambda
 proj1_lambda <- av_proj1$av_lambda
@@ -356,3 +369,5 @@ meta_proj0 <- meta.proj(Umat,   # vector of stage names
                         time = 20,
                         return.vec = TRUE,
                         return.mats= FALSE)
+
+
