@@ -139,248 +139,18 @@ apply.DD <- function(params,
 
 
 
-##  DD projection function - IMPROVEMENTS = integer individuals only. proportion must be bound between 0 and 1. 
+## IMPROVEMENTS = integer individuals only. proportion must be bound between 0 and 1. 
 
-# Removal function  ------
 rem.proj <- function(Umat,   # MAX SURVIVAL
-                     initial, 
-                     params,
-                     stagenames, # needed for mating func
-                     time, 
-                     DDapply="fertility", 
-                     intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                     remyear = NULL,  # removal year = decrease from following year
-                     rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                     bias = NULL , # strength of bias as percentage (range??)
-                     return.vec= TRUE, 
-                     return.remvec = FALSE) {
-  # Time 
-  if (time<=1) stop("Time must be a positive integer")
-  else(time <- as.integer(time))
-  
-  if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
-  else(n0 <- as.numeric(initial))
-  
-  if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
-  
-  if (is.null(params)) stop("You must provide parameters for selected density-dependent function")
-  
-  if (!is.null(bias) && 1+bias > 1/(intensity/100)) stop("Bias value provided leads to p(removal) >1. Re-enter below ", 1/(intensity/100), " and repeat")
-  
-  
-  nStages <- length(stagenames)/2      # how many stages
-  
-
-  # Set up the output
-  out <- list(pop = vector(), 
-              vec = matrix(), 
-              Nremoved = numeric(), # how to leave blank if no removals?
-              remvec = vector())  # including number removed and removals from each stage
-  
-  Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
-  Pop <- numeric(length = time + 1)       # vector to fill with total pop size each year
-  Nremoved <- 0
-  remvec <- rep(NA, length(stagenames))
-  
-  colnames(Vec) <- stagenames   # naming cols matrix as stages 
-  rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- n0                   
-  Pop[1] <- sum(n0)    
-  
-  
-  if(is.numeric(intensity)){   # removal scenarios only
-    ry <- as.numeric(remyear)           # shortening name for future use
-  } else if(is.null(intensity)){
-    ry <- time                   # no removals = run until time
-  }
-  # Loop = density dependent matrix application for each year
-  for (i in 1:ry) {   # normal projection until remyear (if removal at t=5, project until t=5, final entry inserted to row 6) remember vec[5,] holds entries for year=4 (0:time)
-    
-    # f value per year creation
-    thisNf <- Vec[i,nStages]    # Nf = adult fems in Vec matrix
-    thisNm <- Vec[i,2*nStages]  # Nm 
-    
-    thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
-    
-    # ricker density dependence each year
-    thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
-                         thisNf,        
-                         thisNm,            
-                         return.mat= FALSE)  
-    
-    # If the projection matrix has any negative values in it, set to 0 and keep iterating 
-    # return the projection up until this point.
-    # Replace negative values with 0 (safely handles NA as well)
-    if (any(thisAmat < 0, na.rm = TRUE)) {
-      warning(paste("Negative values in projection matrix at time step", i,
-                    "- setting negative entries to 0 and continuing."))
-      thisAmat[thisAmat < 0] <- 0
-      thisAmat[is.na(thisAmat)] <- 0
-    }
-    
-    # if pop size <= 0, stop and return
-    if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
-    
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-  }
-  
-  
-  if (is.numeric(intensity)) {
-    # pop removal
-    # ------------------------------------------------
-    if(rem_strat == "random"){
-      if (is.null(bias) == FALSE) paste("ignoring bias value since removal is random across ages and sexes")
-      #generating the distribution - varies with rem strat
-      prop <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.2
-      # if falls below 0, or above 1 , set to 0 and 1
-      
-      # stage biased
-    } else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
-      if (is.null(bias) == TRUE) stop("please provide strength of bias")
-      if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
-        y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
-        a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05)    
-      }
-      else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
-        y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
-        a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
-      }
-      # col binding so each row represents stage
-      bind <- cbind(y_rem, a_rem)
-      prop <- c(bind[1,], bind[2,])   # 4 proportions to remove in correct order (yf, af, ym, am)
-      
-      
-      # sex biased
-    } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
-      if (is.null(bias) == TRUE) stop("please provide strength of bias")
-      if(rem_strat %in% c("females", "Females", "female", "Female")){
-        f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
-        
-      } else if(rem_strat %in% c("males", "Males", "male", "Male")){
-        f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) # bias applied to females
-        m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
-      }
-      bind <- cbind(f_rem, m_rem)
-      prop <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
-      
-      
-      # specified
-    } else if (is.numeric(intensity) && is.numeric(rem_strat)){
-      if (is.null(bias) == TRUE) stop("please provide strength of bias")
-      # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
-      bi <- length(rem_strat)  # how many elements provided
-      
-      rem <- rnorm((length(stagenames) - bi), mean = ((1 - bias)*intensity)/100, sd= 0.05)   # unbiased, 1- number of biased samples needed
-      rembi <- rnorm(bi, mean = ((1 + bias)*intensity)/100, sd= 0.05)
-      
-      # how to order? biased p pos matched to bias stage? 
-      prop <- numeric(length = length(stagenames))
-      prop[rem_strat] <- rembi   # biased value entry gets biased proportion - only works if length = 1?
-      prop[-rem_strat] <- rem    # all non biased stages, add unbiased probs
-    }
-    # ------------------
-    # removals
-    rem_vec <- Vec[ry+1,] * prop    # rem vec is how many individuals we remove from the population 
-    Rem <- sum(rem_vec)
-    
-    Vec[ry + 2,] <- Vec[ry + 1,]  - rem_vec  # year after remyear = 2 rows later filled with new stage vec
-    Pop[ry + 2] <- sum(Vec[ry + 2]) # filling in total pop size
-    
-    
-    # repeat loop after removal year
-    for (j in (ry + 2):time) {    # starts filling from 27th row (26th year)
-      
-      # Mating Fmat creation 
-      thisNf <- sum(Vec[j,nStages-1], Vec[j,nStages-1])    # Nf is mid col in Vec matrix
-      thisNm <- sum(Vec[j,2*nStages-1],Vec[j,2*nStages])   # Nm 
-      
-      # ricker density dependence each year
-      thisN <- sum(Vec[j,])  # pop sizes sums row i for cols included in N
-      thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
-                           thisNf,        
-                           thisNm,            
-                           return.mat= FALSE)
-      
-      # If the projection matrix has any negative values in it, stop iterating but
-      # return the projection up until this point.
-      # Replace negative values with 0 (safely handles NA as well)
-      if (any(thisAmat < 0, na.rm = TRUE)) {
-        warning(paste("Negative values in projection matrix at time step", i,
-                      "- setting negative entries to 0 and continuing."))
-        thisAmat[thisAmat < 0] <- 0
-        thisAmat[is.na(thisAmat)] <- 0
-      }
-      
-      # if pop size <= 0, stop and return
-      if(Pop[i]<= 0 || is.na(Pop[i])) {
-        warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-        break
-      }
-      # if any stage becomes negative, set to zero and continue
-      if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-        warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-        Vec[Vec < 0] <- 0
-        Vec[is.na(Vec)] <- 0
-      }
-      
-      Vec[(j + 1), ] <- thisAmat %*% Vec[j, ]  # following year stage vector is this Amat* this year pop structure - incorporate U here for max no. births?
-      Pop[j + 1] <- sum(Vec[(j + 1), ], na.rm = TRUE) # any sums, incl na = TRUE
-    }
-  } 
-  
-  # out objects
-  out$pop <- Pop
-  if(is.numeric(intensity)){   
-    out$Nremoved <- Rem    # where do we define total N removed
-    if (isTRUE(return.remvec)) {
-      out$remvec <- rem_vec        # returns blank?
-    } }
-  
-  if (isTRUE(return.vec)) {
-    out$vec <- Vec        
-  } 
-  
-  return(out)
-}
-
-# Notes----
-# Function name - rem.proj
-# Inputs - 
-#  Umat: max predicted survival rates
-#  initial: population vector for abundance of each stage class
-#  params: defined in other funcs, importantly b, 
-#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
-#  time: projection interval
-#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
-#  return.vec= abundance stage class matrix returned? defaults FALSE
-# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
-# Outputs - out
-#  $pop: vector of total population size each year
-#  $vec: matrix of abundance of each stage each year
-#  $mat: returns final Amat produced
-#  $Nremoved = total of pop removed
-#  $rem_vec = optional vector of removals per class
-
-
-multi.rem <- function(Umat,   # MAX SURVIVAL
                       initial, 
                       params, 
                       stagenames, 
                       time, 
-                      DDapply="matrix", 
+                      DDapply="fertility", 
                       intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                       remyears = integer(0),  # removal year = vector of years 
+                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                      bias = NULL , # strength of bias as percentage (range??)
                       return.vec= TRUE, 
                       return.remvec = TRUE) 
 {
@@ -457,9 +227,17 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       thisAmat[is.na(thisAmat)] <- 0
     }
     
+    
+    # multiplying to project
+    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  
+    # set any negatives to 0
+    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
+    
+    Pop[i + 1] <- sum(Vec[(i + 1), ])
+    
     # if pop size <= 0, stop and return
     if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+      stop(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
       break
     }
     # if any stage becomes negative, set to zero and continue
@@ -469,22 +247,65 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       Vec[is.na(Vec)] <- 0
     }
     
-    # multiplying to project
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  
-    # set any negatives to 0
-    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-    
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index, remove prob and add to following year
       idx <- rem_index[as.character(i)]  
       
       # pop removal -------------------------
-      # haven't added bias yet - next once running
+     
+       if(rem_strat == "random"){
+        if (is.null(bias) == FALSE) paste("ignoring bias value since removal is random across ages and sexes")
+        #generating the distribution - varies with rem strat
+         thisProp <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.2
+         thisProp <- pmax(0, pmin(1, thisProp))  # clip to [0,1]       
+        
+        # stage biased
+       } else if(rem_strat == "random" && is.null(bias) == TRUE){
+         stop("please provide strength of bias for no random removal strategies")
       
-      thisProp <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.2
-      thisProp <- pmax(0, pmin(1, thisProp))  # clip to [0,1]
-      
+         } else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
+            if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
+           y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+           a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05)    
+          }
+          else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
+            y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
+            a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+          }
+          # col binding so each row represents stage
+          bind <- cbind(y_rem, a_rem)
+          thisProp <- c(bind[1,], bind[2,])   # 4 proportions to remove in correct order (yf, af, ym, am)
+          
+          
+          # sex biased
+        } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
+          if(rem_strat %in% c("females", "Females", "female", "Female")){
+            f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) # bias applied to females
+            m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+            
+          } else if(rem_strat %in% c("males", "Males", "male", "Male")){
+            f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) # bias applied to females
+            m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
+          }
+          bind <- cbind(f_rem, m_rem)
+          thisProp <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
+          
+          
+          # specified
+        } else if (is.numeric(intensity) && is.numeric(rem_strat)){
+          # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
+          bi <- length(rem_strat)  # how many elements provided
+          
+          rem <- rnorm((length(stagenames) - bi), mean = ((1 - bias)*intensity)/100, sd= 0.05)   # unbiased, 1- number of biased samples needed
+          rembi <- rnorm(bi, mean = ((1 + bias)*intensity)/100, sd= 0.05)
+          
+          # how to order? biased p pos matched to bias stage? 
+          thisProp <- numeric(length = length(stagenames))
+          thisProp[rem_strat] <- rembi   # biased value entry gets biased proportion - only works if length = 1?
+          thisProp[-rem_strat] <- rem    # all non biased stages, add unbiased probs
+        }
+        # ------------------
+        
+     # calculating number removed from each stage
       thisRemvec <- Vec[i,] * thisProp   
       thisRem <- sum(thisRemvec)  # total number removed 
       
@@ -496,6 +317,18 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
       Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
       Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
+      
+      # if pop size <= 0, stop and return
+      if(Pop[i]<= 0 || is.na(Pop[i])) {
+        stop(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+        break
+      }
+      # if any stage becomes negative, set to zero and continue
+      if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
+        warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+        Vec[Vec < 0] <- 0
+        Vec[is.na(Vec)] <- 0
+      }
     }
   }
   # -----------------------  
@@ -513,8 +346,24 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
   return(out)
   
 }
-# NOTES 
-# Function name = multi.rem
+# NOTES  Removal function  ------
+# Function name - rem.proj
+# Inputs - 
+#  Umat: max predicted survival rates
+#  initial: population vector for abundance of each stage class
+#  params: defined in other funcs, importantly b, 
+#  stagenames: vec of stage classes and sex (2 stage classes should have stagenames length 4)
+#  time: projection interval
+#  DDapply= how is density dep applied (matrix, fertility, survival, recruitment)
+#  return.vec= abundance stage class matrix returned? defaults FALSE
+# Use - project an initial population vector over t years using density dependence at each time step to adjust vital rates in matrix. 
+# Outputs - out
+#  $pop: vector of total population size each year
+#  $vec: matrix of abundance of each stage each year
+#  $mat: returns final Amat produced
+#  $Nremoved = total of pop removed
+#  $rem_vec = optional vector of removals per class
+
 
 
 
@@ -1001,14 +850,13 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
 
 # calculating average lambda, av ssd in single function
 pop.av <- function(proj_list,   
-                   baseline_list = NULL, 
-                   relative_change = TRUE,  # must set false if getting metric for baseline
+                   baseline_list = NULL, # baseline for comparison. if empty, no relative population sizes calculated
                    return.Lambda = FALSE, #  lambda per year
-                   return.Mats = FALSE  # stage dist per year
+                   return.Mats = FALSE)  # stage dist per year
                   
-){
+{
   reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop)
+  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
   
   N_list <- vector("list", reps)   # list of N vecs for each repeat
   base_list <- vector("list", reps)
@@ -1016,26 +864,22 @@ pop.av <- function(proj_list,
   for (t in 1:reps){
     N_list[[t]] <- proj_list[[t]]$pop    # isolating pop size vector
     
-    if(relative_change == TRUE){
+    if(!is.null(baseline_list)){
     base_list[[t]] <- baseline_list[[t]]$pop
     }
   }
   
+  # average pop size proportions
+  av_N <- sapply(N_list, mean)   # vector of mean pop sizes per rep
   
-  if(relative_change == TRUE){
+  if(!is.null(baseline_list)){   # only if there is comparison proj provided
   # calculating final pop size in each scenario  (av?)
   fin_props <- vector(length = reps)   # vector of proportions
   
   for (t in 1:reps){
     fin_props[t] <- N_list[[t]][time]/base_list[[t]][time]     #  list calculate proportions
   }
-  
-  }
-  
-  # average pop size proportions
-  av_N <- sapply(N_list, mean)   # vector of means 
-  
-  if(relative_change == TRUE){
+
   av_baseN <- sapply(base_list, mean)  
   relative_meanN <- av_N/ av_baseN 
   }
@@ -1064,7 +908,6 @@ pop.av <- function(proj_list,
   stageMat <- vector("list", reps)   # fill each stage mats list with mat?
   
   # out obj is a list with matrix and av prop 1 row matrix
-  avProp = matrix()
   
   for (t in 1:reps){
     for(i in 1:nrow(abun_mat[[1]])) {   # loop for each column 
@@ -1073,28 +916,31 @@ pop.av <- function(proj_list,
     stageMat[[t]] <- mat
   }
   
-  av_prop <- matrix(0, nrow = reps, ncol = 4)
-  av_prop <-  # each row filled with av proportions
+  list_prop <- lapply(stageMat, colMeans) # each row filled with av proportions
+  # combining lists into a single matrix
+  av_prop <- matrix(unlist(list_prop), byrow = TRUE, nrow = reps, ncol = 4) # filling each row with list vec
   
   # output proj
   pop_out <- list(fin_props = vector(), av_fin = vector(), 
                   relative_meanN= vector(),
-                  ssdMat = matrix(), avProp = matrix (),
+                  ssdMat = matrix(), av_prop = matrix (),
                   lambda = vector(), av_lambda = vector()) # number of matrices = rep, rows = time
   
   if(return.Lambda == TRUE){
-    pop_out$lambda <- lambda_list  # lambda = # OPT
+    pop_out$lambda <- lambda_list  # lambda = lambda by year
   }
   # averaging across years for each projection
-  pop_out$av_lambda <- sapply(lambda_list, mean)
+  pop_out$av_lambda <- sapply(lambda_list, mean)    # average lambda value for each repetition
   
   if(return.Mats == TRUE){
-    pop_out$ssdMat <- stageMat # OPT
+    pop_out$ssdMat <- stageMat # stage proportions by year
   }
   
-  pop_out$avProp <- sapply(stageMat, colMeans)
+  pop_out$av_prop <- av_prop  # single average lambda for each repetition - 
+                                                 # layout as lists
+                                                 
   
-  if(relative_change == TRUE){
+  if(!is.null(baseline_list)){
   pop_out$fin_props <- fin_props
   pop_out$av_fin <- mean(fin_props, na.rm = TRUE)
   pop_out$relative_meanN <- relative_meanN
@@ -1102,4 +948,19 @@ pop.av <- function(proj_list,
   
   return(pop_out)
 }
+# NOTES
+# Name =  av_pop
+# proj_list,   
+# baseline_list : the baseline projection to compare projections
+# return.Lambda : return lambda per year for each rep? T/F
+# return.Mats : return stage distribution per year for each rep? T/F
+# 
+# Outputs
+# fin_props : final year proportions of projection compared to baseline (vec length 100)
+# av_fin : average final pop size of proj compared to baseline (numeric val)
+# relative_meanN : mean pop size across proj compared to mean pop size of baseline (vec length 100)
+# ssdMat : stage dist mat
+# av_prop : average proportions of each stage in matrix   
+# lambda : lambda per year per rep (list of 100 vecs length 20)
+# av_lambda : average lambda per rep (vec length 100)
 

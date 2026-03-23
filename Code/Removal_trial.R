@@ -6,7 +6,7 @@ library(ggplot2)
 
 # vec structure = yf, af, ym, am (25, 10, 25, 10)
 stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
-n0 <- c(25, 10, 25, 10)
+n0 <- c(5, 20, 5, 20)
 
 # first time using params from extraction 
 # Creating my control - population projected over 100 years
@@ -161,19 +161,11 @@ proj_bi <- rem.proj(Umat,      # seems to reach stability quickly - some kind of
 
 
 
-
-
-
-
-
-
-
-
 # NEXT STEPS = Multiple removals rem_year1, 2....
 # goal - "remove X% of pop every 2 years for 50 years, long term pop growth rate.
 # Syntax = remove at remyear = seq(10,30, by=2) 
 
-# function design - project pop until ry, remove until reach timestep. use this as rem.proj instead of seperating?
+# function design - project pop until ry, remove until reach timestep. use this as rem.proj instead of seperating? --------
 
 multi.rem <- function(Umat,   # MAX SURVIVAL
                       initial, 
@@ -308,12 +300,14 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     return(out)
 }
 
+
+# tests ----------
 multi.trial <- multi.rem(Umat,   # MAX SURVIVAL
                          initial = n0, 
                          params, 
                          stagenames = stages, 
                          time = 20, 
-                         DDapply="matrix", 
+                         DDapply="fertility", 
                          intensity= 50,  # percentage you want REMOVED from pop at time T=ry
                          remyears = c(5, 9, 11),  # removal year = vector of years 
                          return.vec= TRUE, 
@@ -339,3 +333,52 @@ trialN <- dd_plot(multi.trial,
                   legend.pos = "topright",
                   base_size = 16)
 
+# testing multirem as a baseline 
+multi.trial2 <- multi.rem(Umat,   # MAX SURVIVAL
+                         initial = n0, 
+                         params, 
+                         stagenames = stages, 
+                         time = 20, 
+                         DDapply="fertility", 
+                         intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                         remyears = NULL,  # removal year = vector of years 
+                         return.vec= TRUE, 
+                         return.remvec = FALSE) 
+
+
+
+single_rem <- multi.rem(Umat,   # MAX SURVIVAL
+                        initial = n0, 
+                        params, 
+                        stagenames = stages, 
+                        time = 20, 
+                        DDapply="fertility",  
+               intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+               remyears = 5,  # removal year = vector of years 
+               rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+               bias = NULL , # strength of bias as percentage (range??)
+               return.vec= TRUE, 
+               return.remvec = TRUE) 
+
+ dd_plot(bias_trial, 
+                       y_val= "Vec", 
+                       ylab = "Abundance", 
+                       xlab = "Time (t)",
+                       rem_year = 5,  # adding line to year - must adapt to incorporate vec inputs
+                       mytheme = theme_classic(), 
+                       cols= col_vec,    # can be vector of cols
+                       legend.pos = "topright",
+                       base_size = 16)
+
+ bias_trial <- multi.rem(Umat,   # MAX SURVIVAL
+                         initial = n0, 
+                         params, 
+                         stagenames = stages, 
+                         time = 20, 
+                         DDapply="fertility",  
+                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         remyears = 5,  # removal year = vector of years 
+                         rem_strat = "females",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                         bias = 0.15 , # strength of bias as percentage (range??)
+                         return.vec= TRUE, 
+                         return.remvec = TRUE) 
