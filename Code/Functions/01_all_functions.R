@@ -237,7 +237,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     
     # if pop size <= 0, stop and return
     if(Pop[i]<= 0 || is.na(Pop[i])) {
-      stop(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
       break
     }
     # if any stage becomes negative, set to zero and continue
@@ -851,7 +851,8 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
                          rem_strat,  # if specified removals, "adults, females, yearlings, males, yearling females, 
                          bias,
                          return.vec, 
-                         return.remvec) }
+                         return.remvec) 
+    }
   return(out)
   
 }
@@ -867,6 +868,11 @@ pop.av <- function(proj_list,
                    return.Mats = FALSE)  # stage dist per year
                   
 {
+  # basic checks
+  if(!is.null(baseline_list) && length(baseline_list)!= length(proj_list)){
+    stop(paste("length of baseline and projection differ - comparison not possible. Ensure repetitions are equal before continuing."))
+  }
+  
   reps <- length(proj_list)
   time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
   
