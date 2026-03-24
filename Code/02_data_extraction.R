@@ -66,8 +66,10 @@ widen <- function(df, y_val) {
 
 
 # manually digitising figs ----
-figs <- metaDigitise(dir ="C:/Users/jaycr/OneDrive - Nexus365/UNI/Masters/Project resources/Badger-MBIOL/Data/FigExtraction",
-                     summary = FALSE)    # summary = false imports raw data
+# figs <- metaDigitise(dir ="C:/Users/jaycr/OneDrive - Nexus365/UNI/Masters/Project resources/Badger-MBIOL/Data/FigExtraction",
+#                      summary = FALSE)    # summary = false imports raw data
+#Version for Chrissy's computer (but I think it might work for Jay as well, if the working directory is Badger-MBIOL/)
+figs <- metaDigitise(dir ="Data/FigExtraction", summary = FALSE)
 
 # splitting into plot types is easier to work with
 scatter <- figs$scatterplot
