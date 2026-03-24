@@ -73,9 +73,15 @@ mating.func <- function(params,     # density dependent parameters
 # Outputs:
 # f = cub production per female
 
-
-
 ##  Ricker function and matrix application ------
+ricker <- function(params, N){   # Using params (b) and population size input
+  dd_fun <- exp(-params$b*N)
+  return(dd_fun)      # returns value of multiplier
+}
+# Function ricker
+# params, incl b = strength of density dependence
+# N= population size (can be total, NAdults, other, but explain in comments) 
+
 apply.DD <- function(params, 
                      Umat, 
                      N,   # yearling and adults
@@ -85,17 +91,10 @@ apply.DD <- function(params,
                      Nm,             # Adult males
                      return.mat= FALSE) {   # apply ricker to whole matrix, survival or fertility
   
-  ricker <- function(params, N){   # Using params (b) and population size input
-    dd_fun <- exp(-params$b*N)
-    return(dd_fun)      # returns value of multiplier
-  }
-  rick <- ricker(params, N)    # rick = multiplier
-  # Function ricker
-  # params, incl b = strength of density dependence
-  # N= population size (can be total, NAdults, other, but explain in comments) 
-
+  # Call to ricker() function
+  rick <- ricker(params, N)    # rick = multiplier to be applied to fertility later
   
-  # mating func embedded
+  # Call to mating.func()
   mating <- mating.func(params,     # density dependent parameters
                         stagenames,   # Stages in life cycle graph 
                         Nf,        # Adult  females
