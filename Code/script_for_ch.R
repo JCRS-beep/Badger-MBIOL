@@ -41,7 +41,7 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
 
 
 # projections (model 1 - non-spatial) -----
-n0 <- c(25, 10, 25, 10)  # initial population structure = yf, af, ym, am 
+n0 <- c(5, 10, 5, 10)  # initial population structure = yf, af, ym, am 
 
 # baseline = 20 year projection, no removals
 proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
@@ -52,7 +52,7 @@ proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   DDapply="Fmat", 
                   intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                   remyear = NULL, 
-                  rem_strat =NULL ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                  rem_strat = NULL ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
                   bias = NULL ,
                   return.vec= TRUE, 
                   return.remvec = FALSE) 
@@ -98,8 +98,6 @@ proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 
-# to check prop removed form each stage
-proj1$remvec/proj1$vec[6,]  # replace row of vec with rem year + 1
 
 # plots
 # Stage Abundance
@@ -244,6 +242,7 @@ rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
+                         method = "random",
                          intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                          remyear = NULL, 
                          rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
@@ -265,6 +264,7 @@ rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
+                         method = "random",
                          intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
@@ -280,6 +280,7 @@ rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
+                         method = "random",
                          intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
@@ -294,7 +295,8 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          params, 
                          stagenames = stages,
                          time = 20, 
-                         DDapply="Fmat", 
+                         DDapply="Fmat",
+                         method = "random",
                          intensity= 80,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = "female" ,  # if specified removals, "adults, females, yearling females... 
@@ -306,21 +308,36 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 # averages for each scenario
 av_proj0 <- pop.av(rep_proj0,  return.Lambda = TRUE, #  lambda per year
                    return.Mats = TRUE)
-av_proj1 <- pop.av(rep_proj1,   
-                   baseline_list = proj0, 
-                   relative_change = TRUE,  # must set false if getting metric for baseline
+# calculating av ssd 
+stage_vec <- av_proj0$av_prop
+stageDist <- colMeans(stage_vec)  # using this in our repeat proj function
+
+# calculating av pop size across baseline
+
+mean.pop <- function(proj){
+ mean(proj$pop)
+}
+
+rep_meanPops <- sapply(rep_proj0,mean.pop)  # mean across years for each rep
+
+meanPop <- mean(rep_meanPops)  # use mean and sd in normal dist when generating initial vecs
+sdPop <- sd(rep_meanPops)
+
+av_proj0 <- pop.av(rep_proj0,  
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE)
+av_proj1 <- pop.av(rep_proj1, 
+                   rep_proj0, 
                    return.Lambda = TRUE, #  lambda per year
                    return.Mats = TRUE )
-av_proj2 <- pop.av(rep_proj2,
-                   baseline_list = proj0, 
-                   relative_change = TRUE,  # must set false if getting metric for baseline
+av_proj2 <- pop.av(rep_proj2, 
+                   rep_proj0, 
                    return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE )
+                   return.Mats = TRUE)
 av_proj3 <- pop.av(rep_proj3, 
-                   baseline_list = proj0, 
-                   relative_change = TRUE,  # must set false if getting metric for baseline
+                   rep_proj0, 
                    return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE )
+                   return.Mats = TRUE)
 
 proj0_lambda <- av_proj0$av_lambda
 proj1_lambda <- av_proj1$av_lambda
@@ -329,15 +346,11 @@ proj3_lambda <- av_proj3$av_lambda
 
 # setting up dataframe for plots
 av_df <- data.frame(proj0_lambda, proj1_lambda, proj2_lambda, proj3_lambda) # spread so col for projection name, lamb value (later )
-# av_df %>% 
-#  pivot_longer(av_df, cols = c(proj0_lambda, proj1_lambda), 
- #              names_to = "Projection",
-  #             values_to = "av_lambda")
+av_df %>% 
+  pivot_longer(av_df, cols = c(proj0_lambda, proj1_lambda), 
+               names_to = "Projection",
+              values_to = "av_lambda")
 
-
-
-# av_testplot <- ggplot(av_df)+
-#  geom_boxplot(data = lamb_df, y= av_proj0$av_lambda)    # produce a boxplot for each scenario on x axis?
 
 
 # Meta population projection ---------

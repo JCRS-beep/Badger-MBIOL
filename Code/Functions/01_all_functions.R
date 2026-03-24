@@ -140,7 +140,6 @@ apply.DD <- function(params,
 
 
 ## IMPROVEMENTS = integer individuals only. proportion must be bound between 0 and 1. 
-
 rem.proj <- function(Umat,   # MAX SURVIVAL
                       initial, 
                       params, 
@@ -148,7 +147,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                       time, 
                       DDapply="fertility", 
                       intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                      remyears = integer(0),  # removal year = vector of years 
+                      remyear = integer(0),  # removal year = vector of years 
                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                       bias = NULL , # strength of bias as percentage (range??)
                       return.vec= TRUE, 
@@ -169,21 +168,21 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   
   nStages <- length(stagenames)/2      # how many stages
-  ry <- remyears                 
+  ry <- remyear                 
   
-  # ensure remyears are integers and between 1 - time
-  if (length(remyears) > 0) {
-    remyears <- unique(as.integer(remyears))
-    remyears <- remyears[remyears >= 1 & remyears <= time]
-    if (length(remyears) == 0) warning("No valid remyears in 1:time after filtering")
+  # ensure remyear are integers and between 1 - time
+  if (length(remyear) > 0) {
+    remyear <- unique(as.integer(remyear))
+    remyear <- remyear[remyear >= 1 & remyear <= time]
+    if (length(remyear) == 0) warning("No valid remyear in 1:time after filtering")
   }
   
   
   # Set up  output
   out <- list(pop = vector(), 
               vec = matrix(), 
-              Nremoved = numeric(length(remyears)), # must be a vector - length = number of removal years
-              remvec = vector("list", length(remyears)))  # including number removed and removals from each stage - must be a list - length number of removal years
+              Nremoved = numeric(length(remyear)), # must be a vector - length = number of removal years
+              remvec = vector("list", length(remyear)))  # including number removed and removals from each stage - must be a list - length number of removal years
   
   Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
@@ -193,11 +192,11 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   colnames(Vec) <- stagenames   # naming cols matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- n0                   
-  Pop[1] <- sum(n0)    
+  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
+  Pop[1] <- sum(n0)
   
   # Map removal year -> index into Remvec / Nremoved:
-  rem_index <- if (length(remyears) > 0) setNames(seq_along(remyears), remyears) # index contains number of rem years, links each remyear to a value in vector 
+  rem_index <- if (length(remyear) > 0) setNames(seq_along(remyear), remyear) # index contains number of rem years, links each remyear to a value in vector 
   else integer(0)
   
   
@@ -229,9 +228,10 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     
     
     # multiplying to project
-    Vec[(i + 1), ] <- thisAmat %*% Vec[i, ]  
+    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
     # set any negatives to 0
     Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
+    Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
     
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
@@ -306,7 +306,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
         # ------------------
         
      # calculating number removed from each stage
-      thisRemvec <- Vec[i,] * thisProp   
+      thisRemvec <- floor(Vec[i,] * thisProp)   # round removals down or up? If we remove 13.6 badgers, 13 or 14?
       thisRem <- sum(thisRemvec)  # total number removed 
       
       #  into outputs
@@ -802,11 +802,13 @@ meta.proj <- function(Umat,   # vector of stage names
 
 
 # creating repeatable projections using proj functions, varying initial pop vector
+# Need a way to stop current loop if pop size falls to zero but continue with other loops
 repeat.proj <- function(Umat,   # MAX SURVIVAL
                         params,
                         stagenames, # needed for mating func
                         time = 20, 
                         DDapply="fertility", 
+                        method = "norm",  # how to generate initial pop sizes?
                         intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
                         remyear = NULL,  # removal year = decrease from following year
                         rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
@@ -814,22 +816,32 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
                         return.vec= TRUE, 
                         return.remvec = TRUE,
                         reps = 10) {
-  # set up the ouput = a list, length = number of repeats, each containing the out obj of 
-  out <- vector("list", reps)
+  # set up the ouput = a list, length = number of repeats, each containing the out obj of  projection function
+  out <- vector("list", reps) 
   
-  # create our random initial vectors 
-  initial <- vector("list", reps)   # list to fill with initial vector for each repetition
-  
-  
+  # looping projection for as many repetitions desired
   for (t in 1:reps){
+    # generating inital vec = want to maintain similar stage dist but vary population size
+    thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
+    
+    stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
+    
+   # rnorm = aiming for pops around certain size, with wide variation
+   # runif vs random starting pop size (how to define min and max?)
+   
+    # generating pop size
+    if(method == "random"){
+    size <- floor(runif(1, min = 40, max = 250))  # defining min and max
+    
+    } else if (method == "norm"){
+      size <- floor(rnorm(1, mean = 137, sd  = 50 ))   # defining mean from repeated baseline means. large sd for variation
+    }
     # seperate samples needed for adults and yearlings = 
-    a_init <- as.integer(runif(2, min = 0, max = 70))   # max fem size attained in projections  = 70 individuals
-    y_init <- as.integer(runif(2, min = 0, max = 25))   # yearlings always less abundant than adults
-    bind <- cbind(y_init, a_init)
-    initial[[t]] <- c(bind[1,], bind[2,])  # binding adult and yearlings in correct order
+    
+    thisInitial <- size * stageDist  #multiply generated pop size with fixed stage dist
     
     out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                         initial[[t]], 
+                         thisInitial, 
                          params, 
                          stagenames,
                          time, 
@@ -881,7 +893,7 @@ pop.av <- function(proj_list,
   }
 
   av_baseN <- sapply(base_list, mean)  
-  relative_meanN <- av_N/ av_baseN 
+  relative_meanN <- av_N / av_baseN 
   }
   
   
@@ -936,7 +948,7 @@ pop.av <- function(proj_list,
     pop_out$ssdMat <- stageMat # stage proportions by year
   }
   
-  pop_out$av_prop <- av_prop  # single average lambda for each repetition - 
+  pop_out$av_prop <- av_prop  # single stage proportion for each rep - 
                                                  # layout as lists
                                                  
   
