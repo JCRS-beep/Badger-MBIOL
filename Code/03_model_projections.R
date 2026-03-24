@@ -36,7 +36,7 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
 )
 
 # projections (model 1) -----
-n0 <- c(25, 10, 25, 10)  # vec structure = yf, af, ym, am 
+n0 <- c(5, 20, 5, 20) # vec structure = yf, af, ym, am 
 
 # baseline = 20 year projection
 proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
@@ -101,6 +101,7 @@ proj3 <- rem.proj(Umat,
 # EXTINCTON! but why do individuals that develop into adults not breed at following timestep? issue with setting to 0?
 
 
+
 # Repeated projections, do not return long outputs !
 # Basline projection analysis
 rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
@@ -114,7 +115,7 @@ rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                     bias = NULL ,
                     return.vec= TRUE, 
                     return.remvec = FALSE, 
-                    reps = 10) # looks better !
+                    reps = 100) # looks better !
 
 
 
@@ -127,7 +128,7 @@ rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                      intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                      remyear = 5, 
                      rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
-                     bias = 70 ,
+                     bias = NULL ,
                      return.vec= TRUE, 
                      return.remvec = TRUE, 
                      reps = 100) # looks better !
@@ -142,7 +143,7 @@ rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                      intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                      remyear = 5, 
                      rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
-                     bias = 70 ,
+                     bias = 0.15,
                      return.vec= TRUE, 
                      return.remvec = TRUE, 
                      reps = 100) 
@@ -154,10 +155,10 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         intensity= 80,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = "female" ,  # if specified removals, "adults, females, yearling females... 
-                         bias = 70 ,
+                         bias = 0.15,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
