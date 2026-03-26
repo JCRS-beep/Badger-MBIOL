@@ -148,3 +148,48 @@ lamb_box <- ggplot(df_long, aes(x = Projection, y = av_lambda))+
 # why are there sm outliers from all projections?
 
 
+
+
+
+
+# looking at repeated rems
+rel_multi1 <- relative.pop(multi_rem1,   
+                          baseline_list = rep_proj0) 
+rel_multi2 <- relative.pop(multi_rem2,   
+                          baseline_list = rep_proj0) 
+rel_multi3 <- relative.pop(multi_rem2,   
+                          baseline_list = rep_proj0) 
+multi_list <- list(rel_multi1, rel_multi2, rel_multi3) 
+
+multi_rel_df <- rel.df(multi_list)
+
+finN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_final_N)) +
+  geom_boxplot(outlier.colour="red") +
+  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+  labs(title = "Final population size relative to baseline average",
+       y = "Relative final pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+meanN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_mean_N)) + 
+  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
+  geom_hline(yintercept = 1, aes(colour = "grey20")) +
+  labs(title = "Average population size relative to baseline average",
+       y = "Relative mean pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
