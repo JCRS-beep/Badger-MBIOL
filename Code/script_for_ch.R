@@ -21,7 +21,8 @@ source(here("Code/Functions/01_all_functions.R"))
 # data extraction
 source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
 
-# setting up parameters and vital rates for demographic model ------
+# setting up parameters and vital rates for demographic model ------  
+# Should this be within its own script to source?
 stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
 
 Umat <- matrix(0, nrow=4, ncol=4)
@@ -250,12 +251,6 @@ rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          return.vec= TRUE, 
                          return.remvec = FALSE, 
                          reps = 100) 
-# why extinction?
-
-# Yearling_f  Adult_f Yearling_m  Adult_m
-# 0          20  0.00000         10 67.00000   
-# 1         NaN 17.01827        NaN 58.28236     # should have reproduction between 17 fems and 58 males? 
-# 2           0  0.00000          0  0.00000
         
 
 # first removal scenario = 70% random
@@ -304,52 +299,6 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
-
-# averages for each scenario
-av_proj0 <- pop.av(rep_proj0,  return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-# calculating av ssd 
-stage_vec <- av_proj0$av_prop
-stageDist <- colMeans(stage_vec)  # using this in our repeat proj function
-
-# calculating av pop size across baseline
-
-mean.pop <- function(proj){
- mean(proj$pop)
-}
-
-rep_meanPops <- sapply(rep_proj0,mean.pop)  # mean across years for each rep
-
-meanPop <- mean(rep_meanPops)  # use mean and sd in normal dist when generating initial vecs
-sdPop <- sd(rep_meanPops)
-
-av_proj0 <- pop.av(rep_proj0,  
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-av_proj1 <- pop.av(rep_proj1, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE )
-av_proj2 <- pop.av(rep_proj2, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-av_proj3 <- pop.av(rep_proj3, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-
-proj0_lambda <- av_proj0$av_lambda
-proj1_lambda <- av_proj1$av_lambda
-proj2_lambda <- av_proj2$av_lambda
-proj3_lambda <- av_proj3$av_lambda
-
-# setting up dataframe for plots
-av_df <- data.frame(proj0_lambda, proj1_lambda, proj2_lambda, proj3_lambda) # spread so col for projection name, lamb value (later )
-av_df %>% 
-  pivot_longer(av_df, cols = c(proj0_lambda, proj1_lambda), 
-               names_to = "Projection",
-              values_to = "av_lambda")
 
 
 

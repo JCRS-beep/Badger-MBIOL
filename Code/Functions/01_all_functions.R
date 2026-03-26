@@ -140,17 +140,17 @@ apply.DD <- function(params,
 
 ## IMPROVEMENTS = integer individuals only. proportion must be bound between 0 and 1. 
 rem.proj <- function(Umat,   # MAX SURVIVAL
-                      initial, 
-                      params, 
-                      stagenames, 
-                      time, 
-                      DDapply="fertility", 
-                      intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                      remyear = integer(0),  # removal year = vector of years 
-                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                      bias = NULL , # strength of bias as percentage (range??)
-                      return.vec= TRUE, 
-                      return.remvec = TRUE) 
+                     initial, 
+                     params, 
+                     stagenames, 
+                     time, 
+                     DDapply="fertility", 
+                     intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                     remyear = integer(0),  # removal year = vector of years 
+                     rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                     bias = NULL , # strength of bias as percentage (range??)
+                     return.vec= TRUE, 
+                     return.remvec = TRUE) 
 {
   # input checks
   if (time <= 1) stop("Time must be a positive integer")
@@ -173,9 +173,8 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   if (length(remyear) > 0) {
     remyear <- unique(as.integer(remyear))
     remyear <- remyear[remyear >= 1 & remyear <= time]
-    if (length(remyear) == 0) warning("No valid remyear in 1:time after filtering")
+    if (length(remyear) == 0) warning("No valid removal year in 1:time after filtering")
   }
-  
   
   # Set up  output
   out <- list(pop = vector(), 
@@ -192,16 +191,16 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   colnames(Vec) <- stagenames   # naming cols matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
   Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
-  Pop[1] <- sum(n0)
+  Pop[1] <- as.numeric(sum(n0))
   
   # Map removal year -> index into Remvec / Nremoved:
-  rem_index <- if (length(remyear) > 0) setNames(seq_along(remyear), remyear) # index contains number of rem years, links each remyear to a value in vector 
-  else integer(0)
+  rem_index <- if (length(remyear) > 0) setNames(seq_along(remyear), remyear)  # takes length rem year, names assigned as seq of integers 
+  else integer(0)   # otherwise remyear = 0
   
   
   # Loop = density dependent matrix application for each year UNTIL first rem year
-  for (i in 1:time) {   # normal projection until first entry of remyear - not needed?
-    # (if removal at t=5, project until t=5, final entry inserted to row 6 (remember vec[5,] holds entries for year=4 (rows 0:time))
+  for (i in 1:time) {   #  projection until end time
+    # if removal at t=5, project until t=5, final entry inserted to row 6 (remember vec[5,] holds entries for year=4 (rows 0:time))
     
     # Nf calculation
     thisNf <- sum(Vec[i,nStages-1], Vec[i,nStages])    # Nf sums yearling and adult fems in Vec matrix
@@ -215,9 +214,8 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
                          return.mat= FALSE)    
     
     
-    # If the projection matrix has any negative values in it, stop iterating and
-    # return projection up until this point.
-    # Replace negative values with 0 (safely handles NA )
+    # If the projection matrix has negative or NA values, return message, replace with 0, and continue
+      
     if (any(thisAmat < 0, na.rm = TRUE)) {
       warning(paste("Negative values in projection matrix at time step", i,
                     "- setting negative entries to 0 and continuing."))
@@ -234,7 +232,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
-    # if pop size <= 0, stop and return
+    # if pop size <= 0,  and return message with year
     if(Pop[i]<= 0 || is.na(Pop[i])) {
       warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
       break
@@ -369,7 +367,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
 
 
 # Projection plotting function ---- increasing text size and ensuring axis labelled 
-dd_plot <- function(out,   # output obj of dd.proj
+dd.plot <- function(out,   # output obj of dd.proj
                     y_val= "N",   # plot type - N or Vec 
                     ylab = "abundance", 
                     xlab = "time (t)",
@@ -602,15 +600,242 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 
 
 
+
+# creating repeatable projections using proj functions, varying initial pop vector
+# Need a way to stop current loop if pop size falls to zero but continue with other loops
+repeat.proj <- function(Umat,   # MAX SURVIVAL
+                        params,
+                        stagenames, # needed for mating func
+                        time = 20, 
+                        DDapply="fertility", 
+                        method = "norm",  # how to generate initial pop sizes?
+                        intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                        remyear = NULL,  # removal year = decrease from following year
+                        rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                        bias = NULL , # strength of bias as percentage (range??)
+                        return.vec= TRUE, 
+                        return.remvec = TRUE,
+                        reps = 10) {
+  # set up the ouput = a list, length = number of repeats, each containing the out obj of  projection function
+  out <- vector("list", reps) 
+  
+  # looping projection for as many repetitions desired
+  for (t in 1:reps){
+    # generating inital vec = want to maintain similar stage dist but vary population size
+    thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
+    
+    stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
+    
+   # rnorm = aiming for pops around certain size, with wide variation
+   # runif vs random starting pop size (how to define min and max?)
+   
+    # generating pop size
+    if(method == "random"){
+    size <- floor(runif(1, min = 40, max = 250))  # defining min and max
+    
+    } else if (method == "norm"){
+      size <- floor(rnorm(1, mean = 137, sd  = 50))   # defining mean from repeated baseline means. large sd for variation
+    }
+    # seperate samples needed for adults and yearlings = 
+    
+    thisInitial <- size * stageDist  #multiply generated pop size with fixed stage dist
+    
+    out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                         thisInitial, 
+                         params, 
+                         stagenames,
+                         time, 
+                         DDapply,
+                         intensity,  # percentage you want REMOVED from pop at time T=ry
+                         remyear,  # removal year = decrease from following year
+                         rem_strat,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                         bias,
+                         return.vec, 
+                         return.remvec) 
+    # warning of extinction and what iteration this happened in 
+    if(any(out[[t]]$pop<= 0)) {
+      warning(paste("Projection reached pop size 0 or below in iteration", t))
+    }
+  }
+  return(out)
+  
+}
+# output syntax = out[[rep]]$pop[] or $vec[,]
+
+
+
+
+# calculating average lambda, av ssd in single function
+# Splitting calculations into their own functions? Av lambda, relative pop sizes?
+
+# calculating pop size per rep function
+N.extract <- function(proj_list, reps) {
+N_list <- vector("list", reps)   # list of N vecs for each repeat
+
+for (t in 1:reps){
+  N_list[[t]] <- proj_list[[t]]$pop    # isolating pop size vector
+}
+
+return(N_list)
+}
+
+
+lamb.av <- function(proj_list, return.Lambda = FALSE){
+  reps <- length(proj_list)
+  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  
+  N_list <- N.extract(proj_list, reps)
+  
+  # calculating lambda for each rep lambda calculation as a function applied to pop size vec
+  lambda <- function(N){
+    N[2:length(N)]/N[1:(length(N)-1)]
+  } 
+  
+  lambda_list <- lapply(N_list , lambda)
+  av_lambda <- sapply(lambda_list, mean)
+  
+  # setting up out obj
+  lamb_out <- list(lambda_list = vector(), 
+                   av_lambda = vector() )
+  
+  if(return.Lambda == TRUE){
+    lamb_out$lambda <- lambda_list
+  }
+  lamb_out$av_lambda <- av_lambda
+}
+# lambda : lambda per year per rep (list of 100 vecs length 20)
+# av_lambda : average lambda per rep (vec length 100)
+
+
+# ssd function  - 
+ssd.av <- function(proj_list, return.Mats = FALSE){
+  
+  reps <- length(proj_list)
+  time <- length(proj_list[[1]]$pop - 1)
+  
+  # separating a matrix from out obj
+  abun_mat <- vector("list", reps)   # list of abundances for each repeat
+  
+  for (t in 1:reps){
+    abun_mat[[t]] <- proj_list[[t]]$vec    # isolating pop size vector
+  }
+  
+  mat <- matrix(0, ncol = ncol(abun_mat[[1]]), nrow = nrow(abun_mat[[1]]))    # list of empty matrix to fill with stage props
+  
+  
+  stageMat <- vector("list", reps)   # fill each stage mats list with mat?
+  
+  # out obj is a list with matrix and av prop 1 row matrix
+  
+  for (t in 1:reps){
+    for(i in 1:nrow(abun_mat[[1]])) {   # loop for each column 
+      mat[i,] <- abun_mat[[t]][i,]/sum(abun_mat[[t]][i,])          # column i of matrix filled with row i divided by col sum
+    } 
+    stageMat[[t]] <- mat # ssd for each year per rep
+  }
+  
+  list_prop <- lapply(stageMat, colMeans) # list per rep, each single vec of av abundances
+  # combining lists into a single matrix
+  av_prop <- matrix(unlist(list_prop), byrow = TRUE, nrow = reps, ncol = 4) # filling each row with list vec
+  colnames(av_prop) <- colnames(abun_mat[[1]])
+  
+  
+  # set up out obj
+  ssd_out <- list(ssdMat = matrix(), av_prop = matrix())
+  
+  if(return.Mats == TRUE){
+    ssd_out$ssdMat <- stageMat # stage proportions by year
+  }
+  
+  ssd_out$av_prop <- av_prop  # single stage proportion for each rep - 
+  return(ssd_out)
+}
+# Outputs 
+# ssdMat : stage dist mat
+# av_prop : average proportions of each stage in matrix   
+
+
+
+
+relative.pop <- function(proj_list,   
+                         baseline_list = NULL) # baseline for comparison. if empty, no relative population sizes calculated
+  {
+  # basic checks
+  if(length(baseline_list)!= length(proj_list)){
+    stop(paste("length of baseline and projection differ - comparison not possible. Ensure repetitions are equal before continuing."))
+  }
+  
+  reps <- length(proj_list)
+  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  
+  N_list <- N.extract(proj_list, reps)   # list of N vecs for each repeat
+  base_list <- N.extract(baseline_list, reps)
+  
+  
+  # average pop size proportions
+  av_N <- sapply(N_list, mean)   # vector of mean pop sizes per rep
+  av_base_N <- mean(sapply(base_list, mean))   # SINGLE value for mean pop size across all reps of baseline
+  
+  if(!is.null(baseline_list)){   # only if there is comparison proj provided
+  # calculating final pop size in each scenario  (av?)
+  fin_props <- vector(length = reps)   # vector of proportions
+  
+  for (t in 1:reps){
+    fin_props[t] <- N_list[[t]][time]/base_list[[t]][time]     #  list calculate proportions
+  }
+
+  av_base_N <- sapply(base_list, mean)  
+  relative_meanN <- av_N / av_base_N   # issues = if baseline proj goes to 0 for some reason, causes
+  }
+  
+  # output proj
+  pop_out <- list(fin_props = vector(), av_fin = vector(), 
+                  relative_meanN= vector()) # number of matrices = rep, rows = time
+                                                 
+  
+  
+  pop_out$fin_props <- fin_props
+  pop_out$av_fin <- mean(fin_props, na.rm = TRUE)
+  pop_out$relative_meanN <- relative_meanN
+  
+  
+  return(pop_out)
+}
+# NOTES
+# Name =  av_pop
+# proj_list,   
+# baseline_list : the baseline projection to compare projections
+# return.Lambda : return lambda per year for each rep? T/F
+# return.Mats : return stage distribution per year for each rep? T/F
+# 
+# Outputs
+# fin_props : final year proportions of projection compared to baseline (vec length 100)
+# av_fin : average final pop size of proj compared to baseline (numeric val).
+# relative_meanN : mean pop size across proj compared to mean pop size of baseline (vec length 100)
+
+
+### ISSUES WITH COMPARISONS - if there is a year when baseline goes to extinction, this skews that years comparison. 
+  # better to have an average pop size for baseline and compare all repeats to this value?
+
+
+# recombining all functions into single function to apply in df create?
+
+
+
+
+
+
+
+
 # meta.projection
 meta.proj <- function(Umat,   # vector of stage names
-                       params, # adjusted beta = 
-                       stagenames,
-                       initial,   # list of initial abundances
-                       Dmat = list(), 
-                       time = 20,
-                       return.vec = TRUE,
-                       return.mats= FALSE){
+                      params, # adjusted beta = 
+                      stagenames,
+                      initial,   # list of initial abundances
+                      Dmat = list(), 
+                      time = 20,
+                      return.vec = TRUE,
+                      return.mats= FALSE){
   
   # Time 
   if (time <= 1) stop("Time must be a positive integer")
@@ -723,8 +948,8 @@ meta.proj <- function(Umat,   # vector of stage names
                        return.mat= FALSE)  # entire pop size used to calculate ricker, apply to recruitment - how to limit births based on U?
       
       thisAmat[[p]] <- amat
-    
-    
+      
+      
     }
     # If the projection matrix has any negative values in it, stop iterating and
     # return the projection up until this point.
@@ -785,7 +1010,7 @@ meta.proj <- function(Umat,   # vector of stage names
       warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
       Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
     }
-    }
+  }
   
   # out objects
   out$pop <- Pop # total group size per patch, do we also want total pop size of pop?
@@ -795,189 +1020,5 @@ meta.proj <- function(Umat,   # vector of stage names
   }
   
   return(out)
-
-}
-
-
-
-# creating repeatable projections using proj functions, varying initial pop vector
-# Need a way to stop current loop if pop size falls to zero but continue with other loops
-repeat.proj <- function(Umat,   # MAX SURVIVAL
-                        params,
-                        stagenames, # needed for mating func
-                        time = 20, 
-                        DDapply="fertility", 
-                        method = "norm",  # how to generate initial pop sizes?
-                        intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                        remyear = NULL,  # removal year = decrease from following year
-                        rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                        bias = NULL , # strength of bias as percentage (range??)
-                        return.vec= TRUE, 
-                        return.remvec = TRUE,
-                        reps = 10) {
-  # set up the ouput = a list, length = number of repeats, each containing the out obj of  projection function
-  out <- vector("list", reps) 
-  
-  # looping projection for as many repetitions desired
-  for (t in 1:reps){
-    # generating inital vec = want to maintain similar stage dist but vary population size
-    thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
-    
-    stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
-    
-   # rnorm = aiming for pops around certain size, with wide variation
-   # runif vs random starting pop size (how to define min and max?)
-   
-    # generating pop size
-    if(method == "random"){
-    size <- floor(runif(1, min = 40, max = 250))  # defining min and max
-    
-    } else if (method == "norm"){
-      size <- floor(rnorm(1, mean = 137, sd  = 50 ))   # defining mean from repeated baseline means. large sd for variation
-    }
-    # seperate samples needed for adults and yearlings = 
-    
-    thisInitial <- size * stageDist  #multiply generated pop size with fixed stage dist
-    
-    out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                         thisInitial, 
-                         params, 
-                         stagenames,
-                         time, 
-                         DDapply,
-                         intensity,  # percentage you want REMOVED from pop at time T=ry
-                         remyear,  # removal year = decrease from following year
-                         rem_strat,  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                         bias,
-                         return.vec, 
-                         return.remvec) 
-    }
-  return(out)
   
 }
-# output syntax = out[[rep]]$pop[] or $vec[,]
-
-
-
-
-# calculating average lambda, av ssd in single function
-pop.av <- function(proj_list,   
-                   baseline_list = NULL, # baseline for comparison. if empty, no relative population sizes calculated
-                   return.Lambda = FALSE, #  lambda per year
-                   return.Mats = FALSE)  # stage dist per year
-                  
-{
-  # basic checks
-  if(!is.null(baseline_list) && length(baseline_list)!= length(proj_list)){
-    stop(paste("length of baseline and projection differ - comparison not possible. Ensure repetitions are equal before continuing."))
-  }
-  
-  reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
-  
-  N_list <- vector("list", reps)   # list of N vecs for each repeat
-  base_list <- vector("list", reps)
-  
-  for (t in 1:reps){
-    N_list[[t]] <- proj_list[[t]]$pop    # isolating pop size vector
-    
-    if(!is.null(baseline_list)){
-    base_list[[t]] <- baseline_list[[t]]$pop
-    }
-  }
-  
-  # average pop size proportions
-  av_N <- sapply(N_list, mean)   # vector of mean pop sizes per rep
-  
-  if(!is.null(baseline_list)){   # only if there is comparison proj provided
-  # calculating final pop size in each scenario  (av?)
-  fin_props <- vector(length = reps)   # vector of proportions
-  
-  for (t in 1:reps){
-    fin_props[t] <- N_list[[t]][time]/base_list[[t]][time]     #  list calculate proportions
-  }
-
-  av_baseN <- sapply(base_list, mean)  
-  relative_meanN <- av_N / av_baseN 
-  }
-  
-  
-  # calculating lambda for each rep lambda calculation as a function applied to pop size vec
-  lambda <- function(N){
-    N[2:length(N)]/N[1:(length(N)-1)]
-  } 
-  
-  lambda_list <- lapply(N_list , lambda) # calculate lambda vector per year per rep, return as list
-  
-  # ssd for each rep
-  # separating a matrix from out obj
-  abun_mat <- vector("list", reps)   # list of abundances for each repeat
-  
-  for (t in 1:reps){
-    abun_mat[[t]] <- proj_list[[t]]$vec    # isolating pop size vector
-  }
-  
-  
-  mat <- matrix(0, ncol = ncol(abun_mat[[1]]), nrow = nrow(abun_mat[[1]]))    # list of empty matrix to fill with stage props
-  rownames(mat) <- rownames(abun_mat[[1]])
-  colnames(mat) <- colnames(abun_mat[[1]])
-  
-  stageMat <- vector("list", reps)   # fill each stage mats list with mat?
-  
-  # out obj is a list with matrix and av prop 1 row matrix
-  
-  for (t in 1:reps){
-    for(i in 1:nrow(abun_mat[[1]])) {   # loop for each column 
-      mat[i,] <- abun_mat[[t]][i,]/sum(abun_mat[[t]][i,])          # column i of matrix filled with row i divided by col sum
-    } 
-    stageMat[[t]] <- mat
-  }
-  
-  list_prop <- lapply(stageMat, colMeans) # each row filled with av proportions
-  # combining lists into a single matrix
-  av_prop <- matrix(unlist(list_prop), byrow = TRUE, nrow = reps, ncol = 4) # filling each row with list vec
-  
-  # output proj
-  pop_out <- list(fin_props = vector(), av_fin = vector(), 
-                  relative_meanN= vector(),
-                  ssdMat = matrix(), av_prop = matrix (),
-                  lambda = vector(), av_lambda = vector()) # number of matrices = rep, rows = time
-  
-  if(return.Lambda == TRUE){
-    pop_out$lambda <- lambda_list  # lambda = lambda by year
-  }
-  # averaging across years for each projection
-  pop_out$av_lambda <- sapply(lambda_list, mean)    # average lambda value for each repetition
-  
-  if(return.Mats == TRUE){
-    pop_out$ssdMat <- stageMat # stage proportions by year
-  }
-  
-  pop_out$av_prop <- av_prop  # single stage proportion for each rep - 
-                                                 # layout as lists
-                                                 
-  
-  if(!is.null(baseline_list)){
-  pop_out$fin_props <- fin_props
-  pop_out$av_fin <- mean(fin_props, na.rm = TRUE)
-  pop_out$relative_meanN <- relative_meanN
-  }
-  
-  return(pop_out)
-}
-# NOTES
-# Name =  av_pop
-# proj_list,   
-# baseline_list : the baseline projection to compare projections
-# return.Lambda : return lambda per year for each rep? T/F
-# return.Mats : return stage distribution per year for each rep? T/F
-# 
-# Outputs
-# fin_props : final year proportions of projection compared to baseline (vec length 100)
-# av_fin : average final pop size of proj compared to baseline (numeric val)
-# relative_meanN : mean pop size across proj compared to mean pop size of baseline (vec length 100)
-# ssdMat : stage dist mat
-# av_prop : average proportions of each stage in matrix   
-# lambda : lambda per year per rep (list of 100 vecs length 20)
-# av_lambda : average lambda per rep (vec length 100)
-

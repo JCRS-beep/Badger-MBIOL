@@ -1,85 +1,117 @@
-# Repetitions and analysis
+# Script for results draft 
 # 15.03.26
 
-# model projection script to get params and Umat, libraries and model scenarios
+library(ggplot2)
+library(gridExtra)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(here)
 
-#  comparison - run models 100 repetitions, plot mean lambda, mean ssd for scenarios
-
-
-# Basline projection analysis
-test <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                    params, 
-                    stagenames = stages,
-                    time = 20, 
-                    DDapply="Fmat", 
-                    intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                    remyear = NULL, 
-                    rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
-                    bias = NULL ,
-                    return.vec= TRUE, 
-                    return.remvec = FALSE, 
-                    reps = 10) # looks better !
+# sourcing from model projection scripts
+source(here("Code/03_model_projections.R"))  # should load all params, model projections
+# issues - if the projection reaches 0 and stops, this means objs are not loaded
 
 
-testN <- dd_plot(test[[2]], 
-                  y_val= "N",   # plot type - N or Vec 
-                  ylab = "abundance", 
-                  xlab = "time (t)",
-                  rem_year = NULL,
-                  mytheme = theme_classic(), 
-                  cols= col_vec,    # can be vector of 2 cols
-                  legend.pos = "top",
-                  base_size = 16)
-
-testV <- dd_plot(test[[2]], 
-                 y_val= "Vec",   # plot type - N or Vec 
-                 ylab = "abundance", 
-                 xlab = "time (t)",
-                 rem_year = NULL,
-                 mytheme = theme_classic(), 
-                 cols= col_vec,    # can be vector of 2 cols
-                 legend.pos = "top",
-                 base_size = 16)
+av_proj0 <- pop.av(rep_proj0,  
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE)
+av_proj1 <- pop.av(rep_proj1, 
+                   rep_proj0, 
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE )
+av_proj2 <- pop.av(rep_proj2, 
+                   rep_proj0, 
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE)
+av_proj3 <- pop.av(rep_proj3, 
+                   rep_proj0, 
+                   return.Lambda = TRUE, #  lambda per year
+                   return.Mats = TRUE)
 
 
-grid.arrange(testN, testV)   # diff projections out of 10
+# trial comparison = box plots for : lambda, relative changes, ssd / sex ratio? ------
 
 
-# first removal scenario = 70% random
-proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                    params, 
-                    stagenames = stages,
-                    time = 20, 
-                    DDapply="Fmat", 
-                    intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                    remyear = 5, 
-                    rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
-                    bias = NULL ,
-                    return.vec= TRUE, 
-                    return.remvec = TRUE, 
-                    reps = 100) # looks better !
+# need to combine summaries into a dataframe to be plotted together 
+# df1 = av lambda per year for all projections (incl proj0)
+# df2 = comparison of proportion final N and av N compared to baseline?  (plotted with hline = 1, anything above has increased, anything below has decreased)
 
-proj1N <- dd_plot(proj1[[1]], 
-                  y_val= "N",   # plot type - N or Vec 
-                  ylab = "abundance", 
-                  xlab = "time (t)",
-                  rem_year = 5,
-                  mytheme = theme_classic(), 
-                  cols= col_vec,    # can be vector of 2 cols
-                  legend.pos = "top",
-                  base_size = 16)
+proj0 <- av_proj0$av_lambda
+df <-  as.data.frame(proj0)   # val 1 = 1.036787
+df$proj1 <- av_proj1$av_lambda
+df$proj2 <- av_proj2$av_lambda
+df$proj3 <- av_proj3$av_lambda   # 27, 30, 71 are extremely large/ low - what went wrong?
 
-proj1_plot <- dd_plot(proj1[[1]], 
-                 y_val= "Vec",   # plot type - N or Vec 
-                 ylab = "abundance", 
-                 xlab = "time (t)",
-                 rem_year = 5,
-                 mytheme = theme_classic(), 
-                 cols= col_vec,    # can be vector of 2 cols
-                 legend.pos = "top",
-                 base_size = 16)
+# merging into single col of lambda values split by projection
+df_long <- gather(df, key = "Projections" , value = "av_lambda") 
+
+# boxlpot - comparing rem scenario lambda values
+lamb_box <- ggplot(df_long, aes(x = Projections, y = av_lambda))+
+  geom_boxplot(outlier.colour="red") 
+# why are there sm outliers from all projections?
+  
+                    
+
+# adding relative mean N and final N in a df
+# easier = set up 3 df and rbind?  combining in projection df first, then merging
+rel_proj1 <- relative.pop(rep_proj1,   
+                          baseline_list = rep_proj0) 
+rel_proj2 <- relative.pop(rep_proj2,   
+                          baseline_list = rep_proj0) 
+rel_proj3 <- relative.pop(rep_proj3,   
+                          baseline_list = rep_proj0) 
 
 
-metrics1 <- pop.av(proj1)
+# function to generalise this process
+rel.df <- function(rel_projs = "list")  # list of all projections to compare, length = n projs
+{
+  nProj <- length(rel_projs)  # how many projections do we have?
+  relative_df <- data.frame()  # to store other dfs in
+  
+  # set up individual dfs for eac proj
+  for (p in 1:nProj){   # repeat for each projection
+    Projection <- as.character(rep(p, 100))   # better with an informative name (projection1)
+    relative_mean_N <- rel_projs[[p]]$relative_meanN
+    relative_final_N <- rel_projs[[p]]$fin_props
+    df <- data.frame(Projection, relative_mean_N, relative_final_N)  # what to do with this df? Store in list?
+    
+    # storing df in our relative df - intial 
+      relative_df <- rbind(relative_df, df)
+    }
+  return(relative_df)
+}
 
-# trial comparison = lambda box plots, 
+rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)
+rel_df <- rel.df(rel_projs)
+
+# visualising in a boxplot
+finN_box <- ggplot(rel_df, aes(x = Projection, y = relative_final_N)) +
+  geom_boxplot(outlier.colour="red") +
+  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+  labs(title = "Final population size relative to baseline average",
+       y = "Relative final pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+  
+
+meanN_box <- ggplot(rel_df, aes(x = Projection, y = relative_mean_N)) + 
+  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
+  geom_hline(yintercept = 1, aes(colour = "grey20")) +
+  labs(title = "Average population size relative to baseline average",
+       y = "Relative mean pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
