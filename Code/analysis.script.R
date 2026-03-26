@@ -13,46 +13,10 @@ library(here)
 source(here("Code/03_model_projections.R"))  # should load all params, model projections
 # issues - if the projection reaches 0 and stops, this means objs are not loaded
 
-
-av_proj0 <- pop.av(rep_proj0,  
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-av_proj1 <- pop.av(rep_proj1, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE )
-av_proj2 <- pop.av(rep_proj2, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-av_proj3 <- pop.av(rep_proj3, 
-                   rep_proj0, 
-                   return.Lambda = TRUE, #  lambda per year
-                   return.Mats = TRUE)
-
-
-# trial comparison = box plots for : lambda, relative changes, ssd / sex ratio? ------
-
-
 # need to combine summaries into a dataframe to be plotted together 
 # df1 = av lambda per year for all projections (incl proj0)
 # df2 = comparison of proportion final N and av N compared to baseline?  (plotted with hline = 1, anything above has increased, anything below has decreased)
 
-proj0 <- av_proj0$av_lambda
-df <-  as.data.frame(proj0)   # val 1 = 1.036787
-df$proj1 <- av_proj1$av_lambda
-df$proj2 <- av_proj2$av_lambda
-df$proj3 <- av_proj3$av_lambda   # 27, 30, 71 are extremely large/ low - what went wrong?
-
-# merging into single col of lambda values split by projection
-df_long <- gather(df, key = "Projections" , value = "av_lambda") 
-
-# boxlpot - comparing rem scenario lambda values
-lamb_box <- ggplot(df_long, aes(x = Projections, y = av_lambda))+
-  geom_boxplot(outlier.colour="red") 
-# why are there sm outliers from all projections?
-  
-                    
 
 # adding relative mean N and final N in a df
 # easier = set up 3 df and rbind?  combining in projection df first, then merging
@@ -115,3 +79,72 @@ meanN_box <- ggplot(rel_df, aes(x = Projection, y = relative_mean_N)) +
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
+
+
+# comparing ssd and sex ratio across scenarios?
+av_ssd0 <- ssd.av(rep_proj1, return.Mats = TRUE)
+av_ssd1 <- ssd.av(rep_proj1, return.Mats = TRUE)
+av_ssd2 <- ssd.av(rep_proj2, return.Mats = TRUE)
+av_ssd3 <- ssd.av(rep_proj3, return.Mats = TRUE)
+
+# combine in list
+sex_list <- list(av_ssd0, av_ssd1, av_ssd2, av_ssd3)
+
+# function to turn lists into a dataframe
+sex.df <- function(sex_projs = "list")  # list of all projections to compare, length = n projs
+  {
+  nProj <- length(sex_projs)  # how many projections do we have?
+  sex_df <- data.frame()  # to store other dfs in
+  
+  # set up individual dfs for eac proj
+  for (p in 1:nProj){   # repeat for each projection
+    n <- p-1   # incl proj0, need to name 0
+    Projection <- as.character(rep(n, 100))   # better with an informative name (projection1)
+    av_prop <- sex_projs[[p]]$av
+    sex_ratio <- sex_projs[[p]]$sex_ratio
+    
+    df <- data.frame(Projection, av_prop, sex_ratio)  # what to do with this df? Store in list?
+    
+    # storing df in our relative df - intial 
+    sex_df <- rbind(sex_df, df)
+  }
+  return(sex_df)
+}
+
+sex_df <- sex.df(sex_list)  # success!
+
+
+# how to visualise this?
+# boxplot for sex ratio?
+summary(sex_df$sex_ratio)   # seems fairly constant?
+sr_box <- ggplot(sex_df, aes(x = Projection, y = sex_ratio))+
+  geom_boxplot(outlier.colour="red") +
+  labs(title = "Average Sex ratio across years",
+       y = "Sex ratio averaged across years") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+
+
+# lambda comparisons - not so important, but leave for appendix?
+proj0 <- av_proj0$av_lambda
+df <-  as.data.frame(proj0)   # val 1 = 1.036787
+df$proj1 <- av_proj1$av_lambda
+df$proj2 <- av_proj2$av_lambda
+df$proj3 <- av_proj3$av_lambda   # 27, 30, 71 are extremely large/ low - what went wrong?
+
+# merging into single col of lambda values split by projection
+df_long <- gather(df, key = "Projection" , value = "av_lambda") 
+
+# boxlpot - comparing rem scenario lambda values
+lamb_box <- ggplot(df_long, aes(x = Projection, y = av_lambda))+
+  geom_boxplot(outlier.colour="red") 
+# why are there sm outliers from all projections?
+
+

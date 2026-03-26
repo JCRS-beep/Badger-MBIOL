@@ -735,19 +735,29 @@ ssd.av <- function(proj_list, return.Mats = FALSE){
   }
   
   list_prop <- lapply(stageMat, colMeans) # list per rep, each single vec of av abundances
+  
   # combining lists into a single matrix
   av_prop <- matrix(unlist(list_prop), byrow = TRUE, nrow = reps, ncol = 4) # filling each row with list vec
   colnames(av_prop) <- colnames(abun_mat[[1]])
   
+  # calculating sex ratio (proportion female in pop)
+  fems <- function(x) {
+    sum(x[c(1:2)])   # sum entries 1+2 = proportion fems in pop
+    }
+  sr <- sapply(list_prop, fems)  # list of sex ratios as proportion female
+  
   
   # set up out obj
-  ssd_out <- list(ssdMat = matrix(), av_prop = matrix())
+  ssd_out <- list(ssdMat = matrix(), av_prop = matrix(), sex_ratio = vector())
   
   if(return.Mats == TRUE){
     ssd_out$ssdMat <- stageMat # stage proportions by year
   }
   
-  ssd_out$av_prop <- av_prop  # single stage proportion for each rep - 
+  ssd_out$av_prop <- av_prop  # single stage proportion for each rep 
+  
+  ssd_out$sex_ratio <- sr  
+  
   return(ssd_out)
 }
 # Outputs 
