@@ -675,8 +675,9 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
 # Splitting calculations into their own functions? Av lambda, relative pop sizes?
 
 # calculating pop size per rep function
-N.extract <- function(proj_list, reps) {
-N_list <- vector("list", reps)   # list of N vecs for each repeat
+N.extract <- function(proj_list) {
+  reps <- length(proj_list)
+  N_list <- list()   # list of N vecs for each repeat
 
 for (t in 1:reps){
   N_list[[t]] <- proj_list[[t]]$pop    # isolating pop size vector
@@ -690,7 +691,7 @@ lamb.av <- function(proj_list, return.Lambda = FALSE){
   reps <- length(proj_list)
   time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
   
-  N_list <- N.extract(proj_list, reps)
+  N_list <- N.extract(proj_list)
   
   # calculating lambda for each rep lambda calculation as a function applied to pop size vec
   lambda <- function(N){
@@ -784,8 +785,8 @@ relative.pop <- function(proj_list,
   reps <- length(proj_list)
   time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
   
-  N_list <- N.extract(proj_list, reps)   # list of N vecs for each repeat
-  base_list <- N.extract(baseline_list, reps)
+  N_list <- N.extract(proj_list)   # list of N vecs for each repeat
+  base_list <- N.extract(baseline_list)
   
   
   # average pop size proportions
@@ -834,8 +835,34 @@ relative.pop <- function(proj_list,
   # better to have an average pop size for baseline and compare all repeats to this value?
 
 
-# recombining all functions into single function to apply in df create?
+# Vulnerability function - how many of our repetitions fall below pop size 10?
+extinction.risk <- function(proj_list){
+  reps <- length(proj_list)
+  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  
+  # isolating pop size from list
+  pop_sizes <- N.extract(proj_list)
+  
+  
+  # searching for any projection where: pop size falls below 10
+  vul.idx <- function(pop) {    # population size vector 
+    if(any(pop <= 10)){
+      which(10 >= pop)[[1]]    # returns first index in vector less than 10
+      
+    } else {return(FALSE)}    # returns FALSE
+  }
+  
+  vul_it <- sapply(pop_sizes, vul.idx)  # apply across whole list to count 
+                                        # vector with 0 for normal projection, number when low pop size occured
 
+  # number of numeric values is number of vulnerable projs
+  nVul <- length(vul_it[vul_it >=1])
+  prop_vul <- nVul/ reps
+  
+  return(prop_vul)
+}
+
+extinction.risk(du_proj3)   # should be 2!
 
 
 
