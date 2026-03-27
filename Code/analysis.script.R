@@ -11,24 +11,11 @@ library(here)
 
 # sourcing from model projection scripts
 source(here("Code/03_model_projections.R"))  # should load all params, model projections
-# issues - if the projection reaches 0 and stops, this means objs are not loaded
+# issues - du_proj3 not found?
 
 # need to combine summaries into a dataframe to be plotted together 
-# df1 = av lambda per year for all projections (incl proj0)
-# df2 = comparison of proportion final N and av N compared to baseline?  (plotted with hline = 1, anything above has increased, anything below has decreased)
-
-
-# adding relative mean N and final N in a df
-# easier = set up 3 df and rbind?  combining in projection df first, then merging
-rel_proj1 <- relative.pop(rep_proj1,   
-                          baseline_list = rep_proj0) 
-rel_proj2 <- relative.pop(rep_proj2,   
-                          baseline_list = rep_proj0) 
-rel_proj3 <- relative.pop(rep_proj3,   
-                          baseline_list = rep_proj0) 
-
-
-# function to generalise this process
+# Functions used in this script -----
+# Turning relative pop size outputs into comparison dataframe for plotting
 rel.df <- function(rel_projs = "list")  # list of all projections to compare, length = n projs
 {
   nProj <- length(rel_projs)  # how many projections do we have?
@@ -42,57 +29,14 @@ rel.df <- function(rel_projs = "list")  # list of all projections to compare, le
     df <- data.frame(Projection, relative_mean_N, relative_final_N)  # what to do with this df? Store in list?
     
     # storing df in our relative df - intial 
-      relative_df <- rbind(relative_df, df)
-    }
+    relative_df <- rbind(relative_df, df)
+  }
   return(relative_df)
 }
 
-rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)
-rel_df <- rel.df(rel_projs)
-
-# visualising in a boxplot
-finN_box <- ggplot(rel_df, aes(x = Projection, y = relative_final_N)) +
-  geom_boxplot(outlier.colour="red") +
-  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
-  labs(title = "Final population size relative to baseline average",
-       y = "Relative final pop size") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
-  theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
-    axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
-  ) 
-  
-
-meanN_box <- ggplot(rel_df, aes(x = Projection, y = relative_mean_N)) + 
-  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
-  geom_hline(yintercept = 1, aes(colour = "grey20")) +
-  labs(title = "Average population size relative to baseline average",
-       y = "Relative mean pop size") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
-  theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
-    axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
-  ) 
-
-
-# comparing ssd and sex ratio across scenarios?
-av_ssd0 <- ssd.av(rep_proj1, return.Mats = TRUE)
-av_ssd1 <- ssd.av(rep_proj1, return.Mats = TRUE)
-av_ssd2 <- ssd.av(rep_proj2, return.Mats = TRUE)
-av_ssd3 <- ssd.av(rep_proj3, return.Mats = TRUE)
-
-# combine in list
-sex_list <- list(av_ssd0, av_ssd1, av_ssd2, av_ssd3)
-
-# function to turn lists into a dataframe
+# Turning list outputs into dataframe with av stage proportion per rep and sex ratio for comparison 
 sex.df <- function(sex_projs = "list")  # list of all projections to compare, length = n projs
-  {
+{
   nProj <- length(sex_projs)  # how many projections do we have?
   sex_df <- data.frame()  # to store other dfs in
   
@@ -111,7 +55,74 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
   return(sex_df)
 }
 
-sex_df <- sex.df(sex_list)  # success!
+# average pop size and lambda of baseline -------
+popN <- N.extract(rep_proj0)
+Nfin <- sapply(popN, function(x) x[20])
+summary(Nfin)
+
+base_lamb <- lamb.av(rep_proj0)
+av_lamb <- summary(base_lamb)
+
+av_ssd0 <- ssd.av(rep_proj0)
+base_prop <- colMeans(av_ssd0$av_prop)
+
+# adding relative mean N and final N in a df
+# easier = set up 3 df and rbind?  combining in projection df first, then merging
+rel_proj1 <- relative.pop(rep_proj1,   
+                          baseline_list = rep_proj0) 
+rel_proj2 <- relative.pop(rep_proj2,   
+                          baseline_list = rep_proj0) 
+rel_proj3 <- relative.pop(rep_proj3,   
+                          baseline_list = rep_proj0) 
+
+rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)
+
+rel_df <- rel.df(rel_projs)  # using prev defined function to turn inot comparison df
+
+# visualising in a boxplot
+finN_box <- ggplot(rel_df, aes(x = Projection, y = relative_final_N)) +
+  geom_boxplot(outlier.colour="red") +
+  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+  labs(title = "Final population size relative to baseline average",
+       y = "Relative final pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+ 
+   # ggsave these to figs folder
+ggsave(filename = "finalN_boxplot",
+       plot = finN_box,
+       device = "png",
+       path = here("Figs")
+)
+
+meanN_box <- ggplot(rel_df, aes(x = Projection, y = relative_mean_N)) + 
+  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
+  geom_hline(yintercept = 1, aes(colour = "grey20")) +
+  labs(title = "Average population size relative to baseline average",
+       y = "Relative mean pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+# comparing ssd and sex ratio across scenarios
+# combine in list
+rep_list <- list(rep_proj0, rep_proj1, rep_proj2, rep_proj3)
+
+sex_list <- lapply(rep_list, ssd.av) 
+
+sex_df <- sex.df(sex_list)  # custom function to turn lists into a dataframe
 
 
 # how to visualise this?
@@ -129,7 +140,11 @@ sr_box <- ggplot(sex_df, aes(x = Projection, y = sex_ratio))+
     axis.text = element_text(size = 16 - 2),
   ) 
 
-
+ggsave(filename = "sex_ratio_boxplot",
+       plot = finN_box,
+       device = "png",
+       path = here("Figs")
+)
 
 
 # lambda comparisons - not so important, but leave for appendix?
@@ -179,6 +194,11 @@ du_finN_box <- ggplot(du_rel_df, aes(x = Projection, y = relative_final_N)) +
     axis.text = element_text(size = 16 - 2),
   ) 
 
+ggsave(filename = "double_rem_finalN_boxplot",
+       plot = du_finN_box,
+       device = "png",
+       path = here("Figs")
+)
 
 du_meanN_box <- ggplot(du_rel_df, aes(x = Projection, y = relative_mean_N)) + 
   geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
@@ -196,11 +216,20 @@ du_meanN_box <- ggplot(du_rel_df, aes(x = Projection, y = relative_mean_N)) +
 
 
 # sex ratio 
+# du_list <- list(du_proj1, du_proj2, du_proj3)
+
+# du_sex_list <- lapply(du_list, ssd.av) 
+# need to add baseline for comparison in plot
+av_ssd0 <- sex_list[[1]]
 av_du_ssd1 <- ssd.av(du_proj1, return.Mats = FALSE)
 av_du_ssd2 <- ssd.av(du_proj2, return.Mats = FALSE)
 av_du_ssd3 <- ssd.av(du_proj3, return.Mats = FALSE)
 
-# combine in list
+# combine in list with baseline 
+# du_sex_box_list <- list(av_ssd0, lapply(du_list, ssd.av))
+# du_sex_box_list[[1]] <- av_ssd0  # baseline has to be in first for projection labelling in correct order
+# du_sex_box_list[[2:4]] <-  du_sex_list   #  ?
+
 du_sex_list <- list(av_ssd0, av_du_ssd1, av_du_ssd2, av_du_ssd3)
 du_sex_df <- sex.df(du_sex_list)  # success!
 
@@ -218,6 +247,11 @@ du_sr_box <- ggplot(du_sex_df, aes(x = Projection, y = sex_ratio))+
     axis.text = element_text(size = 16 - 2),
   ) 
 
+ggsave(filename = "double_rem_sex_ratio_boxplot",
+       plot = du_sr_box,
+       device = "png",
+       path = here("Figs")
+)
 
 # removals over 5 years
 rel_multi1 <- relative.pop(multi_proj1,   
@@ -244,6 +278,11 @@ multi_finN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_final_N)
     axis.text = element_text(size = 16 - 2),
   ) 
 
+ggsave(filename = "multi_rem_finalN_boxplot",
+       plot = multi_finN_box,
+       device = "png",
+       path = here("Figs")
+)
 
 multi_meanN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_mean_N)) + 
   geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
@@ -281,6 +320,11 @@ multi_sr_box <- ggplot(sex_df, aes(x = Projection, y = sex_ratio))+
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
+ggsave(filename = "multi_rem_sex_ratio_boxplot",
+       plot = multi_sr_box,
+       device = "png",
+       path = here("Figs")
+)
 
 # combined df
 duplo <- du_rel_df 
@@ -304,3 +348,11 @@ comb_finN_box <- ggplot(comb_rel_df, aes(x = Projection, y = relative_final_N, f
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
+
+ggsave(filename = "comb_finalN_boxplot",
+       plot = comb_finN_box,
+       device = "png",
+       path = here("Figs")
+)
+
+# checking for vulnerabilities (low pop sizes)

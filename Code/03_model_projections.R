@@ -75,10 +75,10 @@ proj2 <- rem.proj(Umat,
                   initial = n0, 
                   params, 
                   stagenames = stages,
-                  time = 30, 
+                  time = 20, 
                   DDapply="Fmat", 
                   intensity= 70,  # percentage you want REMOVED from pop at time=ry
-                  remyear = 10, 
+                  remyear = 5, 
                   rem_strat = "males" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
                   bias = 0.15 ,
                   return.vec= TRUE, 
@@ -90,12 +90,12 @@ proj3 <- rem.proj(Umat,
                   initial = n0, 
                   params, 
                   stagenames = stages,
-                  time = 30, 
+                  time = 20, 
                   DDapply="Fmat", 
                   intensity= 70,  # percentage you want REMOVED from pop at time=ry
-                  remyear = 10, 
+                  remyear = 5, 
                   rem_strat = 2 ,  #2nd in list = adult fems
-                  bias = 0.2,  # bias too strong?
+                  bias = 0.15,  # bias too strong?
                   return.vec= TRUE, 
                   return.remvec = TRUE) 
 

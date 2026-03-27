@@ -862,7 +862,6 @@ extinction.risk <- function(proj_list){
   return(prop_vul)
 }
 
-extinction.risk(du_proj3)   # should be 2!
 
 
 
