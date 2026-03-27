@@ -32,11 +32,11 @@ Umat[4,4]<- bright_survival_vec[4]  # adult m survival
 params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
                     b= beta,       # calculated from mcdonald 2016
                     rep_K= rogers_k,          # max litter size (K), 
-                    h= 6   # harem size per male
-)
+                    h= 6)   # harem size per male
+
 
 # projections (model 1) -----
-n0 <- c(5, 20, 5, 20) # vec structure = yf, af, ym, am 
+n0 <- c(12, 41, 12, 34) # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
 
 # baseline = 20 year projection
 proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
@@ -53,7 +53,7 @@ proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of s
                   return.remvec = FALSE) 
 
 
-
+# Single projections = useful in visualisations only. Could combine into rep proj as first year rep?
 # Scenario 1 = 70% removal trial at year 10
 proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                   initial = n0, 
@@ -104,52 +104,57 @@ proj3 <- rem.proj(Umat,
 # Repeated projections, do not return long outputs !
 # Basline projection analysis
 rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                    params, 
-                    stagenames = stages,
-                    time = 20, 
-                    DDapply="Fmat", 
-                    intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                    remyear = NULL, 
-                    rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
-                    bias = NULL ,
-                    return.vec= TRUE, 
-                    return.remvec = FALSE, 
-                    reps = 100) # looks better !
-
+                         initial = n0,
+                         params, 
+                         stagenames = stages,
+                         time = 20, 
+                         DDapply="Fmat", 
+                         method = "random",
+                         intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                         remyear = NULL, 
+                         rem_strat =NULL ,  # if specified removals, "adults, females, yearling females... 
+                         bias = NULL ,
+                         return.vec= TRUE, 
+                         return.remvec = FALSE, 
+                         reps = 100) 
 
 
 # first removal scenario = 70% random
 rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                     params, 
-                     stagenames = stages,
-                     time = 20, 
-                     DDapply="Fmat", 
-                     intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                     remyear = 5, 
-                     rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
-                     bias = NULL ,
-                     return.vec= TRUE, 
-                     return.remvec = TRUE, 
-                     reps = 100) # looks better !
+                         initial = n0,
+                         params, 
+                         stagenames = stages,
+                         time = 20, 
+                         DDapply="Fmat", 
+                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         remyear = 5, 
+                         rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
+                         bias = NULL ,
+                         return.vec= TRUE, 
+                         return.remvec = TRUE, 
+                         reps = 100) # looks better !
+                    
 
 
 # Second scenario = 70% ADULT male biased 
 rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                     params, 
-                     stagenames = stages,
-                     time = 20, 
-                     DDapply="Fmat", 
-                     intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                     remyear = 5, 
-                     rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
-                     bias = 0.15,
-                     return.vec= TRUE, 
-                     return.remvec = TRUE, 
-                     reps = 100) 
+                         initial = n0,
+                         params, 
+                         stagenames = stages,
+                         time = 20, 
+                         DDapply="Fmat", 
+                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         remyear = 5, 
+                         rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
+                         bias = 0.15,
+                         return.vec= TRUE, 
+                         return.remvec = TRUE, 
+                         reps = 100) 
 
 
 # Third scenario = 70% ADULT female biased 
 rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                         initial = n0,
                          params, 
                          stagenames = stages,
                          time = 20, 
@@ -164,65 +169,69 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 
 
 
-# if projections are repeated every year for 2 years
+# Frequency - if projections are repeated every year for 2 years -----
 # Scenario 1 = 70% removal trial at year 10
-proj1 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                  initial = n0, 
-                  params, 
-                  stagenames = stages,
-                  time = 20, 
-                  DDapply="Fmat", 
-                  intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                  remyear = 5, 
-                  rem_strat = "random" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                  bias = NULL ,
-                  return.vec= TRUE, 
-                  return.remvec = TRUE) 
+du_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                        initial = n0,
+                        params, 
+                        stagenames = stages,
+                        time = 20, 
+                        DDapply="Fmat", 
+                        intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                        remyear = c(5,6),  
+                        rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
+                        bias = NULL ,
+                        return.vec= TRUE, 
+                        return.remvec = TRUE, 
+                        reps = 100) # looks better !
 
 
 
 # scenario 2 - biased male removals
-proj2 <- rem.proj(Umat,      
-                  initial = n0, 
-                  params, 
-                  stagenames = stages,
-                  time = 30, 
-                  DDapply="Fmat", 
-                  intensity= 70,  # percentage you want REMOVED from pop at time=ry
-                  remyear = 10, 
-                  rem_strat = "males" ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                  bias = 0.15 ,
-                  return.vec= TRUE, 
-                  return.remvec = TRUE) 
+du_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                        initial = n0,
+                        params, 
+                        stagenames = stages,
+                        time = 20, 
+                        DDapply="Fmat", 
+                        intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                        remyear = c(5,6),  
+                        rem_strat = "males" ,  # if specified removals, "adults, females, yearling females... 
+                        bias = 0.15 ,
+                        return.vec= TRUE, 
+                        return.remvec = TRUE, 
+                        reps = 100) # looks better !
 
 
 # Scenario 3 - biased female adult removals
-proj3 <- rem.proj(Umat,      
-                  initial = n0, 
-                  params, 
-                  stagenames = stages,
-                  time = 30, 
-                  DDapply="Fmat", 
-                  intensity= 70,  # percentage you want REMOVED from pop at time=ry
-                  remyear = 10, 
-                  rem_strat = 2 ,  #2nd in list = adult fems
-                  bias = 0.2,  # bias too strong?
-                  return.vec= TRUE, 
-                  return.remvec = TRUE) 
+du_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                        initial = n0,
+                        params, 
+                        stagenames = stages,
+                        time = 20, 
+                        DDapply="Fmat", 
+                        intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                        remyear = c(5,6), 
+                        rem_strat = 2 ,  # 2 = Af 
+                        bias = 0.15,
+                        return.vec= TRUE, 
+                        return.remvec = TRUE, 
+                        reps = 100) 
 
 
 
 
 
-# if removals are repeated for 2 years --------
-# first removal scenario = 70% random
-multi_rem1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# if removals are repeated for 5 years --------
+# first removal scenario = 50% random
+multi_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                           initial = n0,
                          params, 
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                         remyear = c(5,6), 
+                         intensity= 25,  # percentage you want REMOVED from pop at time T=ry
+                         remyear = c(5:9), 
                          rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
                          bias = NULL ,
                          return.vec= TRUE, 
@@ -231,13 +240,14 @@ multi_rem1 <- repeat.proj(Umat,      # seems to reach stability quickly - some k
 
 
 # Second scenario = 70% ADULT male biased 
-multi_rem2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+multi_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                           initial = n0,
                          params, 
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                         remyear =  c(5,6), 
+                         intensity= 25,  # percentage you want REMOVED from pop at time T=ry
+                         remyear =  c(5:9), 
                          rem_strat = "male" ,  # if specified removals, "adults, females, yearling females... 
                          bias = 0.15,
                          return.vec= TRUE, 
@@ -246,13 +256,14 @@ multi_rem2 <- repeat.proj(Umat,      # seems to reach stability quickly - some k
 
 
 # Third scenario = 70% ADULT female biased 
-multi_rem3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+multi_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+                           initial = n0,
                          params, 
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                         remyear =  c(5,6), 
+                         intensity= 25,  # percentage you want REMOVED from pop at time T=ry
+                         remyear =  c(5:9), 
                          rem_strat = 2 ,  # 2 = Af 
                          bias = 0.15,
                          return.vec= TRUE, 

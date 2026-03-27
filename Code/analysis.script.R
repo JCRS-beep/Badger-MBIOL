@@ -152,18 +152,20 @@ lamb_box <- ggplot(df_long, aes(x = Projection, y = av_lambda))+
 
 
 
-# looking at repeated rems
-rel_multi1 <- relative.pop(multi_rem1,   
+# looking at repeated rems --------
+# I want a single box plot, colour coded by temporal frequency and seperated by strategy ()
+# 
+rel_du1 <- relative.pop(du_proj1,   
                           baseline_list = rep_proj0) 
-rel_multi2 <- relative.pop(multi_rem2,   
+rel_du2 <- relative.pop(du_proj2,   
                           baseline_list = rep_proj0) 
-rel_multi3 <- relative.pop(multi_rem2,   
+rel_du3 <- relative.pop(du_proj2,   
                           baseline_list = rep_proj0) 
-multi_list <- list(rel_multi1, rel_multi2, rel_multi3) 
+du_list <- list(rel_du1, rel_du2, rel_du3) 
 
-multi_rel_df <- rel.df(multi_list)
+du_rel_df <- rel.df(du_list)
 
-finN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_final_N)) +
+du_finN_box <- ggplot(du_rel_df, aes(x = Projection, y = relative_final_N)) +
   geom_boxplot(outlier.colour="red") +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
   labs(title = "Final population size relative to baseline average",
@@ -178,7 +180,7 @@ finN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_final_N)) +
   ) 
 
 
-meanN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_mean_N)) + 
+du_meanN_box <- ggplot(du_rel_df, aes(x = Projection, y = relative_mean_N)) + 
   geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
   geom_hline(yintercept = 1, aes(colour = "grey20")) +
   labs(title = "Average population size relative to baseline average",
@@ -193,3 +195,112 @@ meanN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_mean_N)) +
   ) 
 
 
+# sex ratio 
+av_du_ssd1 <- ssd.av(du_proj1, return.Mats = FALSE)
+av_du_ssd2 <- ssd.av(du_proj2, return.Mats = FALSE)
+av_du_ssd3 <- ssd.av(du_proj3, return.Mats = FALSE)
+
+# combine in list
+du_sex_list <- list(av_ssd0, av_du_ssd1, av_du_ssd2, av_du_ssd3)
+du_sex_df <- sex.df(du_sex_list)  # success!
+
+
+# boxplot for sex ratio?
+du_sr_box <- ggplot(du_sex_df, aes(x = Projection, y = sex_ratio))+
+  geom_boxplot(outlier.colour="red") +
+  labs(title = "Average Sex ratio across years",
+       y = "Sex ratio averaged across years") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+# removals over 5 years
+rel_multi1 <- relative.pop(multi_proj1,   
+                        baseline_list = rep_proj0) 
+rel_multi2 <- relative.pop(multi_proj2,   
+                        baseline_list = rep_proj0) 
+rel_multi3 <- relative.pop(multi_proj2,   
+                        baseline_list = rep_proj0) 
+multi_list <- list(rel_multi1, rel_multi2, rel_multi3) 
+
+multi_rel_df <- rel.df(multi_list)
+
+multi_finN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_final_N)) +
+  geom_boxplot(outlier.colour="red") +
+  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+  labs(title = "Final population size relative to baseline average",
+       y = "Relative final pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+multi_meanN_box <- ggplot(multi_rel_df, aes(x = Projection, y = relative_mean_N)) + 
+  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
+  geom_hline(yintercept = 1, aes(colour = "grey20")) +
+  labs(title = "Average population size relative to baseline average",
+       y = "Relative mean pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+# sex ratio 
+av_multi_ssd1 <- ssd.av(multi_proj1, return.Mats = FALSE)
+av_multi_ssd2 <- ssd.av(multi_proj2, return.Mats = FALSE)
+av_multi_ssd3 <- ssd.av(multi_proj3, return.Mats = FALSE)
+
+# combine in list
+multi_sex_list <- list(av_ssd0, av_multi_ssd1, av_multi_ssd2, av_multi_ssd3)
+multi_sex_df <- sex.df(multi_sex_list)  # success!
+
+
+# boxplot for sex ratio?
+multi_sr_box <- ggplot(sex_df, aes(x = Projection, y = sex_ratio))+
+  geom_boxplot(outlier.colour="red") +
+  labs(title = "Average Sex ratio across years",
+       y = "Sex ratio averaged across years") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+# combined df
+duplo <- du_rel_df 
+duplo$rem_freq <- rep(as.character(2, nrow(du_rel_df)))
+multi <- multi_rel_df 
+multi$rem_freq <- rep(as.character(5, nrow(multi)))
+
+comb_rel_df <- rbind(duplo, multi)
+
+# combined plots
+comb_finN_box <- ggplot(comb_rel_df, aes(x = Projection, y = relative_final_N, fill = rem_freq)) +
+  geom_boxplot(outlier.colour="red") +
+  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+  labs(title = "Final population size relative to baseline average",
+       y = "Relative final pop size") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 

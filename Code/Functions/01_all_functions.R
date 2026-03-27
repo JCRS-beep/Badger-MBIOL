@@ -576,12 +576,12 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
     df_long <- gather(df, key= "Stage", value = "Proportion", 1:nStage)   # creating a stage col in df with abundance
     df_long <- separate(df_long, col= "Stage", into= c("Stage", "Sex"), sep='_')   # splliting by sex, seperated by _
     
-    plot <- ggplot(data= df_long, 
-                   aes(x= Year, y = Proportion, colour = Sex,  # qhy has year ordered so weird?
+    plot <- ggplot(data = df_long, 
+                   aes(x = Year, y = Proportion, colour = Sex,  # qhy has year ordered so weird?
                        linetype = Stage, shape = Stage)) +  # sexes diff cols, shapes and lines diff for stages
-      geom_line(data= df_long, position= "jitter") + # why is this not joining as other 
-      scale_colour_manual(values=col_vec,
-                          labels=c("Female", "Male")) +
+      geom_line(data = df_long, position = "jitter") + # why is this not joining as other 
+      scale_colour_manual(values = cols,
+                          labels = c("Female", "Male")) +
       labs(title = "Stage Proportions over Time", 
            x = "Year", y = "Proportion of population") 
     
@@ -604,6 +604,7 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 # creating repeatable projections using proj functions, varying initial pop vector
 # Need a way to stop current loop if pop size falls to zero but continue with other loops
 repeat.proj <- function(Umat,   # MAX SURVIVAL
+                        initial = NULL,   # initial pop size
                         params,
                         stagenames, # needed for mating func
                         time = 20, 
@@ -618,13 +619,17 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
                         reps = 10) {
   # set up the ouput = a list, length = number of repeats, each containing the out obj of  projection function
   out <- vector("list", reps) 
+  stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
   
   # looping projection for as many repetitions desired
-  for (t in 1:reps){
-    # generating inital vec = want to maintain similar stage dist but vary population size
-    thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
+  for (t in 1:reps) {
+    # if initial vec provided for vis projections, use this. 
+    if (!is.null(initial) && t == 1) {  # if a value provided for intial vec, for first rep use this
+      thisInitial <- initial
     
-    stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
+    # generating inital vec = want to maintain similar stage dist but vary population size
+    } else {
+      thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
     
    # rnorm = aiming for pops around certain size, with wide variation
    # runif vs random starting pop size (how to define min and max?)
@@ -636,9 +641,9 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
     } else if (method == "norm"){
       size <- floor(rnorm(1, mean = 137, sd  = 50))   # defining mean from repeated baseline means. large sd for variation
     }
-    # seperate samples needed for adults and yearlings = 
-    
+    size <- max(40, size)
     thisInitial <- size * stageDist  #multiply generated pop size with fixed stage dist
+    }
     
     out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                          thisInitial, 
@@ -657,6 +662,7 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
       warning(paste("Projection reached pop size 0 or below in iteration", t))
     }
   }
+  
   return(out)
   
 }
