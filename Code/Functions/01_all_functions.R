@@ -689,7 +689,7 @@ return(N_list)
 
 lamb.av <- function(proj_list, return.Lambda = FALSE){
   reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  time <- length(proj_list[[1]]$pop)- 1 # minus 1 for the initial population at t = 0
   
   N_list <- N.extract(proj_list)
   
@@ -718,7 +718,7 @@ lamb.av <- function(proj_list, return.Lambda = FALSE){
 ssd.av <- function(proj_list, return.Mats = FALSE){
   
   reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop - 1)
+  time <- length(proj_list[[1]]$pop)- 1
   
   # separating a matrix from out obj
   abun_mat <- vector("list", reps)   # list of abundances for each repeat
@@ -783,7 +783,7 @@ relative.pop <- function(proj_list,
   }
   
   reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  time <- length(proj_list[[1]]$pop)- 1  # minus 1 for the initial population at t = 0
   
   N_list <- N.extract(proj_list)   # list of N vecs for each repeat
   base_list <- N.extract(baseline_list)
@@ -838,7 +838,7 @@ relative.pop <- function(proj_list,
 # Vulnerability function - how many of our repetitions fall below pop size 10?
 extinction.risk <- function(proj_list){
   reps <- length(proj_list)
-  time <- length(proj_list[[1]]$pop - 1) # minus 1 for the initial population at t = 0
+  time <- length(proj_list[[1]]$pop)- 1 # minus 1 for the initial population at t = 0
   
   # isolating pop size from list
   pop_sizes <- N.extract(proj_list)
