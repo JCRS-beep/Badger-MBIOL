@@ -160,7 +160,6 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   else(n0 <- as.numeric(initial))
   
   
-  if (length(initial) != length(stagenames)) stop("initial pop vector must equal length(stagenames)")
   if(is.null(stagenames) || length(stagenames) == 0) stop("stagenames must be provided for correct matrix dimensions")
   
   if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
@@ -287,7 +286,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
           thisProp <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
           
           
-          # specified
+          # specified   - THIS MATH INCORRECT - leads to lower intensity than other strats
         } else if (is.numeric(intensity) && is.numeric(rem_strat)){
           # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
           bi <- length(rem_strat)  # how many elements provided
@@ -604,7 +603,7 @@ ssd <- function(out, vis = FALSE, cols) {     # input projected matrix
 # creating repeatable projections using proj functions, varying initial pop vector
 # Need a way to stop current loop if pop size falls to zero but continue with other loops
 repeat.proj <- function(Umat,   # MAX SURVIVAL
-                        initial = NULL,   # initial pop size
+                        initial.vecs = NULL,   # initial pop size
                         params,
                         stagenames, # needed for mating func
                         time = 20, 
@@ -619,31 +618,11 @@ repeat.proj <- function(Umat,   # MAX SURVIVAL
                         reps = 10) {
   # set up the ouput = a list, length = number of repeats, each containing the out obj of  projection function
   out <- vector("list", reps) 
-  stageDist <- c(0.1204889, 0.4170396, 0.1212302, 0.3412414) # calculated from repeated baseline proj average proportions per rep, then using colmeans
-  
+
   # looping projection for as many repetitions desired
   for (t in 1:reps) {
-    # if initial vec provided for vis projections, use this. 
-    if (!is.null(initial) && t == 1) {  # if a value provided for intial vec, for first rep use this
-      thisInitial <- initial
-    
-    # generating inital vec = want to maintain similar stage dist but vary population size
-    } else {
-      thisInitial <- vector(length = length(stagenames))   # list to fill with initial vector for each repetition
-    
-   # rnorm = aiming for pops around certain size, with wide variation
-   # runif vs random starting pop size (how to define min and max?)
-   
-    # generating pop size
-    if(method == "random"){
-    size <- floor(runif(1, min = 40, max = 250))  # defining min and max
-    
-    } else if (method == "norm"){
-      size <- floor(rnorm(1, mean = 137, sd  = 50))   # defining mean from repeated baseline means. large sd for variation
-    }
-    size <- max(40, size)
-    thisInitial <- size * stageDist  #multiply generated pop size with fixed stage dist
-    }
+    # assigning vector per rep
+    thisInitial <- initial.vecs[[t]]
     
     out[[t]] <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
                          thisInitial, 
@@ -788,7 +767,8 @@ relative.pop <- function(proj_list,
   N_list <- N.extract(proj_list)   # list of N vecs for each repeat
   base_list <- N.extract(baseline_list)
   
-  
+  fin_N <- sapply(N_list, function(x) x[20])
+
   # average pop size proportions
   av_N <- sapply(N_list, mean)   # vector of mean pop sizes per rep
   av_base_N <- mean(sapply(base_list, mean))   # SINGLE value for mean pop size across all reps of baseline
@@ -806,11 +786,13 @@ relative.pop <- function(proj_list,
   }
   
   # output proj
-  pop_out <- list(fin_props = vector(), av_fin = vector(), 
+  pop_out <- list(fin_N = vector(), av_fin_N = numeric(), 
+                  fin_props = vector(), av_fin = vector(), 
                   relative_meanN= vector()) # number of matrices = rep, rows = time
                                                  
   
-  
+  pop_out$fin_N <- fin_N
+  pop_out$av_fin_N <- mean(fin_N)
   pop_out$fin_props <- fin_props
   pop_out$av_fin <- mean(fin_props, na.rm = TRUE)
   pop_out$relative_meanN <- relative_meanN
