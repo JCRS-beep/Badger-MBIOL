@@ -12,7 +12,8 @@ library(here)
 # sourcing from model projection scripts
 source(here("Code/03_model_projections.R"))  # loads all params, model projections
 
-# need to combine summaries into a dataframe to be plotted together 
+# future improvements - final pop size plot, sex ratio plot, extinction plot with all strats and freqs 
+
 # Functions used in this script -----
 # Turning relative pop size outputs into comparison dataframe for plotting
 rel.df <- function(rel_projs = "list")  # list of all projections to compare, length = n projs
@@ -22,7 +23,12 @@ rel.df <- function(rel_projs = "list")  # list of all projections to compare, le
   
   # set up individual dfs for eac proj
   for (p in 1:nProj){   # repeat for each projection
-    Strategy <- as.character(rep(p, 100))   # better with an informative name (projection1)
+    # assigning strategy 1,2,3 own names. Worry = names do not match actual projection
+    if(p == 1) strat = "random" 
+    if(p == 2) strat = "Adult males" 
+    if(p == 3) strat = "Adult females"
+    
+    Strategy <- as.character(rep(strat, 100))   # better with an informative name (projection1)
     relative_mean_N <- rel_projs[[p]]$relative_meanN
     relative_final_N <- rel_projs[[p]]$fin_props
     df <- data.frame(Strategy, relative_mean_N, relative_final_N)  # what to do with this df? Store in list?
@@ -42,7 +48,12 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
   # set up individual dfs for eac proj
   for (p in 1:nProj){   # repeat for each projection
     n <- p-1   # incl proj0, need to name 0
-    Strategy <- as.character(rep(n, 100))   # better with an informative name (projection1)
+    if(n == 0) strat = "baseline" 
+    if(n == 1) strat = "random" 
+    if(n == 2) strat = "Adult males" 
+    if(n == 3) strat = "Adult females"
+    
+    Strategy <- as.character(rep(strat, 100))   # better with an informative name (projection1)
     av_prop <- sex_projs[[p]]$av
     sex_ratio <- sex_projs[[p]]$sex_ratio
     
@@ -54,18 +65,54 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
   return(sex_df)
 }
 
+# final N plot creation
+# rel plot function - WHY not wokring?
+rel.plot <- function(rel_df, yval, save_name = FALSE){
+  
+  baseplot <- ggplot(data = rel_df, aes(x = Strategy, y = yval)) +
+    geom_boxplot()
+  
+  plot <- baseplot + 
+    geom_hline(yintercept = 1, aes(colour = "grey20") ) +
+    labs(y = "Final population size relative to baseline average") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+    theme_minimal() +
+    theme(
+      text = element_text(size = 16),
+      plot.title = element_text(size = 16 + 2, face = "bold"),
+      axis.title = element_text(size = 16),
+      axis.text = element_text(size = 16 - 2),
+    ) 
+  
+  if(save_name != FALSE){ # saving as ggsave
+    ggsave(filename = save_name,
+           plot = plot,
+           device = "png",
+           path = here("Figs"), 
+           bg = "white")
+  }
+  
+  return(plot)
+}
+#  Error in `geom_boxplot()`:
+# ! Problem while computing aesthetics.
+# ℹ Error occurred in the 1st layer.
+# Caused by error:
+#  ! object 'relative_final_N' not found
+
+
 # average pop size and lambda of baseline -------
 popN <- N.extract(rep_proj0)
 Nfin <- sapply(popN, function(x) x[20])
 summary(Nfin)
 
-base_lamb <- lamb.av(rep_proj0)
-av_lamb <- summary(base_lamb)
+av_lamb <- summary(lamb.av(rep_proj0))
 
 av_ssd0 <- ssd.av(rep_proj0)
 base_prop <- colMeans(av_ssd0$av_prop)
 
-# first removal scenarios comparison
+
+# single removal scenarios comparison -------
 rel_proj1 <- relative.pop(rep_proj1,   
                           baseline_list = rep_proj0) 
 rel_proj2 <- relative.pop(rep_proj2,   
@@ -73,23 +120,19 @@ rel_proj2 <- relative.pop(rep_proj2,
 rel_proj3 <- relative.pop(rep_proj3,   
                           baseline_list = rep_proj0) 
 
-rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)
+rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)  # will this always list in order? 
 
 rel_df <- rel.df(rel_projs)  # using prev defined function to turn inot comparison df
 
 # visualising in a boxplot
+finN_box <- rel.plot(rel_df, yval = relative_final_N)  # why this err?
 
-# rel plot function 
-rel.plot <- function(rel_df, yval, save_name = FALSE){
+
   
-}
-
-
-finN_box <- ggplot(rel_df, aes(x = Strategy, y = relative_final_N)) +
-  geom_boxplot(outlier.colour="red") +
+finN_box <-  ggplot(rel_df, aes(x = Strategy, y = relative_final_N)) +
+  geom_boxplot() +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
-  labs(title = "Final population size relative to baseline average",
-       y = "Relative final pop size") +
+  labs(y = "Final population size relative to baseline average") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
   theme_minimal() +
   theme(
@@ -104,8 +147,6 @@ ggsave(filename = "finalN_boxplot.png",
        device = "png",
        path = here("Figs"), 
        bg = "white")
-
-
 
 
 meanN_box <- ggplot(rel_df, aes(x = Strategy, y = relative_mean_N)) + 
@@ -134,11 +175,9 @@ sex_df <- sex.df(sex_list)  # custom function to turn lists into a dataframe
 
 # how to visualise this?
 # boxplot for sex ratio?
-summary(sex_df$sex_ratio)   # seems fairly constant?
 sr_box <- ggplot(sex_df, aes(x = Strategy, y = sex_ratio))+
   geom_boxplot(outlier.colour="red") +
-  labs(title = "Average Sex ratio across years",
-       y = "Sex ratio averaged across years") +
+  labs( y = "Sex ratio (proportion female)") +
   theme_minimal() +
   theme(
     text = element_text(size = 16),
@@ -294,7 +333,7 @@ av_multi_ssd3 <- ssd.av(multi_proj3, return.Mats = FALSE)
 
 # combine in list
 multi_sex_list <- list(av_ssd0, av_multi_ssd1, av_multi_ssd2, av_multi_ssd3)
-multi_sex_df <- sex.df(multi_sex_list)  # success!
+multi_sex_df <- sex.df(multi_sex_list)  
 
 
 # boxplot for sex ratio?
@@ -315,24 +354,27 @@ ggsave(filename = "multi_rem_sex_ratio_boxplot",
        path = here("Figs"), 
        bg = "white")
 
-# combined df
-duplo <- du_rel_df 
-duplo$rem_freq <- rep(as.character(2, nrow(du_rel_df)))
-multi <- multi_rel_df 
-multi$rem_freq <- rep(as.character(5, nrow(multi)))
 
-comb_rel_df <- rbind(duplo, multi)
+
+
+# combined df - 
+sing <- rel_df
+sing$rem_freq <- rep(as.character("Single", nrow(du_rel_df)))
+duplo <- du_rel_df 
+duplo$rem_freq <- rep(as.character("Double", nrow(du_rel_df)))
+multi <- multi_rel_df 
+multi$rem_freq <- rep(as.character("Multi", nrow(multi)))
+
+comb_rel_df <- rbind(sing, duplo, multi)
 
 # combined plots
-# saving as png
 
 
-# plot
+# plot - how to make x axis wider
 comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, fill = rem_freq)) +
   geom_boxplot(outlier.colour="red") +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
-  labs(title = "Final population size relative to baseline average",
-       y = "Relative final pop size") +
+  labs(y = "Final population size relative to baseline average") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
   theme_minimal() +
   theme(
@@ -368,8 +410,16 @@ vul_df$Frequency <- factor(vul_df$Frequency,
 cols <- c("#1F78B4", "#EEAD0E", "#E31A1C")
 vul_plot <- ggplot(vul_df, aes(x = Strategy , y =  Vulnerability, fill = Frequency)) +
   geom_bar(position = 'dodge', stat = "identity") +
+  labs(title = "Extinction risk by strategy and frequency",
+       y = "Extinction probability") +
   scale_fill_manual(values = cols) +   # colour assigned as single, dbl, multi
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
 
 ggsave(filename = "extinction_bar.png",
        plot = vul_plot,
@@ -378,6 +428,7 @@ ggsave(filename = "extinction_bar.png",
        bg = "white")
 
 
+# combining final N in a table
 
 
 
