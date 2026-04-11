@@ -1,155 +1,260 @@
 # meta-population matrix creation
-# 13/01/26
+# 10/04/26
 
-# loadong library
-library(tidyverse)
-
-
-#loading params----
-params<- data.frame(fmax= 0.8436,   # F fecundity max (max cubs per adult female) 
-                    Sc_f_max=0.65,   # max cub survival (equal for sexes)
-                    Sc_m_max=0.65,
-                    b=0.004,       # temp value- must be calculated from provided datasets
-                    rep_K= 1.8,          #litter size (K)
-                    h= 6)  # harem size per male
-
-# stating with 2 patches, dispersal between at different rates ----
-# n(t+1) = A * D * n0 
-# patch 1 n0 = (10, 5, 3, 2)  
-# patch 2 n0 = (3, 2, 2, 2)  
-n0 <- list(c(10, 5, 3, 2), c(3, 2, 2, 2))
-
-# create blank base matrix
-stages<- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
-Umat <- matrix(0, nrow=4, ncol=4)
-rownames(Umat) <- stages
-colnames(Umat) <- stages
-# input vital rates
-Umat[2,1]<- 0.851   # yearling f survival
-Umat[2,2]<- 0.851   # adult f survival
-Umat[4,3]<- 0.809   # yearling m survival
-Umat[4,4]<- 0.749   # adult m survival
-
-
-# creating Fmat for site 1 based on abundance ----
-Fmat1_out <- mating.func(params,     # density dependent parameters
-                     stages,   # Stages in life cycle graph (single sex)
-                     Nf = 5,        # Adult and yearling females  
-                     Nm = 2,             # Adult and yearling males
-                     Mfunction= "min", 
-                     return.mat= TRUE)    
-
-Fmat2_out <- mating.func(params,     
-                     stages,   
-                     Nf = 2,        
-                     Nm = 2,           
-                     Mfunction= "min",  
-                     return.mat= TRUE)    # both Fmats identical!
-
-Fmat1 <- Fmat1_out$Fmat # same lol
-Fmat2 <- Fmat2_out$Fmat
-# no mating in dispersing individuals: count -> breed -> move
-
-
-Dmat <- matrix(0, ncol= length(stages), nrow= 2) # row = number patches
-colnames(Dmat) <- stages
-
-stay1 <- c(0.7, 0.9, 0.5, 0.6)  # prob individ in patch1 remains in patch 1 for each age class
-Dmat1 <- Dmat
-Dmat1[1,] <- stay1 # stay (and disperse) for each class in patch 1 
-Dmat1[2,] <- 1- stay1
-
-stay2 <- c(0.3, 0.6, 0.4, 0.5)
-Dmat2 <- Dmat
-Dmat2[1,] <- stay2 # stay (and disperse) for each class in patch 1 
-Dmat2[2,] <- 1 - stay2 
-
-# Shortening this matrix creation - 
-# Steps - create Umat - same for all patches
-# n0 for all patches (also needed for projection)
-# Create Fmat (matingfunc w/ Nf and Nm)
-# Dmat creation using movement probs for each class from each patch calculation (distance and sex ratio and group size)
-
-# function trials
-meta.mat <- function(Umat,   # vector of stage names
-                     Fmat1,
-                     Dmat1,
-                     Fmat2, 
-                     Dmat2,
-                     return.mats = FALSE){    # i
-  nStages<- ncol(Umat)/2  # number of stages
-  stagenames <- c(colnames(Umat))
-  
-  # setting up out obj
-  meta_out <- list(meta_mat = matrix(), Amat1 = matrix(), Amat2 = matrix(), Amat_move1 = matrix(), Amat_move2 = matrix())
-  
-  # setting base for Amat
-    Amat <- matrix(0, ncol= ncol(Umat), nrow= nrow(Umat))  
-
-    # filling off diags
-    # Patch 1 to 2
-     Amat_off1 <- Amat   # creating patch 1 -> 2 amat - will be BELOW stay 1
-      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-        Amat_off1[,i] <- Umat[,i] * Dmat1[2,i]  # second row = leaving patch 
-        } 
-    # patch 2 to 1  
-     Amat_off2 <- Amat  # creating patch 2 -> 1 amat
-    for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-      Amat_off2[,i] <- Umat[,i] * Dmat2[2,i] 
-      }
-  
-     
-    # for diagonals
-      Amat1 <- Umat  # creating original amat combining fert and survival
-      Amat1[1,2] <- Fmat1[1,2]
-      Amat1[3,2] <- Fmat1[3,2]
-      
-      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-        Amat1[,i] <- Amat1[,i] * Dmat1[1,i]  # first row of Dmat = stay, each col for stage
-      }
-      
-      Amat2 <- Umat  # creating original amat combining fert and survival
-      Amat2[1,2] <- Fmat2[1,2]
-      Amat2[3,2] <- Fmat2[3,2]
-      for (i in 1:ncol(Amat)) {   # looping to fill with multiplied values
-        Amat2[,i] <- Amat2[,i] * Dmat2[1,i]  # first row of Dmat = stay, each col for stage
-      }
-      
-      # combining Amats - patch 1 stay, next to it patch 2 move
-      meta_mat <- cbind(Amat1, Amat_off2)   # leaving fertility blank in second mat
-      meta_mat_low <- cbind(Amat_off1, Amat2) 
-      meta_mat <- rbind(meta_mat, meta_mat_low) 
-      colnames(meta_mat) <- rep(stagenames, 2)
-      
-      meta_out$meta_mat <- meta_mat
-      if(isTRUE(return.mats)){
-        meta_out$Amat1 <- Amat1
-        meta_out$Amat2 <- Amat2
-        meta_out$Amat_move1 <- Amat_off1
-        meta_out$Amat_move2 <- Amat_off2
-      }
-      
-    return(meta_out)
-  }
-  
-mattest <- meta.mat(Umat,   
-                    Fmat1,
-                    Dmat1,
-                    Fmat2, 
-                    Dmat2,
-                    return.mats = TRUE)
-# SUCCESS!   why do we need this? project begins with base Amat and Umat
-
-
+# changing Dmat set up - only movement probs per patch
+# still 2 patch specific 
+# OBLY FOR ADULTS MOVING
+ 
 
 # next steps = adapting this function for multiple patch inputs = only once i create Dmat automatically from distance and Nf and Nm (logit link)
+# changing Dmat set up - only movement probs per patch
+Dmat <- matrix(0, ncol= 2, nrow= 3) # row = number patches
+colnames(Dmat) <- c("Females", "Males")
 
-# diserpsal prob and dmat creation
-# using distance to link p(move) = 0 or 1
-# additional predictor variables = sex, stage, density and sex ratio
+# prob individ in patch1 remains in patch 1 = rnorm
+set.seed(1)  # replicable
+move1 <- rnorm(2,mean = 0.5, sd =0.05)  # vec of prob for each stage (4)
+# make sure does not fall bind between 0 and 1
+move1[move1<0] <- 0 
+move1[move1>1] <- 1
+Dmat[1,] <- move1 # stay for each class in patch 1 
 
-# then load rogers movement data for movement and group size av distance for moves?
+set.seed(2)
+move2 <- rnorm(2,mean = 0.3, sd =0.1)
+Dmat[2,] <- move2 # stay for each class in patch 2 
+     
+move3 <- rnorm(2,mean = 0.6, sd =0.1)
+Dmat[3,] <- move3 # stay for each class in patch 2 
 
-# linking distance and movement
-# hypothetical = 2 patches, 100m apart
-# average nearest neighbour dist = 595m, average movers under 1000m
+initial_vec <- c(1,4,1,4,2,5,2,6,2,8,3,7)  # 3 patch vec
+
+# function to create large matrix - call within projection. Acts as our apply DD function to create Amat each year
+# OBLY FOR ADULTS MOVING
+meta.mat <- function(Umat,   # vector of stage names
+                     initial_vec, # big vec length = 4* npatches
+                     Dmat,
+                     return.mats = FALSE){    
+  
+  stagenames <- c(colnames(Umat))
+  nDim <- length(stagenames)  # number of stages
+  nPatches <- nrow(Dmat)
+  
+  # setting up out obj
+  # meta_out <- list(meta_mat = matrix())  # what do we want from this?
+  
+  
+  # Amat creation for more patches
+  A_list <- list()
+   for (p in 1:nPatches){
+     thisN <- sum(initial_vec[((p*nDim)-3): (p * nDim) ])
+     thisNf <- (p*nDim)-2
+     thisNm <- p * nDim
+     
+  this_amat <- apply.DD(params, 
+                        Umat, 
+                        thisN,   # yearling and adults
+                        DDapply="fertility", 
+                        stagenames,   # Stages in life cycle graph 
+                        thisNf,        # Adult female abundance
+                        thisNm         # Adult males
+                        )
+  
+   A_list[[p]] <- this_amat    # output list length = nPatches
+  }
+  
+  # large mat set up
+  mat <- matrix(0, nrow = nrow(Umat), ncol = ncol(Umat))   # setting base matrix dims
+  meta <- cbind(mat, mat)  # creates 2 patch mat
+  
+  if (nPatches > 2){   
+  for (i in 1:(nPatches-2)){   # need as many reps as there are patches, above row adds first 2 why does it rep too many times?
+  meta <- cbind(meta, mat)   # adds on 1 dim each loop
+  }
+  }
+  
+  meta_mat <- rbind(meta, meta)
+  for (i in 1:(nPatches-2)){   # need as many reps as there are patches, above row adds first 2 why does it rep too many times?
+    meta_mat <- rbind(meta_mat, meta)   # adds on 1 dim each loop
+  }
+
+  
+  for (p in 1:nPatches){
+    meta_mat[((p*nDim)-3):(p*nDim),((p*nDim)-3):(p*nDim)] <- A_list[[p]]
+  }
+  
+  colnames(meta_mat) <- rep(stagenames, nPatches)  # rep times = npatches
+  rownames(meta_mat) <- rep(stagenames, nPatches)
+  
+  # staying probs in relevant matrix entries - cols 2 or 4
+  for (p in 1 : nPatches){   # filling female and male remaining probs 
+  meta_mat[,((p*nDim)-2)] <- meta_mat[,((p*nDim)-2)] * (1 - Dmat[p,1])  # females remaining in patch
+  meta_mat[,(p * nDim)] <- meta_mat[,(p * nDim)] * (1 - Dmat[p,2])   # male staying in patch
+  }
+  
+  # creating another base matrix?
+  # if all inidivuals are moving, bmat = umat
+  bmat <- mat
+  bmat[2,2] <- Umat[2,2]
+  bmat[4,4] <- Umat[4,4]
+  
+  for (p in 1:nPatches){
+   this_bmat <- bmat
+   this_bmat <- this_bmat[,2] * (Dmat[p,1]/ (nPatches-1))    # dividing prob across remaining patches - assumes all equal 
+   this_bmat <- this_bmat[,4] * (Dmat[p,2]/ (nPatches-1))
+     
+  if(nPatches == 2){
+   # for 2 patches
+   # when p = 1
+   meta_mat[5:8, 1:4] <- this_bmat
+   
+   # when p = 2
+   meta_mat[1:4, 5:8] <- this_bmat
+   
+   } else if(nPatches > 2){
+    # when p =1  (patch 1), all rows below = bmat. col lims = 1:4 = p*nDim - 3 : p * nDim
+    meta_mat[(nDim + 1):nrow(meta_mat), 1:4] <- bmat   # all rows below (5;end)
+     
+   }
+   
+
+  }
+  
+  # survival * move probs for indivs moving patch 1 to 2
+  meta_mat[6,2] <- Saf *  Dmat[1,1]  # below patch 1 [((p * nStages) + 2), nStages -2] = Af survival * Dmat[p, 1 = F]
+  meta_mat[8,4] <- Umat[4,4] * Dmat[1,2]  # Am survival * move from 1 to 2
+  
+
+    meta_mat[,((p*nDim)-2)] <- meta_mat[,((p*nDim)-2)] * (1 - Dmat[p,1])  # females moving 
+    meta_mat[,(p * nDim)] <- meta_mat[,(p * nDim)] * (1 - Dmat[p,2])   # male moving
+  
+  
+  # for movement * survival in off diags - 
+  
+  meta_mat[8,4] <- Umat[4,4] * Dmat[1,2]  # Am survival * move from 1 to 2
+  meta_mat[4,8] <- Umat[4,4] * Dmat[2,2]  # survival * 
+  
+  # for fems, multiiply whole cols before adding fem survival
+  meta_mat[,2] <- meta_mat[,2] * (1 - Dmat[1,1])
+  meta_mat[6,2] <- Umat[2,2] * (1 - Dmat[1,1])  # Af survival * 
+  
+  meta_mat[,6] <- meta_mat[,6] * Dmat[2,1]
+  meta_mat[2,6] <- Umat[2,2] * (1 - Dmat[2,1])
+  
+  return(meta_mat)
+}
+   
+
+meta.mat <- function(Umat,   # vector of stage names
+                     params,
+                     initial_vec, # big vec length = 4* npatches
+                     Dmat){    
+  
+  stagenames <- c(colnames(Umat))
+  nDim <- length(stagenames)  # number of stages
+  nPatches <- nrow(Dmat)
+  
+  # setting up out obj
+  # meta_out <- list(meta_mat = matrix())  # what do we want from this?
+  
+  # setting base matrix dims
+  mat <- matrix(0, nrow = nrow(Umat), ncol = ncol(Umat))
+  
+  # Amat creation for more patches
+  A_list <- list()
+  for (p in 1:nPatches){
+    thisN <- sum(initial_vec[((p*nDim)-3): (p * nDim) ])
+    thisNf <- (p*nDim)-2
+    thisNm <- p * nDim
+    
+    this_amat <- apply.DD(params, 
+                          Umat, 
+                          thisN,   # yearling and adults
+                          DDapply="fertility", 
+                          stagenames,   # Stages in life cycle graph 
+                          thisNf,        # Adult female abundance
+                          thisNm         # Adult males
+    )
+    
+    A_list[[p]] <- this_amat    # output list length = nPatches
+  }
+  
+  # large mat set up
+  rep_cb <- function(mat, times) do.call(cbind, rep(list(mat), times))   # function to cbind repeated number of times
+  meta <- rep_cb(mat, nPatches)
+  
+  rep_rb <- function(mat, times) do.call(rbind, rep(list(mat), times))  # function to repeatedly stack mat vertically with rbind
+  meta_mat <- rep_rb(meta, nPatches)   # adds on 1 dim each loop
+  
+  # filling diags with Amats from list
+  for (p in 1:nPatches){
+    meta_mat[((p*nDim)-3):(p*nDim),((p*nDim)-3):(p*nDim)] <- A_list[[p]]
+  }
+  
+ # colnames(meta_mat) <- rep(stagenames, nPatches)  # rep times = npatches
+ # rownames(meta_mat) <- rep(stagenames, nPatches)
+  
+  # staying probs in relevant matrix entries 
+  for (p in 1 : nPatches){   # filling female and male remaining probs 
+    meta_mat[,((p*nDim)-2)] <- meta_mat[,((p*nDim)-2)] * (1 - Dmat[p,1])  # females remaining in patch
+    meta_mat[,(p * nDim)] <- meta_mat[,(p * nDim)] * (1 - Dmat[p,2])   # male staying in patch
+  }
+  
+  # base matrix to fill if all inidivuals are moving, bmat = umat
+  bmat <- mat
+  bmat[2,2] <- Umat[2,2]
+  bmat[4,4] <- Umat[4,4]
+  
+  for (p in 1:nPatches){
+    this_bmat <- bmat
+    this_bmat[,2] <- this_bmat[,2] * (Dmat[p,1]/ (nPatches-1))    # dividing prob across remaining patches - assumes all equal 
+    this_bmat[,4] <- this_bmat[,4] * (Dmat[p,2]/ (nPatches-1))
+    
+    col_lims <- ((p * nDim)-3) :(p * nDim)  # defines cols for each patch 
+    
+    # for each patch, bmat identical (survival constant, movement divided equally). SO each col either bmst or Amat
+    # Amat position in meta mat = patch number (when p = 2, second quadrant from top)
+    # number of bmats above amat = p-1  (when p = 2, 1 bmat above Amat)
+    # number of bmats below = nPatches - p   (when p = 2 and nPatches = 3, one below)
+    # Define boundaries of Amat position, bmats until and after that within same cols
+    
+    if(p == 1){   # for first entry, A at top, everything below bmat
+      # won't work, need to rbind with custom func
+      times <- nPatches - p    # defining times 
+      meta_mat[5:nrow(meta_mat), col_lims] <- rep_rb(this_bmat, times) # rep for all quadrants below - NEED TO MAKE SURE THEY ARE STACKED VERTICALLY
+      
+    } else if(1 < p && p > nPatches){   # middle rows - formula to work out bmats above and below
+      top <- ((p * nDim) - 3)  # upper row of this Amat
+      bot <- p * nDim   # bottom row of this Amat
+
+      meta_mat[1:(top - 1), col_lims] <- this_bmat
+      meta_mat[(bot +1) :nrow(meta_mat), col_lims] <- this_bmat
+      
+    } else if(p == nPatches){  # for final loop, Amat at bottom, everything above bmat
+      meta_mat[1:((p-1)*nDim), col_lims] <- this_bmat
+      
+    }
+  }
+  return(meta_mat)
+}
+
+# testing function 
+init <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
+meta.mat(Umat,   # vector of stage names
+         params,
+         init, # big vec length = 4* npatches
+         Dmat)
+         # off diags not filled correct
+
+
+# testing matrix sytax
+big_mat <- matrix(0, nrow = 12, ncol = 12)
+a <- seq(1:16)
+mini_mat <- matrix(a, nrow = 4, ncol = 4, byrow= TRUE)
+big_mat[1:8, 1:4] <- mini_mat
+
+rep_block <- function(mat, times) do.call(rbind, rep(list(mat), times))   # AI PMO it solves things so quick
+
+big_mat[1:8, 1:4] <- rep_block(mini_mat, 2)
+  
+  
+
