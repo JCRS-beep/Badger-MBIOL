@@ -24,8 +24,8 @@ meta.mat <- function(Umat,   # vector of stage names
   
   # initial vec vs new vec after movements
   initial <- matrix(initial_vec, ncol = 4, byrow = TRUE)
-  movers_mat <- initial   # we want non moving individuals as 0 - following assumes only adults move
-  movers_mat[,1] <- 0
+  movers_mat <- initial   
+  movers_mat[,1] <- 0    # non moving individuals as 0 - following assumes only adults move
   movers_mat[,3] <- 0 
   
   move_mat <- matrix(0 , nrow = nrow(movers_mat), ncol = ncol(movers_mat))
@@ -142,63 +142,3 @@ meta_mat <- meta.mat(Umat,   # vector of stage names
 
 
 
-# Defining movement function for Dmat
-# base logistic equation = L / (1 - e^(-k(x-x0)))
-# where L = 1 (max value, prob bound between 0 and 1)
-# K = steepness of curve (vis using desmos). We want pop size as some density val?
-# x0 = 0.5 (midpoint) 
-
-# Idea = group_size calculated as proportion of some carrying capacity (max group size = )
-Dmat.create <- function(colnames, nPatches) {
-  Dmat <- matrix(0, ncol= length(colnames), nrow = nPatches) # row = number patches
-  colnames(Dmat) <- colnames
-  
-  for (p in 1:nPatches){
-    move <- rnorm(length(colnames), mean = 0.5, sd =0.2) # eq to calculate move prob value given vars, for now rnorm
-    Dmat[p,] <- move
-  }
-  return(Dmat)
-}
-
-  
-
-# how to set up more patches 
-set.seed(123)  # setting our number 
-reps <- 10
-sizes <- runif(reps, min= 3, max=30) 
-# multiply each of these pop sizes with stage dist
-
-init_mat <- matrix(0, ncol = 4, nrow = reps) # fill each row with an inital vec per patch 
-for(i in 1:reps){
-  init_mat[i, ] <- floor(sizes[i]* stagedist)
-}
-
-initial <- c(t(init_mat))
-
-
-
-# FUTURE - adding density dependent dispersal
-ddDmat.create <- function(colnames, nPatches, 
-                        group_size, sex_ratio = NULL, 
-                        k) {
-  Dmat <- matrix(0, ncol= length(colnames), nrow = nPatches) # row = number patches
-  colnames(Dmat) <- colnames
-  
-  max_group_size <- 28 # based on papers recording 26 and 27 
-  
-  # logistic equation - total group size
-  for (p in 1:nPatches){
-    x <- group_size/ max_group_size    # proportion of max size
-    move <- 1 / (1 - exp((-k(x-0.5)))) 
-    Dmat[p,] <- move   # equal for all indivs or variable between sexes? vary K value for males and females?
-  }
-  
-  if(!is.null(sex_ratio) == FALSE){
-    for (p in 1:nPatches){
-      x <- sex_ratio    # proportion of max size
-      move <- 1 / (1 - exp((-k[2](x-0.5)))) # second value for k needed
-      Dmat[p,2] <- move   # male movement prob 
-    }
-  }
-  return(Dmat)
-}
