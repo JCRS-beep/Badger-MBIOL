@@ -26,6 +26,7 @@ stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
 
 Umat <- matrix(0, nrow=4, ncol=4)
 rownames(Umat) <- stages
+colnames(Umat) <- stages
 Umat[2,1]<- bright_survival_vec[1]  # yearling f survival
 Umat[2,2]<- bright_survival_vec[2]  # adult f survival - could use macdonald 2002 paper values
 Umat[4,3]<-bright_survival_vec[3]   # yearling m survival
@@ -38,11 +39,14 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
                     h= 6)   # harem size per male
 
 
+
+# everything above this in a seperate script to source?
+
 # projections (model 1) -----
 n0 <- c(12, 41, 12, 34) # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
 
 # baseline = 20 year projection
-proj0 <- multi.rem(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+proj0 <- multi.rem(Umat,     
                   initial = n0, 
                   stagedist = c(0.1, 0.4, 0.1, 0.4),   # approx stage dist 
                   params = params, 
@@ -74,7 +78,8 @@ for (t in 1:reps){   # loop to fill rows of matrix with vector
 
 
 # Basline projection analysis
-rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+rep_proj0 <- repeat.proj(func = "goal", 
+                         Umat,    
                          initial.vecs = initials,
                          stagedist = stagedist,
                          params = params, 
@@ -91,7 +96,8 @@ rep_proj0 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 
 
 # first removal scenario = 70% random
-rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+rep_proj1 <- repeat.proj(func = "goal", 
+                         Umat,    
                          initial.vecs = initials,
                          stagedist = stagedist,
                          params, 
@@ -109,7 +115,8 @@ rep_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 
 
 # Second scenario = 70% ADULT male biased 
-rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+rep_proj2 <- repeat.proj(func = "goal", 
+                         Umat,   
                          initial.vecs = initials,
                          stagedist = stagedist,
                          params, 
@@ -126,7 +133,8 @@ rep_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 
 
 # Third scenario = 70% ADULT female biased 
-rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+rep_proj3 <- repeat.proj(func = "goal", 
+                         Umat,    
                          initial.vecs = initials,
                          stagedist = stagedist,
                          params, 
@@ -145,8 +153,9 @@ rep_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some ki
 
 
 # Frequency - if projections are repeated every year for 2 years -----
-# Scenario 1 = 70% removal trial at year 10
-du_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# Scenario 1 = 70% removal trial at year 5 AND 6
+du_proj1 <- repeat.proj(func = "goal", 
+                        Umat,    
                         initial.vecs = initials,
                         stagedist = stagedist,
                         params, 
@@ -163,8 +172,9 @@ du_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kin
 
 
 
-# scenario 2 - biased male removals
-du_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# scenario 2 - biased male removals at year 5 AND 6
+du_proj2 <- repeat.proj(func = "goal", 
+                        Umat,     
                         initial.vecs = initials,
                         stagedist = stagedist,
                         params = params, 
@@ -180,8 +190,9 @@ du_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kin
                         reps = 100) # looks better !
 
 
-# Scenario 3 - biased female adult removals
-du_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# Scenario 3 - biased female adult removals at year 5 AND 6
+du_proj3 <- repeat.proj(func = "goal", 
+                        Umat,     
                         initial.vecs = initials,
                         stagedist = stagedist,
                         params = params, 
@@ -201,8 +212,9 @@ du_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kin
 
 
 # if removals are repeated for 5 years --------
-# first removal scenario = 50% random
-multi_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+# first removal scenario = 70% random 
+multi_proj1 <- repeat.proj(func = "goal", 
+                           Umat,     
                            initial.vecs = initials,
                            stagedist = stagedist,
                            params = params,  
@@ -219,7 +231,8 @@ multi_proj1 <- repeat.proj(Umat,      # seems to reach stability quickly - some 
 
 
 # Second scenario = 70% ADULT male biased 
-multi_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+multi_proj2 <- repeat.proj(func = "goal", 
+                           Umat,     
                            initial.vecs = initials,
                            stagedist = stagedist,
                            params = params, 
@@ -236,7 +249,8 @@ multi_proj2 <- repeat.proj(Umat,      # seems to reach stability quickly - some 
 
 
 # Third scenario = 70% ADULT female biased 
-multi_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
+multi_proj3 <- repeat.proj(func = "goal",
+                           Umat,     
                            initial.vecs = initials,
                            stagedist = stagedist,
                          params = params, 
@@ -252,6 +266,22 @@ multi_proj3 <- repeat.proj(Umat,      # seems to reach stability quickly - some 
                          reps = 100) 
                            
 
-
+# continuous removals all years of projection at low levels
+# removing 10% every year = needs old rem.proj function OR 15 years of 10 % = intensity of 150%?
+constant.proj <- repeat.proj(func = "prop",
+                             Umat,      
+                             initial.vecs = initials,
+                             stagedist = NULL,
+                             params = params, 
+                             stagenames = stages,
+                             time = 20, 
+                             DDapply="Fmat", 
+                             intensity= 10,  # percentage you want REMOVED from pop at time T=ry
+                             remyear =  c(5:19), 
+                             rem_strat = "random" ,  # 2 = Af 
+                             bias = NULL,
+                             return.vec= TRUE, 
+                             return.remvec = TRUE, 
+                             reps = 100) 
 
 
