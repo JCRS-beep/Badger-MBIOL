@@ -99,20 +99,21 @@ meta.mat <- function(Umat,   # vector of stage names
   return(meta_mat)
 }  
 
-# changing Dmat set up - only movement probs per patch, ncol  number moving indivs (just adults or all stages?)
+# Dmat creation function - can be customised to how many moving individuals we have 
+Dmat.create <- function(colNames, nPatches) {
+  Dmat <- matrix(0, ncol= length(colNames), nrow = nPatches) # row = number patches
+      colnames(Dmat) <- colNames
+  
+  for (p in 1:nPatches){
+    move <- rnorm(length(colNames), mean = 0.5, sd =0.2) # eq to calculate move prob value given vars, for now rnorm
+    Dmat[p,] <- move
+  }
+  return(Dmat)
+} 
 
-set.seed(1)  # replicable
-# alternative, random movement per patch
-Dmat <- matrix(rnorm(3,mean = 0.5, sd =0.1))
 
-# testing function 
-init <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
-meta_mat <- meta.mat(Umat,   # vector of stage names
-                     params,
-                     post_mat = matrix(init, ncol = 4, byrow = TRUE), # matrix with post movement abundances
-                     Dmat, 
-                     stagenames = colnames(Umat), 
-                     nDim = 4, 
-                     nPatches = 3)
-         # SUCCESS!
+
+
+
+
 

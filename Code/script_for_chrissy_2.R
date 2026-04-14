@@ -1,16 +1,52 @@
-# meta projection
-# 5.02.26
-# projecting the large matrix forward given an initial matrix
+#  Meta mat set up and projection
+# Second script for review - feedback on functions and outputs
+# 14/04
+
+# loading required packages ---------------
+library(ggplot2)
+library(gridExtra)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(readr)
+library(here)
+
+# sourcing scripts--------
+# # sourcing functions used throughout 
+source(here("Code/Functions/01_all_functions.R"))
+
+# data extraction
+source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
+
+# parameter definition and df set ups
+source(here("Code/03_parameter_rate_setup.R"))   # enter 2 then 1
+
+# function to create meta mat
+source(here("Code/Meta_MPM_creation.R"))   # contains creation function (can review in file)
+
+# testing this function ------
+set.seed(1)  # repeatable
+# random movement prob per patch, equal across stages and sexes
+Dmat <- Dmat.create(colNames = c("Adults"), nPatches = 3)  #only movement probs per patch, ncol  number moving indivs (just adults or all stages?)
+
+# initial vector
+initial <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
+
+meta_mat <- meta.mat(Umat,   # vector of stage names
+                     params,
+                     post_mat = matrix(initial, ncol = 4, byrow = TRUE), # matrix with post movement abundances
+                     Dmat, 
+                     stagenames = colnames(Umat), 
+                     nDim = 4, 
+                     nPatches = 3)
 
 
 
-# load (set up script) Umat, params, stages and meta script
-
-# meta.projection
+# projection function -----
 meta.proj <- function(Umat,   # vector of stage names
                       params, # adjusted beta = 
                       stagenames,
-                      initial,   # list of initial abundances - string length patches * nStages
+                      initial,   # vector of initial abundances - string length patches * nStages
                       colNames, # length = nCol Dmat
                       time = 20,
                       return.vec = TRUE,
@@ -52,8 +88,8 @@ meta.proj <- function(Umat,   # vector of stage names
   abun <- matrix(initial, ncol = 4, byrow = TRUE)   # initial matrix with vec per row, nrow = patches
   
   for (p in 1:patches){  # filling first row of each list vec 
-      Vec[[p]][1,] <- abun[p,]          # for each list in Vec, first row is initial 
-      }
+    Vec[[p]][1,] <- abun[p,]          # for each list in Vec, first row is initial 
+  }
   
   Group[1,] <- rowSums(abun)   # summing each row of matrix which contains abundance vec. Write in terms of vec?
   Pop[1] <- sum(Group[1]) # first pop entry is sum of group sizes
@@ -63,7 +99,7 @@ meta.proj <- function(Umat,   # vector of stage names
     # meta creation function to get large matrix for this year
     # combining entries for list vector format to long vec
     
-    # Calculating random movement this year per patch
+    # using Dmat function for random movement per patch
     thisDmat <- Dmat.create(colNames, patches) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
     
     # calculating post move vec for use in meta_create
@@ -78,7 +114,7 @@ meta.proj <- function(Umat,   # vector of stage names
     for (p in 1:patches){    # all adults equal p moving? Adult f and m?
       move_mat[p,] <- floor(movers_mat[p,] * (thisDmat[p,]/ (patches -1)))    # only works if Dmat 1 row (equal across sexes). 
       # numbers moving from 1 into any other
-  
+      
       # moving INTO patch?
       new_vec <- this_mat[p,] - floor(movers_mat[p, ] * (thisDmat[p,])) + colSums(move_mat[-p,])   # those that remain in patch || vec - move out 
       # adding indivs that move in from other patches
@@ -89,9 +125,9 @@ meta.proj <- function(Umat,   # vector of stage names
     
     # convert back to vec form? or just update meta create to accomodate matrix entry?
     
-     if (any(new_mat < 0, na.rm = TRUE) || any(is.na(new_mat))) {
-       new_mat[new_mat] <- 0
-       new_mat[is.na(new_mat)] <- 0
+    if (any(new_mat < 0, na.rm = TRUE) || any(is.na(new_mat))) {
+      new_mat[new_mat] <- 0
+      new_mat[is.na(new_mat)] <- 0
     }
     
     # creating meta mat using this years abundances
@@ -102,7 +138,7 @@ meta.proj <- function(Umat,   # vector of stage names
                           stagenames, 
                           nDim, 
                           patches)
-      
+    
     # If the projection matrix has any negative values in it, stop iterating and
     # return the projection up until this point.
     if (any(sapply(this_meta, function(m) any(m < 0, na.rm = TRUE)))) {
@@ -112,39 +148,39 @@ meta.proj <- function(Umat,   # vector of stage names
     }
     
     # multiply by vec to project
-      this_vec <- c(t(this_mat))  # turning back into long vec for multiplication
-      next_vec <- floor(as.numeric(this_meta %*% this_vec))    # vector abundance result following year
-      # check if any values < 0 
-      if (any(next_vec < 0, na.rm = TRUE) || any(is.na(next_vec))) {
-        next_vec[next_vec] <- 0
-        next_vec[is.na(next_vec)] <- 0
-      }      
-      
-      # filling next row of vec in each list
-      for(p in 1:patches){
+    this_vec <- c(t(this_mat))  # turning back into long vec for multiplication
+    next_vec <- floor(as.numeric(this_meta %*% this_vec))    # vector abundance result following year
+    # check if any values < 0 
+    if (any(next_vec < 0, na.rm = TRUE) || any(is.na(next_vec))) {
+      next_vec[next_vec] <- 0
+      next_vec[is.na(next_vec)] <- 0
+    }      
+    
+    # filling next row of vec in each list
+    for(p in 1:patches){
       Vec[[p]][i + 1,] <- next_vec[((p*nDim)-3) : (p*nDim)]      # the next row for each list vec
-      } 
-      # if any stage becomes negative, set to zero and continue
-      # issues here, syntax wrong?
-      if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
-        warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
-        Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
-      }
-      
-      for(p in 1:patches){
+    } 
+    # if any stage becomes negative, set to zero and continue
+    # issues within this section - cannot use syntax  "mat < 0 : comparison (<) is not possible for language types"
+    if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
+      warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
+      Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
+    }
+    for(p in 1:patches){
       # calculating group size per patch this year
       Group[i + 1,] <- sapply(Vec, function(x) sum(x[i +1, ]))  # list of group size vectors 
-      }
-      # if any stage becomes negative, set to zero and continue
-      if (any(sapply(group_size, function(mat) any(mat < 0, na.rm = TRUE)))) {
-        warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
-       # group_size <- group_size, function(mat) { mat[mat < 0] <- 0; mat })
-      }
-      
-      Pop[i+1] <- sum(group_size[i + 1,])
-      if (Pop[i] <= 0) {       # if pop size <= 0, stop and return
-        warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
-        break
+    }
+    # if any stage becomes negative, set to zero and continue
+    if (any(sapply(group_size, function(mat) any(mat < 0, na.rm = TRUE)))) {
+      warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
+      # group_size <- group_size, function(mat) { mat[mat < 0] <- 0; mat })
+    }
+    
+    # if pop size <= 0, stop and return
+    Pop[i+1] <- sum(group_size[i + 1,])
+    if (Pop[i] <= 0) {
+      warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
+      break
     }
     
   }
@@ -162,20 +198,20 @@ meta.proj <- function(Umat,   # vector of stage names
   return(out)
   
 }
+ 
 
-
-# test
-
-                    
-# 3 patch initial vec
-init <- c(4,5,2,6,2,9,2,6,2,8,2,7)  # 3 patches
-
-# first projection attempt
+# testing function projection with same initial vector ----
 proj_test <- meta.proj(Umat,   # vector of stage names
                        params, # adjusted beta = 
                        stages,
-                       init,   # list of initial abundances - string length patches * nStages
+                       initial,   # list of initial abundances - string length patches * nStages
                        colNames, # length = nCol Dmat
                        time = 20,
                        return.vec = TRUE,
                        return.group = TRUE)
+
+
+params2<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
+                     b=0.007,       # temp value- must be greater than in non-spatial model as max group sizes are around 1/10 as large
+                     rep_K= rogers_k,          # max litter size (K), 
+                     h= 6)
