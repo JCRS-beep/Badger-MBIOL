@@ -11,23 +11,13 @@
 
 ##  Mating systems function ----  when Nm or Nf = 0 U = 0
 mating.func <- function(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph 
                         Nf,        # Adult females
-                        Nm,             # Adult males
-                        return.mat= FALSE) {       # Fmat output?
-  
-  if(is.null(stagenames) || length(stagenames)== 0 & return.mat==TRUE) stop("stagenames must be provided for correct matrix dimension calculations")
+                        Nm) {      # adult males
   
   # naming objects 
   K <- params$rep_K      # MAX litter size
   h <- params$h          # harem size
-  S<- params$Sc_max    # cub survival rate (assumes equal for male and female cubs)
-  
-  
-  # creating outputs  
-  out<- list(f=numeric(), Fmat=matrix())
-  f <- numeric()    # fertility value (cubs produced by adult female) 
-  
+  S <- params$Sc_max    # cub survival rate (assumes equal for male and female cubs)
   
   # handling NA values 
   if (is.na(Nf) || is.na(Nm)) {
@@ -37,29 +27,17 @@ mating.func <- function(params,     # density dependent parameters
   # handling negatives values
   else if (Nf <= 0 || Nm <= 0) {
     # no mating possible if either sex absent or zero
-    out$f <- 0
+   f <- 0
   }
     
   # Minimum mating function to define number of pairs formed (U)
   # U = min(nf, Nm*h)
+  else if(Nf > 0 && Nm > 0){  # only calculate f when we have no 0 or na
   U <- min(Nf, Nm * h)
   
-  f<- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
-  
-  if(return.mat==TRUE) {  # visualising into fertility matrix
-    Fmat <- matrix(0, ncol= length(stagenames), nrow= length(stagenames)) # blank matrix
-    rownames(Fmat) <- stagenames
-    colnames(Fmat) <- stagenames
-    
-    nStages <- length(stagenames)/2 # number stages for each sex
-    Fmat[1,nStages] <- 0.5* f* S    # female cub production by females
-    Fmat[nStages+1, nStages] <- 0.5* f* S  # male cub production by females
-    out$Fmat <- Fmat
+  f <- (K*U)/Nf   # fertility coefficient f= cubs produced by adult female
   }
-  
-  out$f <- f
-  
-  return(out) 
+  return(f) 
 }
 # Function name= Mating.func
 # Inputs:
@@ -97,13 +75,10 @@ apply.DD <- function(params,
   rick <- ricker(params, N)    # rick = multiplier to be applied to fertility later
   
   # Call to mating.func()
-  mating <- mating.func(params,     # density dependent parameters
-                        stagenames,   # Stages in life cycle graph 
+  f <- mating.func(params,     # density dependent parameters
                         Nf,        # Adult  females
-                        Nm             # Adult  males
-                        ) 
-  
-  f <- mating$f 
+                        Nm)             # Adult  males
+                         
   
   # constructing Amat
   Amat <- Umat
@@ -229,9 +204,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
     
     # multiplying to project
     Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
-    # set any negatives to 0
-    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-    Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
+    # if any stage becomes negative, set to zero and continue
+    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
+      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+      Vec[Vec < 0] <- 0
+      Vec[is.na(Vec)] <- 0
+    }
     
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
@@ -240,13 +218,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
       break
     }
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
-    
+   
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index, remove prob and add to following year
       idx <- rem_index[as.character(i)]  
       
@@ -419,8 +391,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
     thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
                          thisNf,        
-                         thisNm,            
-                         )    
+                         thisNm)    
     
     
     # If the projection matrix has negative or NA values, return message, replace with 0, and continue
