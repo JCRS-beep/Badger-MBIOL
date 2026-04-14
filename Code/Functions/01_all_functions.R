@@ -317,7 +317,9 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
 }
 
 
-# updating function design - multi removals 
+# updating function design - multi removals to reach a goal of 70% of original pop removed. 
+# Why i don't like - point of removals is not to kill a certain number of badgers, but to leave behind a desired pop size. 
+# Ideal - set goal as final N size, then reach target over n years?
 multi.rem <- function(Umat,   # MAX SURVIVAL
                       initial, # initial vec
                       stagedist,  # proportion of each stage

@@ -7,51 +7,24 @@
 
 
 # function to create large matrix - call within projection. Acts as our apply DD function to create Amat each year
+# Input post movement vecs to calculate dd fertility after individuals have moved into this years group to mate.
 meta.mat <- function(Umat,   # vector of stage names
                      params,
-                     initial_vec, # big vec length = 4* npatches
-                     Dmat){      # random movement probs for males and females or per patch?
-  
-  stagenames <- c(colnames(Umat))
-  nDim <- length(stagenames)  # number of stages
-  nPatches <- nrow(Dmat)
-  
-  # setting up out obj
-  # meta_out <- list(meta_mat = matrix())  # what do we want from this?
-  
-  # setting base matrix dims
-  mat <- matrix(0, nrow = nrow(Umat), ncol = ncol(Umat))
-  
-  # initial vec vs new vec after movements
-  initial <- matrix(initial_vec, ncol = 4, byrow = TRUE)
-  movers_mat <- initial   
-  movers_mat[,1] <- 0    # non moving individuals as 0 - following assumes only adults move
-  movers_mat[,3] <- 0 
-  
-  move_mat <- matrix(0 , nrow = nrow(movers_mat), ncol = ncol(movers_mat))
-  new_mat <- move_mat
-   for (p in 1:nPatches){    # all adults equal p moving? Adult f and m?
-     move_mat[p,] <- floor(movers_mat[p,] * (Dmat[p,]/ (nPatches -1)))    # only works if Dmat 1 row (equal across sexes). 
-    # numbers moving from 1 into any other
-   }
-  
-  for ( p in 1:nPatches){
-  # moving INTO patch?
-    new_vec <- initial[p,] - floor(movers_mat[p, ] * (Dmat[p,])) + colSums(move_mat[-p,])   # those that remain in patch || initial - move out 
-    # adding indivs that move in from other patches
-    # if any negatives, set to 0
-    
-    new_mat[p, ] <- new_vec
-  }
+                     post_mat, # matrix with post movement abundances
+                     Dmat, 
+                     stagenames, 
+                     nDim, 
+                     nPatches){      # random movement probs for males and females or per patch?
+    # setting base matrix dims
+  mat <- matrix(0, nrow = nDim, ncol = nDim)
   
   # Amat creation for more patches
   a_list <- list()
   
-  
   for (p in 1:nPatches){
-    thisN <- rowSums(new_mat)[p]   # using new mat for fertility calc
-    thisNf <- new_mat[p, 2]
-    thisNm <- new_mat[p,4]
+    thisN <- rowSums(post_mat)[p]   # post move abundances for fertiltiy
+    thisNf <- post_mat[p, 2]
+    thisNm <- post_mat[p,4]
   
     this_amat <- apply.DD(params, 
                           Umat, 
@@ -78,8 +51,8 @@ meta.mat <- function(Umat,   # vector of stage names
   }
   
   # More difficult to id matrix positions once cols are named
-  # colnames(meta_mat) <- rep(stagenames, nPatches)  # rep times = npatches
-  # rownames(meta_mat) <- rep(stagenames, nPatches)
+   colnames(meta_mat) <- rep(stagenames, nPatches)  # rep times = npatches
+   rownames(meta_mat) <- rep(stagenames, nPatches)
   
   # staying probs in relevant matrix entries 
   for (p in 1 : nPatches){   # filling female and male remaining probs 
@@ -96,14 +69,15 @@ meta.mat <- function(Umat,   # vector of stage names
     col_lims <- ((p * nDim)-3) :(p * nDim)  # defines col boundaries for each patch 
     
     this_bmat <- bmat
+    
     # fertility vals needed
     thisA <- alist
     this_bmat[1,2] <- a_list[[p]][1,2]   
     this_bmat[3,2] <- this_bmat[1,2]
+    
     # dividing movement prob across remaining patches - assumes moves equally likely
     this_bmat[,2] <- this_bmat[,2] * (Dmat[p,]/ (nPatches-1))      # adult fem row * movement prob in this patch
     this_bmat[,4] <- this_bmat[,4] * (Dmat[p,]/ (nPatches-1))      # male survival * movement prob 
-    
     
     # number of bmats above amat = p-1  (when p = 2, 1 bmat above Amat)
     # number of bmats below = nPatches - p   (when p = 2 and nPatches = 3, one below)
@@ -123,8 +97,7 @@ meta.mat <- function(Umat,   # vector of stage names
     
   }
   return(meta_mat)
-}   # almost, first and final cols correct but bmat not included in middle. When run individually in lines, this builds correctly. Issue with loop set up?
-
+}  
 
 # changing Dmat set up - only movement probs per patch, ncol  number moving indivs (just adults or all stages?)
 
@@ -135,10 +108,11 @@ Dmat <- matrix(rnorm(3,mean = 0.5, sd =0.1))
 # testing function 
 init <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
 meta_mat <- meta.mat(Umat,   # vector of stage names
-         params,
-         init, # big vec length = 4* npatches
-         Dmat)
+                     params,
+                     post_mat = matrix(init, ncol = 4, byrow = TRUE), # matrix with post movement abundances
+                     Dmat, 
+                     stagenames = colnames(Umat), 
+                     nDim = 4, 
+                     nPatches = 3)
          # SUCCESS!
-
-
 
