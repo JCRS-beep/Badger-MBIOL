@@ -21,24 +21,9 @@ source(here("Code/Functions/01_all_functions.R"))
 # data extraction
 source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
 
-# setting up parameters and vital rates for demographic model
-stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
 
-Umat <- matrix(0, nrow=4, ncol=4)
-rownames(Umat) <- stages
-colnames(Umat) <- stages
-Umat[2,1]<- bright_survival_vec[1]  # yearling f survival
-Umat[2,2]<- bright_survival_vec[2]  # adult f survival - could use macdonald 2002 paper values
-Umat[4,3]<-bright_survival_vec[3]   # yearling m survival
-Umat[4,4]<- bright_survival_vec[4]  # adult m survival
-
-# extract straight from data?
-params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                    b= beta,       # calculated from mcdonald 2016
-                    rep_K= rogers_k,          # max litter size (K), 
-                    h= 6)   # harem size per male
-
-
+# parameter definition and df set ups
+source(here("Code/03_parameter_rate_setup.R"))   # enter 2 then 1
 
 # everything above this in a seperate script to source?
 
@@ -61,7 +46,7 @@ proj0 <- multi.rem(Umat,
                   return.remvec = FALSE) 
 
 ssd <- ssd(proj0, vis = FALSE)
-stagedist <- ssd$stageMat[20,] # final dist used as ssd
+stagedist <- round(ssd$stageMat[20,], 3) # final dist used as ssd, rounded to 4 sf
 
 # Repeated projections, do not return long outputs !
 

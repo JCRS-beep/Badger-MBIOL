@@ -3,8 +3,8 @@
 # 14/04
 
 # loading required packages ---------------
-library(ggplot2)
-library(gridExtra)
+# library(ggplot2)
+# library(gridExtra)
 library(tidyr)
 library(tidyverse)
 library(dplyr)
@@ -27,7 +27,8 @@ source(here("Code/Meta_MPM_creation.R"))   # contains creation function (can rev
 # testing this function ------
 set.seed(1)  # repeatable
 # random movement prob per patch, equal across stages and sexes
-Dmat <- Dmat.create(colNames = c("Adults"), nPatches = 3)  #only movement probs per patch, ncol  number moving indivs (just adults or all stages?)
+cname <- c("Adults")
+Dmat <- Dmat.create(colNames = cname, nPatches = 3)  #only movement probs per patch, ncol  number moving indivs (just adults or all stages?)
 
 # initial vector
 initial <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
@@ -46,7 +47,7 @@ meta_mat <- meta.mat(Umat,   # vector of stage names
 meta.proj <- function(Umat,   # vector of stage names
                       params, # adjusted beta = 
                       stagenames,
-                      initial,   # vector of initial abundances - string length patches * nStages
+                      initial,   # list of initial abundances - string length patches * nStages
                       colNames, # length = nCol Dmat
                       time = 20,
                       return.vec = TRUE,
@@ -92,14 +93,14 @@ meta.proj <- function(Umat,   # vector of stage names
   }
   
   Group[1,] <- rowSums(abun)   # summing each row of matrix which contains abundance vec. Write in terms of vec?
-  Pop[1] <- sum(Group[1]) # first pop entry is sum of group sizes
+  Pop[1] <- sum(Group[1,]) # first pop entry is sum of group sizes
   
   # Loop = matrix proj each year  --------
   for (i in 1:time) {   # repeat for as many years as we have
     # meta creation function to get large matrix for this year
     # combining entries for list vector format to long vec
     
-    # using Dmat function for random movement per patch
+    # Calculating random movement this year per patch
     thisDmat <- Dmat.create(colNames, patches) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
     
     # calculating post move vec for use in meta_create
@@ -161,28 +162,27 @@ meta.proj <- function(Umat,   # vector of stage names
       Vec[[p]][i + 1,] <- next_vec[((p*nDim)-3) : (p*nDim)]      # the next row for each list vec
     } 
     # if any stage becomes negative, set to zero and continue
-    # issues within this section - cannot use syntax  "mat < 0 : comparison (<) is not possible for language types"
+    # issues here, syntax wrong?
     if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
       warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
       Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
     }
+    
     for(p in 1:patches){
       # calculating group size per patch this year
       Group[i + 1,] <- sapply(Vec, function(x) sum(x[i +1, ]))  # list of group size vectors 
     }
     # if any stage becomes negative, set to zero and continue
-    if (any(sapply(group_size, function(mat) any(mat < 0, na.rm = TRUE)))) {
+    if (any(sapply(Group, function(mat) any(mat < 0, na.rm = TRUE)))) {
       warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
-      # group_size <- group_size, function(mat) { mat[mat < 0] <- 0; mat })
+      Group <- apply(Group, function(mat) { mat[mat < 0] <- 0; mat })
     }
     
-    # if pop size <= 0, stop and return
-    Pop[i+1] <- sum(group_size[i + 1,])
-    if (Pop[i] <= 0) {
+    Pop[i+1] <- sum(Group[i + 1,])
+    if (Pop[i] <= 0) {       # if pop size <= 0, stop and return
       warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
       break
     }
-    
   }
   
   # out objects
@@ -198,20 +198,60 @@ meta.proj <- function(Umat,   # vector of stage names
   return(out)
   
 }
- 
+
+
+
+
 
 # testing function projection with same initial vector ----
 proj_test <- meta.proj(Umat,   # vector of stage names
                        params, # adjusted beta = 
                        stages,
                        initial,   # list of initial abundances - string length patches * nStages
-                       colNames, # length = nCol Dmat
+                       cname, # length = nCol Dmat
+                       time = 20,
+                       return.vec = TRUE,
+                       return.group = TRUE)
+# group sizes and pop sizes reaching too high - max pop = 250 and max pop ~ 30?
+
+
+# trying greater beta val must be greater than in non-spatial model as max group sizes are around 1/10 as large
+params2 <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
+                     b=0.05,       # temp value 0.04 - 0.05 seems about right
+                     rep_K= rogers_k,          # max litter size (K), 
+                     h= 6)
+
+proj_test <- meta.proj(Umat,   # vector of stage names
+                       params2, # adjusted beta = 
+                       stages,
+                       initial,   # list of initial abundances - string length patches * nStages
+                       cname, # length = nCol Dmat
                        time = 20,
                        return.vec = TRUE,
                        return.group = TRUE)
 
 
-params2<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                     b=0.007,       # temp value- must be greater than in non-spatial model as max group sizes are around 1/10 as large
-                     rep_K= rogers_k,          # max litter size (K), 
-                     h= 6)
+# greater number of patches might make more realistic
+
+# generating vec for 15 patches
+stagedist <- c(0.110, 0.445, 0.110, 0.335)
+groups <- floor(runif(15, min = 3, max = 30))  # vector of group sizes per patch
+initial_mat <- matrix(0, nrow = 15, ncol = 4)
+
+for (i in 1: length(groups)){
+initial_mat[i,] <- floor(stagedist * groups[i])
+}
+
+large_vec <- c(t(initial_mat))
+
+proj_test <- meta.proj(Umat,   # vector of stage names
+                       params2, # adjusted beta = 
+                       stages,
+                       large_vec,   # list of initial abundances - string length patches * nStages
+                       cname, # length = nCol Dmat
+                       time = 20,
+                       return.vec = TRUE,
+                       return.group = TRUE)
+
+# to discuss - how to set limits for 'large and small' group sizes? At the moment, all finish around same size, so 10 groups of 20 
+# more realistic, 10 groups with sizes ranging 5 - 30? Set params per patch?

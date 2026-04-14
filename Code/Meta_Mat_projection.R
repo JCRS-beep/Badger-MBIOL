@@ -136,17 +136,16 @@ meta.proj <- function(Umat,   # vector of stage names
       Group[i + 1,] <- sapply(Vec, function(x) sum(x[i +1, ]))  # list of group size vectors 
       }
       # if any stage becomes negative, set to zero and continue
-      if (any(sapply(group_size, function(mat) any(mat < 0, na.rm = TRUE)))) {
+      if (any(sapply(Group, function(mat) any(mat < 0, na.rm = TRUE)))) {
         warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
-       # group_size <- group_size, function(mat) { mat[mat < 0] <- 0; mat })
+         Group <- apply(Group, function(mat) { mat[mat < 0] <- 0; mat })
       }
       
-      Pop[i+1] <- sum(group_size[i + 1,])
+      Pop[i+1] <- sum(Group[i + 1,])
       if (Pop[i] <= 0) {       # if pop size <= 0, stop and return
         warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
         break
-    }
-    
+      }
   }
   
   # out objects
