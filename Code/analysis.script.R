@@ -10,9 +10,10 @@ library(readr)
 library(here)
 
 # sourcing from model projection scripts
-source(here("Code/03_model_projections.R"))  # loads all params, model projections
+source(here("Code/04_model_projections.R"))  # loads all params, model projections. why does it say stagedist not found?
 
 # future improvements - final pop size plot, sex ratio plot, extinction plot with all strats and freqs 
+# separate analysis and plot code into diff scripts (already have script 6 for plots)  - once all running correct
 
 # Functions used in this script -----
 # Turning relative pop size outputs into comparison dataframe for plotting
@@ -23,7 +24,7 @@ rel.df <- function(rel_projs = "list")  # list of all projections to compare, le
   
   # set up individual dfs for eac proj
   for (p in 1:nProj){   # repeat for each projection
-    # assigning strategy 1,2,3 own names. Worry = names do not match actual projection
+    # assigning strategy 1,2,3 own names. Worry = if names do not match actual projection
     if(p == 1) strat = "random" 
     if(p == 2) strat = "Adult males" 
     if(p == 3) strat = "Adult females"
@@ -66,7 +67,7 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
 }
 
 # final N plot creation
-# rel plot function - WHY not wokring?
+# rel plot function - WHY not working?
 rel.plot <- function(rel_df, yval, save_name = FALSE){
   
   baseplot <- ggplot(data = rel_df, aes(x = Strategy, y = yval)) +
@@ -101,7 +102,9 @@ rel.plot <- function(rel_df, yval, save_name = FALSE){
 #  ! object 'relative_final_N' not found
 
 
-# average pop size and lambda of baseline -------
+
+# baseline checks  -------
+# average pop size and lambda
 popN <- N.extract(rep_proj0)
 Nfin <- sapply(popN, function(x) x[20])
 summary(Nfin)
@@ -124,7 +127,7 @@ rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)  # will this always list in o
 
 rel_df <- rel.df(rel_projs)  # using prev defined function to turn inot comparison df
 
-# visualising in a boxplot
+# visualising in a boxplot - eventually dont need this section
 finN_box <- rel.plot(rel_df, yval = relative_final_N)  # why this err?
 
 
@@ -141,28 +144,7 @@ finN_box <-  ggplot(rel_df, aes(x = Strategy, y = relative_final_N)) +
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
-    # ggsave these to figs folder
-ggsave(filename = "finalN_boxplot.png",
-       plot = finN_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white")
-
-
-meanN_box <- ggplot(rel_df, aes(x = Strategy, y = relative_mean_N)) + 
-  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
-  geom_hline(yintercept = 1, aes(colour = "grey20")) +
-  labs(title = "Average population size relative to baseline average",
-       y = "Relative mean pop size") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
-  theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
-    axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
-  ) 
-
+  
 
 # comparing ssd and sex ratio across scenarios
 # combine in list
@@ -174,7 +156,7 @@ sex_df <- sex.df(sex_list)  # custom function to turn lists into a dataframe
 
 
 # how to visualise this?
-# boxplot for sex ratio?
+# boxplot for sex ratio - insttead of many singles, combine into comparison boxplot
 sr_box <- ggplot(sex_df, aes(x = Strategy, y = sex_ratio))+
   geom_boxplot(outlier.colour="red") +
   labs( y = "Sex ratio (proportion female)") +
@@ -186,17 +168,10 @@ sr_box <- ggplot(sex_df, aes(x = Strategy, y = sex_ratio))+
     axis.text = element_text(size = 16 - 2),
   ) 
 
-ggsave(filename = "sex_ratio_boxplot.png",
-       plot = sr_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white") 
-      
 
 
 # looking at repeated rems --------
 # I want a single box plot, colour coded by temporal frequency and seperated by strategy ()
-# 
 rel_du1 <- relative.pop(du_proj1,   
                           baseline_list = rep_proj0) 
 rel_du2 <- relative.pop(du_proj2,   
@@ -212,26 +187,6 @@ du_finN_box <- ggplot(du_rel_df, aes(x = Strategy, y = relative_final_N)) +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
   labs(title = "Final population size relative to baseline average",
        y = "Relative final pop size") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
-  theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
-    axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
-  ) 
-
-ggsave(filename = "double_rem_finalN_boxplot",
-       plot = du_finN_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white")
-
-du_meanN_box <- ggplot(du_rel_df, aes(x = Strategy, y = relative_mean_N)) + 
-  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
-  geom_hline(yintercept = 1, aes(colour = "grey20")) +
-  labs(title = "Average population size relative to baseline average",
-       y = "Relative mean pop size") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
   theme_minimal() +
   theme(
@@ -274,12 +229,6 @@ du_sr_box <- ggplot(du_sex_df, aes(x = Strategy, y = sex_ratio))+
     axis.text = element_text(size = 16 - 2),
   ) 
 
-ggsave(filename = "double_rem_sex_ratio_boxplot",
-       plot = du_sr_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white")
-
 # removals over 5 years
 multi_rep_list <- list(multi_proj1, multi_proj2, multi_proj3)
 rel_multi1 <- relative.pop(multi_proj1,   
@@ -306,25 +255,7 @@ multi_finN_box <- ggplot(multi_rel_df, aes(x = Strategy, y = relative_final_N)) 
     axis.text = element_text(size = 16 - 2),
   ) 
 
-ggsave(filename = "multi_rem_finalN_boxplot",
-       plot = multi_finN_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white")
 
-multi_meanN_box <- ggplot(multi_rel_df, aes(x = Strategy, y = relative_mean_N)) + 
-  geom_boxplot(outlier.colour="red") + # need to remove outliers as these skew axis too much
-  geom_hline(yintercept = 1, aes(colour = "grey20")) +
-  labs(title = "Average population size relative to baseline average",
-       y = "Relative mean pop size") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
-  theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
-    axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
-  ) 
 
 # sex ratio 
 av_multi_ssd1 <- ssd.av(multi_proj1, return.Mats = FALSE)
@@ -348,16 +279,11 @@ multi_sr_box <- ggplot(sex_df, aes(x = Strategy, y = sex_ratio))+
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
-ggsave(filename = "multi_rem_sex_ratio_boxplot",
-       plot = multi_sr_box,
-       device = "png",
-       path = here("Figs"), 
-       bg = "white")
 
 
 
 
-# combined df - 
+# combined df analyses -----
 sing <- rel_df
 sing$rem_freq <- rep(as.character("Single", nrow(du_rel_df)))
 duplo <- du_rel_df 
@@ -368,11 +294,9 @@ multi$rem_freq <- rep(as.character("Multi", nrow(multi)))
 comb_rel_df <- rbind(sing, duplo, multi)
 
 # combined plots
-
-
 # plot - how to make x axis wider
 comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, fill = rem_freq)) +
-  geom_boxplot(outlier.colour="red") +
+  geom_boxplot() +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
   labs(y = "Final population size relative to baseline average") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
@@ -383,16 +307,43 @@ comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, fil
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
   ) 
-
 ggsave(filename = "comb_finalN_boxplot.png",
        plot = comb_finN_box,
        device = "png",
        path = here("Figs"), 
        bg = "white")
 
+# combined sex ratio plot
+# baseline sex ratio
+base_ratio <- mean(sex_df[1:100,]$sex_ratio)
+sing_sr <- sex_df[101:nrow(sex_df),] # exclude baseline sex ratio? 
+sing_sr$rem_freq <- rep(as.character("Single", nrow(sing_sr)))
+
+du_sr <- du_sex_df[101:nrow(du_sex_df),]   # specify rows 100 onward?
+du_sr$rem_freq <- rep(as.character("Double", nrow(du_sr)))
+
+multi_sr <- multi_sex_df[101:nrow(multi_sex_df),]
+multi_sr$rem_freq <- rep(as.character("Multiple", nrow(multi_sr)))
+
+comb_sex_df <- rbind(sing_sr, du_sr, multi_sr)  
+
+comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio, fill = rem_freq)) +
+  geom_boxplot() +
+  geom_hline(yintercept = base_ratio) +  # line for baseline av sex ratio
+  labs(y = "Proportion of females in the population") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
 
 
-# checking for vulnerabilities (low pop sizes)
+
+
+# Extinction risk and vulnerabilities (low pop sizes) ----
 single_list <- list(rep_proj1, rep_proj2, rep_proj3)
 single_vul <- sapply(single_list, extinction.risk)  # no extinctions in baseline or single rem scenarios
 du_vul <- sapply(du_rep_list, extinction.risk)  # some extinctions in consecutive removals
@@ -428,7 +379,7 @@ ggsave(filename = "extinction_bar.png",
        bg = "white")
 
 
-# combining final N in a table
+# combining final N in a table?
 
 
 

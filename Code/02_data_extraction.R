@@ -4,7 +4,7 @@
 # install.packages("devtools")
 # devtools::install_github("daniel1noble/metaDigitise")
 
-# packages ----
+# packages ----    # must be loaded in this script as needed for extraction and plots
 library(metaDigitise)
 library(dplyr)
 library(tidyr)

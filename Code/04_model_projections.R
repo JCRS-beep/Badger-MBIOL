@@ -6,12 +6,6 @@
 
 
 # loading required packages
-library(ggplot2)
-library(gridExtra)
-library(tidyr)
-library(tidyverse)
-library(dplyr)
-library(readr)
 library(here)
 
 
@@ -28,8 +22,6 @@ source(here("Code/03_parameter_rate_setup.R"))   # enter 2 then 1
 # everything above this in a seperate script to source?
 
 # projections (model 1) -----
-n0 <- c(12, 41, 12, 34) # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
-
 # baseline = 20 year projection
 proj0 <- multi.rem(Umat,     
                   initial = n0, 
@@ -45,21 +37,10 @@ proj0 <- multi.rem(Umat,
                   return.vec= TRUE, 
                   return.remvec = FALSE) 
 
-ssd <- ssd(proj0, vis = FALSE)
-stagedist <- round(ssd$stageMat[20,], 3) # final dist used as ssd, rounded to 4 sf
+ssd0 <- ssd(proj0, vis = FALSE)
+stagedist <- round(ssd0$stageMat[20,], 3) # final dist used as ssd, rounded to 3 sf
 
 # Repeated projections, do not return long outputs !
-
-# need to generate initial vecs in repeatable way
-set.seed(123)  # setting our number 
-reps <- 100
-pop.sizes <- runif(reps, min=25, max=240) 
-
-initials <- matrix(0, nrow = reps, ncol = 4)
-
-for (t in 1:reps){   # loop to fill rows of matrix with vector
-  initials[t,] <- floor(stagedist*pop.sizes[t])
-}
 
 
 # Basline projection analysis
@@ -253,20 +234,22 @@ multi_proj3 <- repeat.proj(func = "goal",
 
 # continuous removals all years of projection at low levels
 # removing 10% every year = needs old rem.proj function OR 15 years of 10 % = intensity of 150%?
-constant.proj <- repeat.proj(func = "prop",
-                             Umat,      
-                             initial.vecs = initials,
-                             stagedist = NULL,
-                             params = params, 
-                             stagenames = stages,
-                             time = 20, 
-                             DDapply="Fmat", 
-                             intensity= 10,  # percentage you want REMOVED from pop at time T=ry
-                             remyear =  c(5:19), 
-                             rem_strat = "random" ,  # 2 = Af 
-                             bias = NULL,
-                             return.vec= TRUE, 
-                             return.remvec = TRUE, 
-                             reps = 100) 
+cont.proj <- repeat.proj(func = "prop",
+                         Umat,      
+                         initial.vecs = initials,
+                         stagedist = NULL,
+                         params = params, 
+                         stagenames = stages,
+                         time = 20, 
+                         DDapply="Fmat", 
+                         intensity= 10,  # percentage you want REMOVED from pop at time T=ry
+                         remyear =  c(5:19), 
+                         rem_strat = "random" ,  # 2 = Af 
+                         bias = NULL,
+                         return.vec= TRUE, 
+                         return.remvec = TRUE, 
+                         reps = 100) 
 
 
+# meta proj scenarios
+# baseline - 20 years in patches

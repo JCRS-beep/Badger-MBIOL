@@ -22,3 +22,18 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
 
 
 # creating initial vectors here?
+# inital vec for single projection 
+n0 <- c(12, 41, 12, 34) # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
+
+
+# initial vecs for repeated projection scenarios
+# need to generate initial vecs in repeatable way
+set.seed(123)  # setting our number 
+reps <- 100
+pop.sizes <- runif(reps, min=25, max=240) # min pop size = 25, max = 240. 
+
+initials <- matrix(0, nrow = reps, ncol = 4)
+
+for (t in 1:reps){   # loop to fill rows of matrix with vector
+  initials[t,] <- floor(stagedist*pop.sizes[t])
+}
