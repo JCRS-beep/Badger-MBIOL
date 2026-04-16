@@ -33,8 +33,8 @@ Dmat <- Dmat.create(colNames = cname, nPatches = 3)  #only movement probs per pa
 # initial vector
 initial <- c(1,4,1,4,2,6,2,6,2,8,2,7)  # 3 patches
 
-meta_mat <- meta.mat(Umat,   # vector of stage names
-                     params,
+meta_mat <- meta.mat(Umat,   # matrix of stage-specific survival/growth transitions (will be the same in every patch)
+                     params, # parameters for density-dependent reproduction
                      post_mat = matrix(initial, ncol = 4, byrow = TRUE), # matrix with post movement abundances
                      Dmat, 
                      stagenames = colnames(Umat), 
@@ -115,6 +115,9 @@ meta.proj <- function(Umat,   # vector of stage names
     for (p in 1:patches){    # all adults equal p moving? Adult f and m?
       move_mat[p,] <- floor(movers_mat[p,] * (thisDmat[p,]/ (patches -1)))    # only works if Dmat 1 row (equal across sexes). 
       # numbers moving from 1 into any other
+      ###CH: Why are you dividing by the number of other patches? The number of
+      ###individuals leaving patch p doesn't depend on how many other patches
+      ###there are.
       
       # moving INTO patch?
       new_vec <- this_mat[p,] - floor(movers_mat[p, ] * (thisDmat[p,])) + colSums(move_mat[-p,])   # those that remain in patch || vec - move out 
@@ -130,6 +133,10 @@ meta.proj <- function(Umat,   # vector of stage names
       new_mat[new_mat] <- 0
       new_mat[is.na(new_mat)] <- 0
     }
+    
+    ###CH: If no one dies while moving, then the column sums of new_mat should
+    ###be the same as the column sums of this_mat. When I tested this, it seems
+    ###like a bunch of badgers are dying off while moving.
     
     # creating meta mat using this years abundances
     this_meta <- meta.mat(Umat,   # vector of stage names
@@ -253,5 +260,9 @@ proj_test <- meta.proj(Umat,   # vector of stage names
                        return.vec = TRUE,
                        return.group = TRUE)
 
-# to discuss - how to set limits for 'large and small' group sizes? At the moment, all finish around same size, so 10 groups of 20 
-# more realistic, 10 groups with sizes ranging 5 - 30? Set params per patch?
+# to discuss - how to set limits for 'large and small' group sizes? At the
+# moment, all finish around same size, so 10 groups of 20 more realistic, 10
+# groups with sizes ranging 5 - 30? Set params per patch?
+
+
+
