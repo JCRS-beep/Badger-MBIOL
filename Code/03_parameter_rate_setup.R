@@ -23,7 +23,8 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
 
 # creating initial vectors here?
 # inital vec for single projection 
-n0 <- c(12, 41, 12, 34) # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
+stagedist <- c(0.12, 0.43, 0.12, 0.34)
+n0 <- stagedist * 100 # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
 
 
 # initial vecs for repeated projection scenarios

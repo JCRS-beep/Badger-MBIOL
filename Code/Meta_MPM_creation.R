@@ -29,7 +29,7 @@ meta.mat <- function(Umat,   # vector of stage names
     this_amat <- apply.DD(params, 
                           Umat, 
                           thisN,   # yearling and adults
-                          DDapply="fertility", 
+                          DDapply ="fertility", 
                           stagenames,   # Stages in life cycle graph 
                           thisNf,        # Adult female abundance
                           thisNm         # Adult males
