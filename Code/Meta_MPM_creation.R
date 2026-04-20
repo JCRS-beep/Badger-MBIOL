@@ -110,7 +110,10 @@ Dmat.create <- function(colNames, nPatches) {
   }
   return(Dmat)
 } 
-
+###CH: I think the movement probability might be too high. I would suggest
+###setting the mean to 0.2 or something, and then put a line of code that
+###catches any values less than 0 (either set them to 0 or take the absolute
+###value)
 
 
 
