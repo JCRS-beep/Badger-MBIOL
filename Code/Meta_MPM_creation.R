@@ -117,13 +117,15 @@ meta.mat <- function(Umat,   # vector of stage names
   return(meta_mat)
 }  
 
+
+
 # Dmat creation function - can be customised to how many moving individuals we have 
 Dmat.create <- function(colNames, nPatches) {
   Dmat <- matrix(0, ncol= length(colNames), nrow = nPatches) # row = number patches
       colnames(Dmat) <- colNames
   
   for (p in 1:nPatches){
-    move <- rnorm(length(colNames), mean = 0.2, sd =0.2) # eq to calculate move prob value given vars, for now rnorm
+    move <- rnorm(length(colNames), mean = 0.2, sd = 0.2) # eq to calculate move prob value given vars, for now rnorm
     move[move < 0] <- 0    # if any values lower than 0, set to 0
     Dmat[p,] <- move
   }
