@@ -139,14 +139,9 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   
   if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
   
-  # if(rem_strat != "random" && is.null(bias)){         # not defined properly - runs err
-  #  stop("please provide strength of bias for no random removal strategies")
-  
-  #}
   
   nStages <- length(stagenames)/2      # how many stages
-  ry <- remyear                 
-  
+
   # ensure remyear are integers and between 1 - time
   if (length(remyear) > 0) {
     remyear <- unique(as.integer(remyear))
@@ -158,12 +153,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
   out <- list(pop = vector(), 
               vec = matrix(), 
               Nremoved = numeric(length(remyear)), # must be a vector - length = number of removal years
-              remvec = vector("list", length(remyear)))  # including number removed and removals from each stage - must be a list - length number of removal years
+              remvec = matrix())  # including number removed and removals from each stage - must be a list - length number of removal years
   
   Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
-  Nremoved <- numeric(length(ry))
-  Remvec <- vector("list", length(ry))
+  Nremoved <- numeric(length(remyear))
+  Remvec <- matrix(0, nrow = length(remyear), ncol =4)
   
   
   colnames(Vec) <- stagenames   # naming cols matrix as stages 
@@ -280,7 +275,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       
       #  into outputs
       Nremoved[idx] <- thisRem  # nth vector entry 
-      Remvec[[idx]] <- thisRemvec
+      Remvec[idx,] <- thisRemvec
       
       # new population size following removals
       Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
@@ -358,17 +353,18 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
   }
   
   nStages <- length(stagenames)/2      # how many stages
+  nYears <- length(remyear)   # over how many years are removals taking place?  remove year_goal for each value of rem_index
   
   # Set up  output
   out <- list(pop = vector(), 
               vec = matrix(), 
               Nremoved = numeric(length(remyear)), # must be a vector - length = number of removal years
-              remvec = vector("list", length(remyear)))  # including number removed and removals from each stage - must be a list - length number of removal years
+              remvec = matrix())  # including number removed and removals from each stage -matrix nrow = number of removal years
   
   Vec <- matrix(0, ncol = length(stagenames), nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
   Nremoved <- numeric(length(remyear))
-  Remvec <- vector("list", length(remyear))
+  Remvec <- matrix(0, nrow = length(remyear), ncol =4)  
   
   
   colnames(Vec) <- stagenames   # naming cols matrix as stages 
@@ -428,9 +424,8 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
-      # setting removal goals
       idx <- rem_index[as.character(i)]  
-      nYears <- length(remyear)   # over how many years are removals taking place?  remove year_goal for each value of rem_index
+      
       # setting removal goal
       goal <- round(Pop[remyear[1]] * (intensity/100))   # goal to remove  - pop size before first rem  
       year_goal <- round(goal/nYears)    # how many removed per year
@@ -449,20 +444,20 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
         if (is.numeric(intensity) && rem_strat %in% c("adult", "Adult", "yearling", "Yearling")){   # want to specify age and sex prob  - adult male, yearling fem.. 
           if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
             # how to bias removals for classes? 
-            bias_vec *c(-1, 1, -1, 1)   # bias is removed from yearlings, added to adults
+            bias_vec * c(-1, 1, -1, 1)   # bias is removed from yearlings, added to adults
             
           }
           else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
-            bias_vec *c(1, -1, 1, -1)   # bias is added to yearlings, subtracted from adults
+            bias_vec * c(1, -1, 1, -1)   # bias is added to yearlings, subtracted from adults
           }
           
           # sex biased
         } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
           if(rem_strat %in% c("females", "Females", "female", "Female")){
-            bias_vec *c(1, 1, -1, -1)   # bias is added to fems, subtracted from males
+            bias_vec * c(1, 1, -1, -1)   # bias is added to fems, subtracted from males
             
           } else if(rem_strat %in% c("males", "Males", "male", "Male")){
-            bias_vec *c(-1, -1, 1, 1)   # bias is subtracted from fems, added to males
+            bias_vec * c(-1, -1, 1, 1)   # bias is subtracted from fems, added to males
           }
           dist <- stagedist + bias_vec    # combining into new removal distribution
           rem <-  year_goal * dist     # number to remove per stage
@@ -490,7 +485,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       
       #  into outputs
       Nremoved[idx] <- thisRem  # nth vector entry 
-      Remvec[[idx]] <- thisRemvec
+      Remvec[idx,] <- thisRemvec
       
       # new population size following removals
       Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
