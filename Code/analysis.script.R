@@ -9,8 +9,20 @@ library(dplyr)
 library(readr)
 library(here)
 
-# sourcing from model projection scripts
-source(here("Code/04_model_projections.R"))  # loads all params, model projections. why does it say stagedist not found?
+# sourcing all required scripts
+# 
+source(here("Code/Functions/01_all_functions.R"))
+
+# data extraction
+source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
+
+
+# parameter definition and df set ups
+source(here("Code/03_parameter_rate_setup.R"))   # enter 2 then 1
+
+# sourcing from model projection scripts - remove once final script complete
+source(here("Code/04_model_projections.R"))  # loads all model projection scenarios. 
+
 
 # future improvements - final pop size plot, sex ratio plot, extinction plot with all strats and freqs 
 # separate analysis and plot code into diff scripts (already have script 6 for plots)  - once all running correct
@@ -25,7 +37,7 @@ rel.df <- function(rel_projs = "list")  # list of all projections to compare, le
   # set up individual dfs for eac proj
   for (p in 1:nProj){   # repeat for each projection
     # assigning strategy 1,2,3 own names. Worry = if names do not match actual projection
-    if(p == 1) strat = "random" 
+    if(p == 1) strat = "Random" 
     if(p == 2) strat = "Adult males" 
     if(p == 3) strat = "Adult females"
     
@@ -49,8 +61,8 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
   # set up individual dfs for eac proj
   for (p in 1:nProj){   # repeat for each projection
     n <- p-1   # incl proj0, need to name 0
-    if(n == 0) strat = "baseline" 
-    if(n == 1) strat = "random" 
+    if(n == 0) strat = "Baseline" 
+    if(n == 1) strat = "Random" 
     if(n == 2) strat = "Adult males" 
     if(n == 3) strat = "Adult females"
     
@@ -67,7 +79,8 @@ sex.df <- function(sex_projs = "list")  # list of all projections to compare, le
 }
 
 # final N plot creation
-# rel plot function - WHY not working?
+# rel plot function - don't need, instead combinig scenarios in boxplots
+# 
 rel.plot <- function(rel_df, yval, save_name = FALSE){
   
   baseplot <- ggplot(data = rel_df, aes(x = Strategy, y = yval)) +
@@ -95,11 +108,6 @@ rel.plot <- function(rel_df, yval, save_name = FALSE){
   
   return(plot)
 }
-#  Error in `geom_boxplot()`:
-# ! Problem while computing aesthetics.
-# ℹ Error occurred in the 1st layer.
-# Caused by error:
-#  ! object 'relative_final_N' not found
 
 
 
@@ -289,29 +297,57 @@ sing$rem_freq <- rep(as.character("Single", nrow(du_rel_df)))
 duplo <- du_rel_df 
 duplo$rem_freq <- rep(as.character("Double", nrow(du_rel_df)))
 multi <- multi_rel_df 
-multi$rem_freq <- rep(as.character("Multi", nrow(multi)))
+multi$rem_freq <- rep(as.character("Multiple", nrow(multi)))
+
 
 comb_rel_df <- rbind(sing, duplo, multi)
 
+# trying to get order consistent in plot. Doesnt work , just define within fill in ggplot
+comb_rel_df$rem_freq <- factor(
+  comb_rel_df$rem_freq,
+  levels = c("Single", "Double", "Multiple"),
+  labels = levels
+)
+
+comb_rel_df$Strategy <- factor(
+  comb_rel_df$Strategy,
+  levels = c("Random", "Adult male", "Adult female"),
+  labels = levels
+)
+
+
+
 # combined plots
-# plot - how to make x axis wider
-comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, fill = rem_freq)) +
-  geom_boxplot() +
-  geom_hline(yintercept = 1, aes(colour = "grey20") ) +
-  labs(y = "Final population size relative to baseline average") +
+# final population size
+comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, 
+                                         fill = factor(rem_freq,
+                                                       levels = c("Single", "Double", "Multiple"),
+                                                       labels = c("Single", "Double", "Multiple"))))+
+  geom_boxplot(position = position_dodge2(width = 0.9, preserve = "single", padding = 0.2),  # changing width changes 
+               width = 0.75,   # change whole plot width 
+               outlier.size = 1.2) +
+  geom_hline(yintercept = 1, colour = "grey20", 
+             linetype = "dashed",
+             linewidth = 0.7)  +
+  labs(y = "Final population size relative to baseline",
+      fill = "Removal frequency") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 16) +
   theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.text = element_text(size = 14),
     axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(size = 14),
+    panel.grid.major.x = element_blank(),
   ) 
 ggsave(filename = "comb_finalN_boxplot.png",
        plot = comb_finN_box,
        device = "png",
        path = here("Figs"), 
        bg = "white")
+
+
 
 # combined sex ratio plot
 # baseline sex ratio
@@ -327,17 +363,28 @@ multi_sr$rem_freq <- rep(as.character("Multiple", nrow(multi_sr)))
 
 comb_sex_df <- rbind(sing_sr, du_sr, multi_sr)  
 
-comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio, fill = rem_freq)) +
-  geom_boxplot() +
-  geom_hline(yintercept = base_ratio) +  # line for baseline av sex ratio
-  labs(y = "Proportion of females in the population") +
+
+comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio, 
+                                        fill = factor(rem_freq,
+                                                      levels = c("Single", "Double", "Multiple"),
+                                                      labels = c("Single", "Double", "Multiple")))) +
+  geom_boxplot(position = position_dodge2(width = 1, preserve = "single", padding = 0.2),
+               width = 0.75,
+               outlier.size = 1.2) +
+  geom_hline(yintercept = base_ratio, 
+             linetype = "dashed",
+             linewidth = 0.7) +  # line for baseline av sex ratio
+  labs(y = "Proportion of females in the population", 
+       fill = "Removal frequency") +
   scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  theme_minimal() +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 16) +
   theme(
-    text = element_text(size = 16),
-    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.text = element_text(size = 14),
     axis.title = element_text(size = 16),
-    axis.text = element_text(size = 16 - 2),
+    legend.title = element_text(size = 15),
+    legend.text = element_text(size = 14),
+    panel.grid.major.x = element_blank(),
   ) 
 
 

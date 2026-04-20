@@ -1,8 +1,5 @@
 # Modelling our different scenarios, producing outputs for plotting
 # 23/02/25
-# Can be run entirely in order
-
-# UPDATES - replace rem.proj with multi.rem 
 
 
 # loading required packages
@@ -10,14 +7,6 @@ library(here)
 
 
 # sourcing required functions
-source(here("Code/Functions/01_all_functions.R"))
-
-# data extraction
-source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
-
-
-# parameter definition and df set ups
-source(here("Code/03_parameter_rate_setup.R"))   # enter 2 then 1
 
 # everything above this in a seperate script to source?
 
@@ -237,8 +226,8 @@ multi_proj3 <- repeat.proj(func = "goal",
 cont.proj <- repeat.proj(func = "prop",
                          Umat,      
                          initial.vecs = initials,
-                         stagedist = NULL,
-                         params = params, 
+                         stagedist,
+                         params, 
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
