@@ -116,11 +116,12 @@ rel.plot <- function(rel_df, yval, save_name = FALSE){
 popN <- N.extract(rep_proj0)
 Nfin <- sapply(popN, function(x) x[20])
 summary(Nfin)
+av_fin_N <- round(mean(Nfin), 0)    # value used in results
 
-av_lamb <- summary(lamb.av(rep_proj0))
+av_lamb <- round(summary(lamb.av(rep_proj0)), 3)
 
 av_ssd0 <- ssd.av(rep_proj0)
-base_prop <- colMeans(av_ssd0$av_prop)
+base_prop <- round(colMeans(av_ssd0$av_prop), 3)  # value used i results
 
 
 # single removal scenarios comparison -------
@@ -264,7 +265,6 @@ multi_finN_box <- ggplot(multi_rel_df, aes(x = Strategy, y = relative_final_N)) 
   ) 
 
 
-
 # sex ratio 
 av_multi_ssd1 <- ssd.av(multi_proj1, return.Mats = FALSE)
 av_multi_ssd2 <- ssd.av(multi_proj2, return.Mats = FALSE)
@@ -289,6 +289,57 @@ multi_sr_box <- ggplot(sex_df, aes(x = Strategy, y = sex_ratio))+
   ) 
 
 
+# Continuos removals ------
+rel_cont1 <- relative.pop(cont_proj1,   
+                          baseline_list = rep_proj0) 
+rel_cont2 <- relative.pop(cont_proj2,   
+                          baseline_list = rep_proj0) 
+rel_cont3 <- relative.pop(cont_proj3,   
+                          baseline_list = rep_proj0) 
+
+cont_list <- list(rel_cont1, rel_cont2, rel_cont3)  # will this always list in order? 
+
+cont_rel_df <- rel.df(cont_list)  # using prev defined function to turn into comparison df
+
+
+cont_finN_box <-  ggplot(cont_df, aes(x = Strategy, y = relative_final_N)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, colour = "grey20")  +
+  labs(y = "Final population size relative to baseline average") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
+# sex ratio 
+av_cont_ssd1 <- ssd.av(cont_proj1, return.Mats = FALSE)
+av_cont_ssd2 <- ssd.av(cont_proj2, return.Mats = FALSE)
+av_cont_ssd3 <- ssd.av(cont_proj3, return.Mats = FALSE)
+
+# combine in list
+cont_sex_list <- list(av_ssd0, av_cont_ssd1, av_cont_ssd2, av_cont_ssd3)
+cont_sex_df <- sex.df(cont_sex_list)  
+
+
+# boxplot for sex ratio?
+cont_sr_box <- ggplot(cont_sex_df, aes(x = Strategy, y = sex_ratio))+
+  geom_boxplot(outlier.colour="red") +
+  labs(title = "Average Sex ratio across years",
+       y = "Sex ratio averaged across years") +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
+
+
 
 
 # combined df analyses -----
@@ -298,22 +349,25 @@ duplo <- du_rel_df
 duplo$rem_freq <- rep(as.character("Double", nrow(du_rel_df)))
 multi <- multi_rel_df 
 multi$rem_freq <- rep(as.character("Multiple", nrow(multi)))
+cont <- cont_rel_df
+cont$rem_freq <- rep(as.character("Continuous", nrow(cont)))
 
-
-comb_rel_df <- rbind(sing, duplo, multi)
+comb_rel_df <- rbind(sing, duplo, multi, cont)
 
 # trying to get order consistent in plot. Doesnt work , just define within fill in ggplot
-comb_rel_df$rem_freq <- factor(
-  comb_rel_df$rem_freq,
-  levels = c("Single", "Double", "Multiple"),
-  labels = levels
-)
+#comb_rel_df$rem_freq <- factor(
+#  comb_rel_df$rem_freq,
+#  levels = c("Single", "Double", "Multiple"),
+#  labels = levels
+#)
 
-comb_rel_df$Strategy <- factor(
-  comb_rel_df$Strategy,
-  levels = c("Random", "Adult male", "Adult female"),
-  labels = levels
-)
+#comb_rel_df$Strategy <- factor(
+#  comb_rel_df$Strategy,
+#  levels = c("Random", "Adult male", "Adult female"),
+#  labels = levels
+#)
+
+# T test to look at difference between groups?
 
 
 
@@ -321,8 +375,8 @@ comb_rel_df$Strategy <- factor(
 # final population size
 comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, 
                                          fill = factor(rem_freq,
-                                                       levels = c("Single", "Double", "Multiple"),
-                                                       labels = c("Single", "Double", "Multiple"))))+
+                                                       levels = c("Single", "Double", "Multiple", "Continuous"),
+                                                       labels = c("Single", "Double", "Multiple", "Continuous"))))+
   geom_boxplot(position = position_dodge2(width = 0.9, preserve = "single", padding = 0.2),  # changing width changes 
                width = 0.75,   # change whole plot width 
                outlier.size = 1.2) +
@@ -361,13 +415,16 @@ du_sr$rem_freq <- rep(as.character("Double", nrow(du_sr)))
 multi_sr <- multi_sex_df[101:nrow(multi_sex_df),]
 multi_sr$rem_freq <- rep(as.character("Multiple", nrow(multi_sr)))
 
-comb_sex_df <- rbind(sing_sr, du_sr, multi_sr)  
+cont_sr <- cont_sex_df[101:nrow(cont_sex_df),]
+cont_sr$rem_freq <- rep(as.character("Continuous", nrow(cont_sr)))
+
+comb_sex_df <- rbind(sing_sr, du_sr, multi_sr, cont_sr)  
 
 
-comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio, 
+comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio,     # why no adult fem cont plot?
                                         fill = factor(rem_freq,
-                                                      levels = c("Single", "Double", "Multiple"),
-                                                      labels = c("Single", "Double", "Multiple")))) +
+                                                      levels = c("Single", "Double", "Multiple", "Continuous"),
+                                                      labels =c("Single", "Double", "Multiple", "Continuous")))) +
   geom_boxplot(position = position_dodge2(width = 1, preserve = "single", padding = 0.2),
                width = 0.75,
                outlier.size = 1.2) +
@@ -386,7 +443,11 @@ comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio,
     legend.text = element_text(size = 14),
     panel.grid.major.x = element_blank(),
   ) 
-
+ggsave(filename = "comb_sex_ratio_boxplot.png",
+       plot = comb_finN_box,
+       device = "png",
+       path = here("Figs"), 
+       bg = "white")
 
 
 
@@ -396,6 +457,7 @@ single_vul <- sapply(single_list, extinction.risk)  # no extinctions in baseline
 du_vul <- sapply(du_rep_list, extinction.risk)  # some extinctions in consecutive removals
 multi_vul <- sapply(multi_rep_list, extinction.risk)  # freq extinctions in multi removals
 
+cont_vul <- sapply(cont_list, extinction.risk) 
 # how to visualise - in bar plot?
 vul_df <- data.frame(cbind(single_vul, du_vul, multi_vul))   # proj, remfreq and resulting risk val
 # setting 
