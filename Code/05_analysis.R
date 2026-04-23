@@ -179,7 +179,7 @@ finN_model <- aov(relative_mean_N ~ Strategy * Frequency, data = comb_rel_df)
 summary(finN_model)
 
 anova_N_tab <- anova(finN_model)
-N_var <- round((anova_N_tab$`Sum Sq` / sum(anova_N_tab$`Sum Sq`)), 3)    # values to use in paper - how much variance explained by each factor?
+N_var <- round((anova_N_tab$`Sum Sq` / sum(anova_N_tab$`Sum Sq`)), 2)    # values to use in paper - how much variance explained by each factor?
 
 
 # combined sex ratio 
