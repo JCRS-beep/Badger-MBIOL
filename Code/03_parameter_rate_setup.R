@@ -31,7 +31,7 @@ n0 <- stagedist * 100 # vec structure = yf, af, ym, am. if pop size = 100, ssd g
 # need to generate initial vecs in repeatable way
 set.seed(123)  # setting our number 
 reps <- 100
-pop.sizes <- runif(reps, min=25, max=240) # min pop size = 25, max = 240. 
+pop.sizes <- runif(reps, min = 30, max=240) # min pop size = 25, max = 240. 
 
 initials <- matrix(0, nrow = reps, ncol = 4)
 

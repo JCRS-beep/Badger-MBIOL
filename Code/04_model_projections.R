@@ -8,7 +8,6 @@ library(here)
 
 # sourcing required functions
 
-# everything above this in a seperate script to source?
 
 # projections (model 1) -----
 # baseline = 20 year projection
@@ -81,7 +80,7 @@ rep_proj2 <- repeat.proj(func = "goal",
                          intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = 4,  # adult males
-                         bias = 0.1,
+                         bias = 0.15,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
@@ -99,7 +98,7 @@ rep_proj3 <- repeat.proj(func = "goal",
                          intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                          remyear = 5, 
                          rem_strat = 2 ,  # 2 = Af 
-                         bias = 0.1,
+                         bias = 0.15,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
@@ -138,8 +137,8 @@ du_proj2 <- repeat.proj(func = "goal",
                         DDapply="Fmat", 
                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                         remyear = c(5,6),  
-                        rem_strat = 4 ,  # if specified removals, "adults, females, yearling females... 
-                        bias = 0.1 ,
+                        rem_strat = 4 ,  # adult male 
+                        bias = 0.15 ,
                         return.vec= TRUE, 
                         return.remvec = TRUE, 
                         reps = 100) # looks better !
@@ -157,7 +156,7 @@ du_proj3 <- repeat.proj(func = "goal",
                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
                         remyear = c(5,6), 
                         rem_strat = 2 ,  # 2 = Af 
-                        bias = 0.1,
+                        bias = 0.15,
                         return.vec= TRUE, 
                         return.remvec = TRUE, 
                         reps = 100) 
@@ -176,9 +175,9 @@ multi_proj1 <- repeat.proj(func = "goal",
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         intensity= 70,  
                          remyear = c(5:9), 
-                         rem_strat = "random" ,  # if specified removals, "adults, females, yearling females... 
+                         rem_strat = "random" , 
                          bias = NULL ,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
@@ -194,10 +193,10 @@ multi_proj2 <- repeat.proj(func = "goal",
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         intensity= 70,  # percentage REMOVED
                          remyear =  c(5:9), 
-                         rem_strat = 4 ,  # if specified removals, "adults, females, yearling females... 
-                         bias = 0.1,
+                         rem_strat = 4 ,  
+                         bias = 0.15,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
@@ -212,10 +211,10 @@ multi_proj3 <- repeat.proj(func = "goal",
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                         intensity= 70,  
                          remyear =  c(5:9), 
                          rem_strat = 2 ,  # 2 = Af 
-                         bias = 0.1,
+                         bias = 0.15,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
@@ -223,7 +222,7 @@ multi_proj3 <- repeat.proj(func = "goal",
 
 # continuous removals all years of projection at low levels
 # removing 10% every year = needs old rem.proj function OR 15 years of 10 % = intensity of 150%?
-cont.proj <- repeat.proj(func = "prop",
+cont_proj1 <- repeat.proj(func = "prop",  # removing perentage each year instead of setting goal
                          Umat,      
                          initial.vecs = initials,
                          stagedist,
@@ -231,13 +230,45 @@ cont.proj <- repeat.proj(func = "prop",
                          stagenames = stages,
                          time = 20, 
                          DDapply="Fmat", 
-                         intensity= 10,  # percentage you want REMOVED from pop at time T=ry
-                         remyear =  c(5:19), 
-                         rem_strat = "random" ,  # 2 = Af 
+                         intensity= 10,     # lower removal percent as longer duration
+                         remyear =  c(5:19),    # from years 5 - 19 of projection.
+                         rem_strat = "random" ,  
                          bias = NULL,
                          return.vec= TRUE, 
                          return.remvec = TRUE, 
                          reps = 100) 
+
+cont_proj2 <- repeat.proj(func = "prop",
+                          Umat,      
+                          initial.vecs = initials,
+                          stagedist,
+                          params, 
+                          stagenames = stages,
+                          time = 20, 
+                          DDapply="Fmat", 
+                          intensity= 10,  
+                          remyear =  c(5:19), 
+                          rem_strat = 4 ,  # 4 = Am 
+                          bias = 0.1,
+                          return.vec= TRUE, 
+                          return.remvec = TRUE, 
+                          reps = 100) 
+
+cont_proj3 <- repeat.proj(func = "prop",
+                          Umat,      
+                          initial.vecs = initials,
+                          stagedist,
+                          params, 
+                          stagenames = stages,
+                          time = 20, 
+                          DDapply="Fmat", 
+                          intensity= 10,  
+                          remyear =  c(5:19), 
+                          rem_strat = 2 ,  # 2 = Af 
+                          bias = 0.1,
+                          return.vec= TRUE, 
+                          return.remvec = TRUE, 
+                          reps = 100) 
 
 
 # meta proj scenarios

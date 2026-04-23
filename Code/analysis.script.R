@@ -2,7 +2,7 @@
 # 15.03.26
 
 library(ggplot2)
-library(gridExtra)
+library(patchwork)  # plot arrangement
 library(tidyr)
 library(tidyverse)
 library(dplyr)
@@ -44,7 +44,9 @@ rel.df <- function(rel_projs = "list")  # list of all projections to compare, le
     Strategy <- as.character(rep(strat, 100))   # better with an informative name (projection1)
     relative_mean_N <- rel_projs[[p]]$relative_meanN
     relative_final_N <- rel_projs[[p]]$fin_props
-    df <- data.frame(Strategy, relative_mean_N, relative_final_N)  # what to do with this df? Store in list?
+    final_N <- rel_projs[[p]]$fin_N
+    av_final_N <-  rel_projs[[p]]$av_fin_N
+    df <- data.frame(Strategy,final_N, av_final_N, relative_mean_N, relative_final_N)  # what to do with this df? Store in list?
     
     # storing df in our relative df - intial 
     relative_df <- rbind(relative_df, df)
@@ -105,7 +107,6 @@ rel.plot <- function(rel_df, yval, save_name = FALSE){
            path = here("Figs"), 
            bg = "white")
   }
-  
   return(plot)
 }
 
@@ -116,12 +117,12 @@ rel.plot <- function(rel_df, yval, save_name = FALSE){
 popN <- N.extract(rep_proj0)
 Nfin <- sapply(popN, function(x) x[20])
 summary(Nfin)
-av_fin_N <- round(mean(Nfin), 0)    # value used in results
+av_fin_N <- round(mean(Nfin), 1)    # value used in results
 
-av_lamb <- round(summary(lamb.av(rep_proj0)), 3)
+av_lamb <- round(summary(lamb.av(rep_proj0)), 2)
 
 av_ssd0 <- ssd.av(rep_proj0)
-base_prop <- round(colMeans(av_ssd0$av_prop), 3)  # value used i results
+base_prop <- round(colMeans(av_ssd0$av_prop), 2)  # value used i results
 
 
 # single removal scenarios comparison -------
@@ -136,11 +137,7 @@ rel_projs <- list(rel_proj1, rel_proj2, rel_proj3)  # will this always list in o
 
 rel_df <- rel.df(rel_projs)  # using prev defined function to turn inot comparison df
 
-# visualising in a boxplot - eventually dont need this section
-finN_box <- rel.plot(rel_df, yval = relative_final_N)  # why this err?
 
-
-  
 finN_box <-  ggplot(rel_df, aes(x = Strategy, y = relative_final_N)) +
   geom_boxplot() +
   geom_hline(yintercept = 1, aes(colour = "grey20") ) +
@@ -154,6 +151,8 @@ finN_box <-  ggplot(rel_df, aes(x = Strategy, y = relative_final_N)) +
     axis.text = element_text(size = 16 - 2),
   ) 
   
+# t test to compare final N of strategies to baseline - which impacts
+
 
 # comparing ssd and sex ratio across scenarios
 # combine in list
@@ -185,7 +184,7 @@ rel_du1 <- relative.pop(du_proj1,
                           baseline_list = rep_proj0) 
 rel_du2 <- relative.pop(du_proj2,   
                           baseline_list = rep_proj0) 
-rel_du3 <- relative.pop(du_proj2,   
+rel_du3 <- relative.pop(du_proj3,   
                           baseline_list = rep_proj0) 
 du_list <- list(rel_du1, rel_du2, rel_du3) 
 
@@ -244,7 +243,7 @@ rel_multi1 <- relative.pop(multi_proj1,
                         baseline_list = rep_proj0) 
 rel_multi2 <- relative.pop(multi_proj2,   
                         baseline_list = rep_proj0) 
-rel_multi3 <- relative.pop(multi_proj2,   
+rel_multi3 <- relative.pop(multi_proj3,   
                         baseline_list = rep_proj0) 
 multi_list <- list(rel_multi1, rel_multi2, rel_multi3) 
 
@@ -301,8 +300,7 @@ cont_list <- list(rel_cont1, rel_cont2, rel_cont3)  # will this always list in o
 
 cont_rel_df <- rel.df(cont_list)  # using prev defined function to turn into comparison df
 
-
-cont_finN_box <-  ggplot(cont_df, aes(x = Strategy, y = relative_final_N)) +
+cont_finN_box <-  ggplot(cont_rel_df, aes(x = Strategy, y = relative_final_N)) +
   geom_boxplot() +
   geom_hline(yintercept = 1, colour = "grey20")  +
   labs(y = "Final population size relative to baseline average") +
@@ -354,53 +352,52 @@ cont$rem_freq <- rep(as.character("Continuous", nrow(cont)))
 
 comb_rel_df <- rbind(sing, duplo, multi, cont)
 
-# trying to get order consistent in plot. Doesnt work , just define within fill in ggplot
-#comb_rel_df$rem_freq <- factor(
-#  comb_rel_df$rem_freq,
-#  levels = c("Single", "Double", "Multiple"),
-#  labels = levels
-#)
 
-#comb_rel_df$Strategy <- factor(
-#  comb_rel_df$Strategy,
-#  levels = c("Random", "Adult male", "Adult female"),
-#  labels = levels
-#)
+# comparison analysis - final pop N
+# fit the two-way ANOVA model
+finN_model <- aov(relative_mean_N ~ Strategy * Frequency, data = comb_rel_df)
 
-# T test to look at difference between groups?
+#view the model output
+summary(finN_model)
 
+anova_N_tab <- anova(finN_model)
+N_var <- round((anova_N_tab$`Sum Sq` / sum(anova_N_tab$`Sum Sq`)), 3)    # values to use in paper - how much variance explained by each factor?
 
 
 # combined plots
-# final population size
-comb_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, 
-                                         fill = factor(rem_freq,
-                                                       levels = c("Single", "Double", "Multiple", "Continuous"),
-                                                       labels = c("Single", "Double", "Multiple", "Continuous"))))+
-  geom_boxplot(position = position_dodge2(width = 0.9, preserve = "single", padding = 0.2),  # changing width changes 
-               width = 0.75,   # change whole plot width 
-               outlier.size = 1.2) +
-  geom_hline(yintercept = 1, colour = "grey20", 
-             linetype = "dashed",
-             linewidth = 0.7)  +
-  labs(y = "Final population size relative to baseline",
-      fill = "Removal frequency") +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  scale_fill_brewer(palette = "Set2") +
-  theme_minimal(base_size = 16) +
-  theme(
-    axis.text = element_text(size = 14),
-    axis.title = element_text(size = 16),
-    legend.title = element_text(size = 15),
-    legend.text = element_text(size = 14),
-    panel.grid.major.x = element_blank(),
-  ) 
-ggsave(filename = "comb_finalN_boxplot.png",
-       plot = comb_finN_box,
+# final population size - don't like as proportion, use fin N
+# baseline final N
+(comb_rel_finN_box <- ggplot(comb_rel_df, aes(x = Strategy, y = relative_final_N, 
+                                          fill = factor(rem_freq,
+                                                        levels = c("Single", "Double", "Multiple", "Continuous"),
+                                                        labels = c("Single", "Double", "Multiple", "Continuous"))))+
+    geom_boxplot(position = position_dodge2(width = 0.9, preserve = "single", padding = 0.2),  # changing width changes 
+                 width = 0.75,   # change whole plot width 
+                 outlier.size = 1.2) +
+    geom_hline(yintercept = 1, colour = "grey20",     # int = av final_N baseline
+               linetype = "dashed",
+               linewidth = 0.7)  +
+    labs(y = "Final population size relative to baseline",
+         fill = "Removal frequency") +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    scale_fill_brewer(palette = "Set2") +
+    theme_minimal(base_size = 16) +
+    theme(
+      axis.text = element_text(size = 14),
+      axis.title = element_text(size = 16),
+      legend.title = element_text(size = 15),
+      legend.text = element_text(size = 14),
+      panel.grid.major.x = element_blank(),
+    ) )
+ggsave(filename = "comb_relative_finalN_boxplot.png",
+       plot = comb_rel_finN_box,
        device = "png",
        path = here("Figs"), 
        bg = "white")
 
+
+# combining final N in a table?
+# which obj contains 
 
 
 # combined sex ratio plot
@@ -420,8 +417,17 @@ cont_sr$rem_freq <- rep(as.character("Continuous", nrow(cont_sr)))
 
 comb_sex_df <- rbind(sing_sr, du_sr, multi_sr, cont_sr)  
 
+# fit the two-way ANOVA model
+sr_model <- aov(sex_ratio ~ Strategy * rem_freq, data = comb_sex_df)
 
-comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio,     # why no adult fem cont plot?
+#view the model output
+summary(sr_model)
+
+anova_sr_tab <- anova(sr_model)
+sr_var <- round((anova_sr_tab$`Sum Sq` / sum(anova_sr_tab$`Sum Sq`)), 2) 
+
+
+(comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio,     # why no adult fem cont plot?
                                         fill = factor(rem_freq,
                                                       levels = c("Single", "Double", "Multiple", "Continuous"),
                                                       labels =c("Single", "Double", "Multiple", "Continuous")))) +
@@ -442,9 +448,9 @@ comb_sex_box <- ggplot(comb_sex_df, aes(x = Strategy, y = sex_ratio,     # why n
     legend.title = element_text(size = 15),
     legend.text = element_text(size = 14),
     panel.grid.major.x = element_blank(),
-  ) 
+  ) )
 ggsave(filename = "comb_sex_ratio_boxplot.png",
-       plot = comb_finN_box,
+       plot = comb_sex_box,
        device = "png",
        path = here("Figs"), 
        bg = "white")
@@ -452,58 +458,74 @@ ggsave(filename = "comb_sex_ratio_boxplot.png",
 
 
 # Extinction risk and vulnerabilities (low pop sizes) ----
-single_list <- list(rep_proj1, rep_proj2, rep_proj3)
-single_vul <- sapply(single_list, extinction.risk)  # no extinctions in baseline or single rem scenarios
+single_rep_list <- list(rep_proj1, rep_proj2, rep_proj3)
+single_vul <- sapply(single_rep_list, extinction.risk)  # no extinctions in baseline or single rem scenarios
+
 du_vul <- sapply(du_rep_list, extinction.risk)  # some extinctions in consecutive removals
 multi_vul <- sapply(multi_rep_list, extinction.risk)  # freq extinctions in multi removals
 
-cont_vul <- sapply(cont_list, extinction.risk) 
+cont_rep_list <- list(cont_proj1, cont_proj2, cont_proj3)
+cont_vul <- sapply(cont_rep_list, extinction.risk) 
 # how to visualise - in bar plot?
-vul_df <- data.frame(cbind(single_vul, du_vul, multi_vul))   # proj, remfreq and resulting risk val
+vul_df <- data.frame(cbind(single_vul, du_vul, multi_vul, cont_vul))   # proj, remfreq and resulting risk val
 # setting 
 vul_df <- gather(vul_df, key = "Frequency", value = "Vulnerability")   # rename risk later?
-vul_df$Strategy <- as.character(rep(c(1,2,3), 3))
+vul_df$Strategy <- as.character(rep(c("Random", "Adult male", "Adult female"), 4))
 vul_df$Frequency <- factor(vul_df$Frequency,
-                       levels = c("single_vul", "du_vul", "multi_vul"),
-                       labels = c("Single", "Double", "Multi"))
+                       levels = c("single_vul", "du_vul", "multi_vul", "cont_vul"),
+                       labels = c("Single", "Double", "Multiple", "Continuous"))
 
-cols <- c("#1F78B4", "#EEAD0E", "#E31A1C")
-vul_plot <- ggplot(vul_df, aes(x = Strategy , y =  Vulnerability, fill = Frequency)) +
+# cols <- c("#1F78B4", "#EEAD0E", "#E31A1C")
+
+vul_model <- aov(Vulnerability ~ Strategy * Frequency, data = vul_df)
+summary(vul_model)   #view the model output
+
+anova_vul_tab <- anova(vul_model)
+vul_var <- round((anova_vul_tab$`Sum Sq` / sum(anova_vul_tab$`Sum Sq`)), 2) 
+
+
+
+if(any(vul_df$Vulnerability) > 0){   # only plot if we see any extinctions
+(vul_plot <- ggplot(vul_df, aes(x = Strategy , y =  Vulnerability, fill = Frequency)) +
   geom_bar(position = 'dodge', stat = "identity") +
-  labs(title = "Extinction risk by strategy and frequency",
-       y = "Extinction probability") +
-  scale_fill_manual(values = cols) +   # colour assigned as single, dbl, multi
+  labs(y = "Extinction probability") +
+  scale_fill_brewer(palette = "Set2") +   # colour assigned to removal frequency
   theme_minimal() +
   theme(
     text = element_text(size = 16),
     plot.title = element_text(size = 16 + 2, face = "bold"),
     axis.title = element_text(size = 16),
     axis.text = element_text(size = 16 - 2),
-  ) 
-
+  )) 
 ggsave(filename = "extinction_bar.png",
        plot = vul_plot,
        device = "png",
        path = here("Figs"), 
        bg = "white")
-
-
-# combining final N in a table?
-
+}
 
 
 
 
-## for appendix
-# # lambda comparisons 
-proj0 <- av_proj0$av_lambda
-df <-  as.data.frame(proj0)   # val 1 = 1.036787
-df$proj1 <- av_proj1$av_lambda
-df$proj2 <- av_proj2$av_lambda
-df$proj3 <- av_proj3$av_lambda   # 27, 30, 71 are extremely large/ low - what went wrong?
+
+
+
+## for appendix 
+## lambda comparisons - big table or visualisation
+## 
+sing_lamb <- sapply(rep_list, lamb.av)
+sing_lamb_df <-  as.data.frame(sing_lamb)   # val 1 = 1.036787
+# renaming columns
+
+sing_lamb_df <- rename(sing_lamb_df, "Baseline" = "V1", "Random" = "V2", "Adult male" = "V3", "Adult female" = "V4")
 
 # merging into single col of lambda values split by Strategy
-df_long <- gather(df, key = "Strategy" , value = "av_lambda") 
+sing_lamb_df <- gather(sing_lamb_df, key = "Strategy" , value = "av_lambda") 
+
+# how to rename strategies? 
+sing_lamb_df$Frequency <- as.character(rep("Single", nrow(sing_lamb_df)))
+
+
 
 # boxlpot - comparing rem scenario lambda values
 lamb_box <- ggplot(df_long, aes(x = Strategy, y = av_lambda)) +

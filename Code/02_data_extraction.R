@@ -3,15 +3,7 @@
 # installing digitise package
 # install.packages("devtools")
 # devtools::install_github("daniel1noble/metaDigitise")
-
-# packages ----    # must be loaded in this script as needed for extraction and plots
 library(metaDigitise)
-library(dplyr)
-library(tidyr)
-library(tidyverse) # NEEDED FOR PIPE!
-library(ggplot2)
-library(gridExtra)
-
 
 # Functions ----
 # function - for scatter, rename, round, remove cols
