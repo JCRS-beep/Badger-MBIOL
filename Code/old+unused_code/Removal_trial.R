@@ -464,3 +464,119 @@ bias.test <-  multi.rem(Umat,   # MAX SURVIVAL
 # old rem.proj function
 
 
+
+# deciding between bias multiplier vs add
+#  # pop removal in rem.proj -------------------------
+
+if(rem_strat == "random"){
+   if (is.null(bias) == FALSE) paste("ignoring bias value since removal is random across ages and sexes")
+   #generating the distribution - varies with rem strat
+   thisProp <- rnorm(length(stagenames), mean = intensity/100, sd= 0.05)  # 4 samples from dist mean 0.5, sd 0.2
+   thisProp <- pmax(0, pmin(1, thisProp))  # clip to [0,1]       
+   
+   # stage biased
+} else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
+   if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
+      y_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
+      a_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05)    
+   }
+   else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
+      y_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) 
+      a_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
+   }
+   # col binding so each row represents stage
+   bind <- cbind(y_rem, a_rem)
+   thisProp <- c(bind[1,], bind[2,])   # 4 proportions to remove in correct order (yf, af, ym, am)
+   
+   
+   # sex biased
+} else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
+   if(rem_strat %in% c("females", "Females", "female", "Female")){
+      f_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) # bias applied to females
+      m_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
+      
+   } else if(rem_strat %in% c("males", "Males", "male", "Male")){
+      f_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) # bias applied to females
+      m_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) 
+   }
+   bind <- cbind(f_rem, m_rem)
+   thisProp <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
+   
+   
+   # specified   - THIS MATH INCORRECT - leads to lower intensity than other strats
+} else if (is.numeric(intensity) && is.numeric(rem_strat)){
+   # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
+   bi <- length(rem_strat)  # how many elements provided
+   
+   # biased dist
+   rembi <- rnorm(bi, mean = ((intensity/100)  + bias), sd= 0.05)  # adding bias onto intensity for chosen stage
+   
+   # unbiased dist - for all others, divide remaining bias across nStages not included in bi
+   unbi <-length(stagenames) - bi  # unbiased number = 4 - (number biased)
+   
+   if(length(rem_strat) == 1){    # if only 1 biased stage
+      val <- bias/unbi   # value to minus from each other stage intensity
+   }
+   
+   rem <- rnorm(unbi, mean = ((intensity/100)  - val), sd= 0.05)   # unbiased, 1- number of biased samples needed
+   
+   
+   # how to order? biased p pos matched to bias stage? 
+   thisProp <- numeric(length = length(stagenames))
+   thisProp[rem_strat] <- rembi   # biased value entry gets biased proportion - only works if length = 1?
+   thisProp[-rem_strat] <- rem    # all non biased stages, add unbiased probs
+}
+# ------------------
+
+
+
+# pop removal in multi.rem -------------------------
+# add
+if(rem_strat == "random"){
+   if (is.null(bias) == FALSE) paste("ignoring bias value as removal is random across ages and sexes")
+   #generating the distribution - varies with rem strat
+   dist <- stagedist
+   rem <-  year_goal * dist    # where does variation come in?
+   
+   # stage biased
+} else if(rem_strat != "random" && is.numeric(bias) == FALSE){   # for biased rems that are NOT index specific...
+   bias_vec <- rep(bias, 4)    # adults add bias, y remove bias
+   
+   if (is.numeric(intensity) && rem_strat %in% c("adult", "Adult", "yearling", "Yearling")){   # want to specify age and sex prob  - adult male, yearling fem.. 
+      if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
+         # how to bias removals for classes? 
+         bias_vec * c(-1, 1, -1, 1)   # bias is removed from yearlings, added to adults
+         
+      }
+      else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
+         bias_vec * c(1, -1, 1, -1)   # bias is added to yearlings, subtracted from adults
+      }
+      
+      # sex biased
+   } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
+      if(rem_strat %in% c("females", "Females", "female", "Female")){
+         bias_vec * c(1, 1, -1, -1)   # bias is added to fems, subtracted from males
+         
+      } else if(rem_strat %in% c("males", "Males", "male", "Male")){
+         bias_vec * c(-1, -1, 1, 1)   # bias is subtracted from fems, added to males
+      }
+      dist <- stagedist + bias_vec    # combining into new removal distribution
+      rem <-  year_goal * dist     # number to remove per stage
+   }
+   
+   
+   # specified
+} else if (is.numeric(intensity) && is.numeric(rem_strat)){
+   
+   nbi <- length(rem_strat)  # how many elements provided?
+   
+   # WARNING - only works if rem_strat(length = 1)
+   dist <- stagedist 
+   dist[rem_strat] <- dist[rem_strat] + bias   # increasing specified element
+   dist[-rem_strat] <- dist[-rem_strat] - bias/3    # bias removed from others must divide by 3
+   
+   rem <-  year_goal * dist    # stages removed per year is total removed per year * stage props
+}
+
+# ------------------
+# 

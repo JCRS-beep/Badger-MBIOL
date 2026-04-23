@@ -113,7 +113,7 @@ apply.DD <- function(params,
 #  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
 # Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
 
-
+# why is remvec negative?
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
                      params, 
@@ -228,12 +228,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
         # stage biased
       } else if (is.numeric(intensity) && rem_strat %in% c("adults", "Adults", "adult", "Adult", "yearlings", "Yearlings", "yearling", "Yearlings")){   # want to specify age and sex prob  - adult male, yearling fem.. 
         if (rem_strat %in% c("adults", "Adults", "adult", "Adult")){
-          y_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
-          a_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05)    
+          y_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
+          a_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05)    
         }
         else if (rem_strat %in% c("yearlings", "Yearlings", "yearling", "Yearlings")){
-          y_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
-          a_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+          y_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) 
+          a_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
         }
         # col binding so each row represents stage
         bind <- cbind(y_rem, a_rem)
@@ -243,12 +243,12 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
         # sex biased
       } else if (is.numeric(intensity) && rem_strat %in% c("females", "Females", "female", "Female", "males", "Males", "male", "Male")){  
         if(rem_strat %in% c("females", "Females", "female", "Female")){
-          f_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) # bias applied to females
-          m_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) 
+          f_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) # bias applied to females
+          m_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) 
           
         } else if(rem_strat %in% c("males", "Males", "male", "Male")){
-          f_rem <- rnorm(nStages, mean = ((1-bias)*intensity)/100, sd= 0.05) # bias applied to females
-          m_rem <- rnorm(nStages, mean = ((1+bias)*intensity)/100, sd= 0.05) 
+          f_rem <- rnorm(nStages, mean = ((intensity/100) - bias), sd= 0.05) # bias applied to females
+          m_rem <- rnorm(nStages, mean = ((intensity/100)  + bias), sd= 0.05) 
         }
         bind <- cbind(f_rem, m_rem)
         thisProp <- c(bind[,1], bind[,2])   # 4 proportions to remove in correct order (yf, af, ym, am)
@@ -259,9 +259,19 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
         # how to specify is specific element biased?  numeric vector or integer 1:4, then apply bias to element
         bi <- length(rem_strat)  # how many elements provided
         
-        rem <- rnorm((length(stagenames) - bi), mean = ((1 - bias)*intensity)/100, sd= 0.05)   # unbiased, 1- number of biased samples needed
-        rembi <- rnorm(bi, mean = ((1 + bias)*intensity)/100, sd= 0.05)
+        # biased dist
+        rembi <- rnorm(bi, mean = ((intensity/100)  + bias), sd= 0.05)  # adding bias onto intensity for chosen stage
         
+        # unbiased dist - for all others, divide remaining bias across nStages not included in bi
+        unbi <-length(stagenames) - bi  # unbiased number = 4 - (number biased)
+        
+        if(length(rem_strat) == 1){    # if only 1 biased stage
+        val <- bias/unbi   # value to minus from each other stage intensity
+        }
+        
+        rem <- rnorm(unbi, mean = ((intensity/100)  - val), sd= 0.05)   # unbiased, 1- number of biased samples needed
+      
+
         # how to order? biased p pos matched to bias stage? 
         thisProp <- numeric(length = length(stagenames))
         thisProp[rem_strat] <- rembi   # biased value entry gets biased proportion - only works if length = 1?
@@ -270,7 +280,10 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       # ------------------
       
       # calculating number removed from each stage
-      thisRemvec <- floor(Vec[i,] * thisProp)   # round removals down or up? If we remove 13.6 badgers, 13 or 14?
+      thisRemvec <- floor(Vec[i,] * thisProp)   # round removals down 
+      # setting any negatives to 0
+      thisRemvec[thisRemvec <0] <- 0
+      
       thisRem <- sum(thisRemvec)  # total number removed 
       
       #  into outputs
@@ -566,10 +579,13 @@ dd.plot <- function(out,   # output obj of dd.proj
       base.plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
         geom_line(size = 1.2, colour = "grey30") +
         geom_point(size = 2, colour = "black") +
-        labs(title = "Population Size Over Time",
+        labs(
              x = xlab,
              y = ylab) +
-        scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+        scale_y_continuous(
+          name = "Population size",
+          breaks = scales::pretty_breaks(n = 5),
+          expand = expansion(mult = c(0.1, 0.2)))+  # 5% below, 30% above
         mytheme +
         theme(
           text = element_text(size = base_size),
@@ -614,13 +630,16 @@ dd.plot <- function(out,   # output obj of dd.proj
         geom_line(data= df_long, size = 1.2, alpha=0.7) +
         scale_colour_manual(values= cols,
                             labels=c("Female", "Male")) +
-        labs(title = "Stage Abundance Over Time",
+        labs(
              x = xlab,
              y = ylab,
              colour = "Sex",
              linetype = "Stage",
              shape = "Stage") +
-        scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+        
+        scale_y_continuous(name = "Population size",
+                           breaks = scales::pretty_breaks(n = 5),
+                           expand = expansion(mult = c(0.1, 0.25))) +  # 5% below, 30% above
         mytheme +
         theme(
           text = element_text(size = base_size),
@@ -1020,8 +1039,8 @@ extinction.risk <- function(proj_list){
   
   # searching for any projection where: pop size falls below 10
   vul.idx <- function(pop) {    # population size vector 
-    if(any(pop <= 10)){
-      which(10 >= pop)[[1]]    # returns first index in vector less than 10
+    if(any(pop <= 20)){
+      which(20 >= pop)[[1]]    # returns first index in vector less than 10
       
     } else {return(FALSE)}    # returns FALSE
   }
