@@ -355,11 +355,18 @@ comb_rel_df <- rbind(sing, duplo, multi, cont)
 
 # comparison analysis - final pop N
 # fit the two-way ANOVA model
-finN_model <- aov(relative_mean_N ~ Strategy * Frequency, data = comb_rel_df)
+finN_model <- aov(relative_final_N ~ Strategy * Frequency, data = comb_rel_df)
 
 #view the model output
 summary(finN_model)
+hist(finN_model$residuals)  # negative skew - should be normal
+qqnorm(residuals(finN_model),
+      ylab="Sample Quantiles for residuals")
+qqline(residuals(finN_model),
+       col="red")
 
+
+hist(comb_rel_df$relative_final_N)   # data definitely not normal! concentration of high datapoints from single, du, multi, then low from continuous
 anova_N_tab <- anova(finN_model)
 N_var <- round((anova_N_tab$`Sum Sq` / sum(anova_N_tab$`Sum Sq`)), 3)    # values to use in paper - how much variance explained by each factor?
 
@@ -422,6 +429,17 @@ sr_model <- aov(sex_ratio ~ Strategy * rem_freq, data = comb_sex_df)
 
 #view the model output
 summary(sr_model)
+
+# assumptions 
+hist(sr_model$residuals)  # negative skew - should be normal
+qqnorm(residuals(sr_model),
+       ylab="Sample Quantiles for residuals")
+qqline(residuals(sr_model),
+       col="red")
+
+
+hist(comb_rel_df$relative_final_N)
+
 
 anova_sr_tab <- anova(sr_model)
 sr_var <- round((anova_sr_tab$`Sum Sq` / sum(anova_sr_tab$`Sum Sq`)), 2) 
@@ -505,8 +523,9 @@ ggsave(filename = "extinction_bar.png",
 }
 
 
-
-
+# N per year per rep 
+cont_N <- lapply(cont_rep_list, N.extract)
+sapply(cont_N[[1]], summary)
 
 
 
@@ -531,3 +550,7 @@ sing_lamb_df$Frequency <- as.character(rep("Single", nrow(sing_lamb_df)))
 lamb_box <- ggplot(df_long, aes(x = Strategy, y = av_lambda)) +
   geom_boxplot(outlier.colour="red") 
 # why are there sm outliers from all Strategies?
+
+
+
+# Sensitivies - how does changing parameters impact output metrics?

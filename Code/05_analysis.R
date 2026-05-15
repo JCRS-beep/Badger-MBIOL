@@ -173,7 +173,7 @@ comb_rel_df <- rbind(sing, duplo, multi, cont)
 
 # combined final pop N
 # fit the two-way ANOVA model
-finN_model <- aov(relative_mean_N ~ Strategy * Frequency, data = comb_rel_df)
+finN_model <- aov(relative_final_N ~ Strategy * Frequency, data = comb_rel_df)
 
 #view the model output
 summary(finN_model)
@@ -231,7 +231,9 @@ vul_df$Frequency <- factor(vul_df$Frequency,
                            levels = c("single_vul", "du_vul", "multi_vul", "cont_vul"),
                            labels = c("Single", "Double", "Multiple", "Continuous"))
 
-# performing 2 way ANOVA
+
+
+# performing 2 way ANOVA - NO!
 vul_model <- aov(Vulnerability ~ Strategy * Frequency, data = vul_df)
 summary(vul_model)   #view the model output
 

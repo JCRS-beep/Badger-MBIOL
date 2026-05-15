@@ -567,7 +567,7 @@ dd.plot <- function(out,   # output obj of dd.proj
   require(tidyr)
   require(ggplot2)
   # creating time vector for n years
-  t <- nrow(out$vec) -1                 # t= n years (0-t = t+1 entries)
+  t <- nrow(out$vec) - 1                 # t= n years (0-t = t+1 entries)
   time <- as.numeric(c(0:t))       # vector 0:t
   
   # for pop size over time graph - must be as df
@@ -939,9 +939,9 @@ ssd.av <- function(proj_list, return.Mats = FALSE){
   
   # calculating sex ratio (proportion female in pop)
   fems <- function(x) {
-    sum(x[c(1:2)])   # sum entries 1+2 = proportion fems in pop
+    x[2]/(x[2] + x[4])   #  entries 2/ sum adult entries = proportion adult fems in adult pop
     }
-  sr <- sapply(list_prop, fems)  # list of sex ratios as proportion female
+  sr <- sapply(list_prop, fems)  # vector of adult fem proportion 
   
   
   # set up out obj

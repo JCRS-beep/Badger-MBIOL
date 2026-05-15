@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## section 1 -  loading libraries
 ```{r}
 library(ggplot2)
-library(gridExtra)
+library(patchwork)
 library(tidyr)
 library(tidyverse)
 library(dplyr)
@@ -26,14 +26,15 @@ library(readr)
 library(here)
 ```
 
-Sourcing other scripts
+Sourcing other scripts - 02 not working? no digitised papers?
 ```{r}
 # # sourcing functions used throughout 
 source(here("Code/Functions/01_all_functions.R"))
 
 # data extraction
 source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
-
+2
+1
 # parameter definition and df set ups
 source(here("Code/03_parameter_rate_setup.R"))
 

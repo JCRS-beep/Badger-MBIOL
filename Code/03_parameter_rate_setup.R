@@ -17,7 +17,7 @@ Umat[4,4]<- bright_survival_vec[4]  # adult m survival
 params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
                     b= beta,       # calculated from mcdonald 2016
                     rep_K= rogers_k,          # max litter size (K), 
-                    h= 6)   # harem size per male
+                    h= 10)   # harem size per male - assume single male sufficient for groups
 
 
 

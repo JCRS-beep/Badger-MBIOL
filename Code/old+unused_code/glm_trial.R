@@ -1,11 +1,9 @@
 # testing conditions and movement link
-install.packages("msm")
-library(msm) # truncated normal distribution - could just clip regular
 library(ggplot2)
 
 # for now, movement prob sampled from random dist 0-1
 # p(move) for each stage or patch? stage and patch?
-prob <- rtnorm(1000, mean = 0.5, sd= 0.3) # sample of 1000 
+prob <- rnorm(1000, mean = 0.5, sd= 0.3) # sample of 1000 
 prob_df <- as.data.frame(prob)
 
 n_obs <-  sum(!is.na(prob_df$prob))
@@ -17,7 +15,7 @@ norm.plot <- ggplot(prob_df, aes(prob))  +
 # rescaling y
 ybreaks = seq(0,50,5) 
 # On primary axis
-norm.plot + scale_y_continuous("Counts", breaks = round(ybreaks / (bw * n_obs),3), labels = ybreaks)
+norm.plot + scale_y_continuous("Counts", breaks = round(ybreaks / (0.05 * n_obs),3), labels = ybreaks)
 
 # randomly generating movement probs for each class and patch
 dmat <- matrix(0, ncol= 4, nrow= 2) # row 1 = pstay, row 2 = move
@@ -146,22 +144,6 @@ ggplot(move_df, aes(x = sr, y = Y)) +
 
 
 
-
-# how to set up more patches 
-set.seed(123)  # setting our number 
-reps <- 10
-sizes <- runif(reps, min= 3, max=30) 
-# multiply each of these pop sizes with stage dist
-
-init_mat <- matrix(0, ncol = 4, nrow = reps) # fill each row with an inital vec per patch 
-for(i in 1:reps){
-  init_mat[i, ] <- floor(sizes[i]* stagedist)
-}
-
-initial <- c(t(init_mat))
-
-
-
 # FUTURE - adding density dependent dispersal
 ddDmat.create <- function(colnames, nPatches, 
                           group_size, sex_ratio = NULL, 
@@ -195,66 +177,3 @@ ddDmat.create <- function(colnames, nPatches,
 
 
 
-# creating ndist plots for removal visualisation -----
-dis <- rnorm(1000, mean = 0.5, sd= 0.05) # sample of 1000 between 0 and 1
-df <- as.data.frame(dis)
-bw <- 0.005
-n_obs <-  sum(!is.na(df$dis))
-
-base.plot <- ggplot(df, aes(dis)) + 
-  geom_histogram(aes(y = after_stat(density)),  
-                 binwidth = bw,
-                 fill = "grey50", alpha= 0.3) + 
-  stat_function(fun = dnorm, args = list(mean = mean(df$dis), sd = sd(df$dis)), 
-                size = 1.5, colour = "black")+ 
-  geom_vline(aes(xintercept = 0.5),                       # Adding a line to show removal year
-             colour = "red", linetype = "dashed", size= 1, alpha = 0.8) +
-  labs(x = "Removal probability") +
-  theme_classic(base_size = 16) +
-  theme(
-    axis.text = element_text(color = "black")
-  )
-
-# rescaling y
-ybreaks = seq(0,50,5) 
-# On primary axis
-base.plot + scale_y_continuous("Counts", breaks = round(ybreaks / (bw * n_obs),3), labels = ybreaks)
-
-
-# biased trials = multiple plots needed with varying means
-df$unbias <- rnorm(1000, mean = 0.45, sd= 0.05)
-df$bias <- rnorm(1000, mean = 0.55, sd= 0.05)
-
-# graph limits
-means <- sapply(df[c("dis", "unbias", "bias")], mean, na.rm = TRUE)
-sds   <- sapply(df[c("dis", "unbias", "bias")], sd,   na.rm = TRUE)
-min_x <- min(means - 4 * sds)
-max_x <- max(means + 4 * sds)
-
-# want to add vis of these extra means on top of base plot
-bias.plot <- ggplot(df, aes(dis)) + 
-  geom_histogram(aes(y = after_stat(density)),  
-                 binwidth = bw,
-                 fill = "grey50", alpha= 0.15) + 
-  stat_function(fun = dnorm, args = list(mean = mean(df$dis), sd = sd(df$dis)), 
-                size = 1.2, colour = "black", alpha = 0.5) + 
-  geom_vline(aes(xintercept = mean(df$dis)),                       # Adding a line to show removal year
-             colour = "black", linetype = "dashed", size= 1, alpha = 0.5) +
-  
-  stat_function(fun = dnorm, args = list(mean = mean(df$unbias), sd = sd(df$unbias)), 
-                size = 1.2, colour = "blue") + 
-  geom_vline(aes(xintercept = mean(df$unbias)),                       # Adding a line to show removal year
-             colour = "blue", linetype = "dashed", size= 1, alpha = 0.5) +
-  
-  stat_function(fun = dnorm, args = list(mean = mean(df$bias), sd = sd(df$bias)), 
-                size = 1.2, colour = "red") + 
-  geom_vline(aes(xintercept = mean(df$bias)),                       # Adding a line to show removal year
-             colour = "red", linetype = "dashed", size= 1, alpha = 0.5) +
-
-  labs(x = "Removal probability") +
-  theme_classic(base_size = 16) +
-  theme(
-    axis.text = element_text(color = "black")
-  )+
-  coord_cartesian(xlim = c(min_x, max_x))   # makes sure full range of x axis included
-# almost works, why are my curves not complete?

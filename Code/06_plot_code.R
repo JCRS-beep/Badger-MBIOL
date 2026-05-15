@@ -1,30 +1,125 @@
 # all plots from my project
 # 
 # basic visualisations = the trajectory of each scenario investigated --------
+av_baseplot <-  ggplot() +
+  geom_line(data = pop_df, 
+            aes(mapping = rep, 
+               x = Year, 
+               y = N), 
+            size = 1.2, 
+            colour = "grey80", 
+            alpha = 0.2) +
+  labs(x = "time",
+       y = "Population size per repetition")  +      # add legend showing dots = mean?
+  geom_point(data = N_dist, aes(x = Year, y = av_N), 
+             size = 2, colour = "black", alpha = 0.7) +
+  geom_line(data = N_dist, aes(x = Year, y = av_N),
+            size = 1.2, colour = "black", alpha = 0.8) +
+  geom_errorbar(data = N_dist, 
+                aes(ymin = (av_N - sd), ymax = (av_N + sd),
+                    y = av_N, 
+                    x = Year), 
+                width = 0.2,
+                alpha = 0.6,
+                position=position_dodge(0.05)
+  )+               # include sd as err bars
+  labs(
+    x = "Year",
+    y = "Population size") +
+  scale_y_continuous(
+    name = "Population size",
+    breaks = scales::pretty_breaks(n = 5),
+    expand = expansion(mult = c(0, 0.2)),
+    limits = c(0,NA))+  
+  theme_classic() +
+  theme(
+    text = element_text(size = 16),
+    plot.title = element_text(size = 16 + 2, face = "bold"),
+    axis.title = element_text(size = 16),
+    axis.text = element_text(size = 16 - 2),
+  ) 
 
-# setting colours for male and female plots
-col_vec <- c("#FF6A6A", "#87CEEB")
 
-# baseline projection = no removals, 20 years
-# stage abundance over time - remove titles
-proj0_plot <- dd.plot(proj0, 
-                       y_val= "Vec", 
-                       ylab = "Abundance", 
-                       xlab = "Time (t)",
-                       rem_year = NULL,
-                       mytheme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "top",
-                       base_size = 16)
-proj0_Nplot <- dd.plot(proj0, 
-                        y_val= "N", 
-                        ylab = "Population size",
-                       xlab = "Time (t)",
-                       rem_year = NULL,
-                       mytheme = theme_classic(), 
-                       cols= col_vec,    # can be vector of cols
-                       legend.pos = "top",
-                       base_size = 16)
+
+v_baseplot <-  ggplot() +   #  increase point size, remove jitter, increase point size
+  geom_line(data= df_long, 
+            aes(x =Year, 
+                y =Abundance, 
+                colour= Sex, # pink or blue
+                mapping = Stage,
+                mapping = rep),
+            size = 1.1, 
+            alpha=0.1) +
+  geom_point(data = av_df, 
+             aes(x = Year, 
+                 y = Av_abundance,
+                 shape = Stage), 
+             size = 2.5, 
+             alpha=0.7
+  ) + 
+  geom_line(data= av_df,
+            aes(x=Year, 
+                y=Av_abundance, 
+                mapping= Stage, 
+                mapping= Sex
+            ),
+            size = 1,
+            alpha=0.6) +
+  geom_errorbar(data = av_df,      # err bars for each sex and stage
+                aes( x= Year,
+                     ymin = Av_abundance - sd, ymax = Av_abundance + sd), 
+                width =.2,
+                alpha = 0.6,
+                position = position_dodge(0.05)) +
+  labs(
+    x = "Year",
+    y = "Abundance",
+    shape = "Stage", 
+    colour = "Sex"
+  ) +
+  scale_y_continuous(
+    name = "Abundance",
+    breaks = scales::pretty_breaks(n = 5),
+    expand = expansion(mult = c(0, 0.05)),  # 5% below, 30% above
+    limits = c(0, NA)) +
+  theme_classic() +
+  theme(
+    text = element_text(size = base_size),
+    plot.title = element_text(size = base_size + 2, face = "bold"),
+    axis.title = element_text(size = base_size),
+    axis.text = element_text(size = base_size - 2),
+    legend.position = "top",
+    # journal-style compact legend:
+    legend.direction = "horizontal",
+    legend.box = "horizontal",
+    legend.key = element_rect(fill = NA, colour = NA),
+    legend.key.size = unit(0.8, "lines"),
+    legend.title = element_text(face = "bold", size = base_size),
+    legend.text = element_text(size = base_size - 2),
+    legend.spacing.x = unit(0.2, "cm"),
+    legend.spacing.y = unit(0.1, "cm"),
+    legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
+  ) +
+  # make legend compact and show titles above keys (journal style)
+  guides(
+    colour = guide_legend(title.position = "top",
+                          title.hjust = 0.5,
+                          nrow = 1,
+                          byrow = TRUE,
+                          override.aes = list(size = 3, linetype = 1, shape = 16, alpha = 1)),
+    shape = guide_legend(title.position = "top",
+                         title.hjust = 0.5,
+                         nrow = 1,
+                         byrow = TRUE,
+                         override.aes = list(size = 3, alpha = 1))
+    
+  )
+
+
+base_joint_plot <- av_baseplot + v_baseplot         # improve = gap between plots
+
+
+
 multipanel <- proj0_Nplot + proj0_plot
 # saving tihs plot
 ggsave(filename = "baseline_projection.png",
@@ -102,6 +197,7 @@ scale_factor <- max(pop_df$Pop, na.rm = TRUE) / max(df_long$Abundance, na.rm = T
     theme_minimal(base_size = 16) +
     theme(
       axis.text = element_text(size = 14),
+      axis.title.y = element_text(vjust = 2),
       axis.title = element_text(size = 16),
       legend.title = element_text(size = 15),
       legend.text = element_text(size = 14),
@@ -125,7 +221,7 @@ ggsave(filename = "comb_relative_finalN_boxplot.png",
     geom_hline(yintercept = base_ratio, 
                linetype = "dashed",
                linewidth = 0.7) +  # line for baseline av sex ratio
-    labs(y = "Proportion of females in the population", 
+    labs(y = "Proportion of Adult females in the population", 
          fill = "Removal frequency") +
     scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
     scale_fill_brewer(palette = "Set2") +
