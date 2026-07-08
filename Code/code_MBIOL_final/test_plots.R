@@ -115,7 +115,7 @@ for (r in 1:length(popN)){   # for each rep
 
 base_size <- 16
 
-# plotting N across years, colour = projection?
+# plotting N across years
 
 base_line_plot <- ggplot(pop_df, aes(x = Year, y = N)) +
   geom_line(data = pop_df, aes(mapping = rep), 
@@ -508,4 +508,6 @@ ggsave(filename = "base_ranges.png",
        device = "png",
        path = here("Figs"), 
        bg = "white")
+
+
 

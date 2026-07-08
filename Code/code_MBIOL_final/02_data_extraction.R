@@ -98,6 +98,7 @@ summary(rogers_1997_data$Cubs_per_breeding_fem, na.rm = TRUE) # mean = 2.299102,
 # choosing litter size value to use - mean is most representative?
 rogers_k <- mean(rogers_1997_data$Cubs_per_breeding_fem, na.rm = TRUE)
 
+
 # cub survival
 cub_mort <- 0.24   # mortality rate from paper
 rogers_cub_survival <- 1-cub_mort
