@@ -6,81 +6,83 @@ output:
 date: "2026-05-11"
 ---
 
- `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+`echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 ## Gov scenarios = single, double, multiple frequencies
 
 For government cull scenarios, a total removal goal was set for population reduction, and this was either achieved across one, two or five years. The target reduction is 70% of the total population size. The following example works through how the removals are calculated within my projection function. These removal calculations are carried out each year, so that the following year population sizes are updated based on the number of individuals removed in the cull year.
 
+First, setting our values that are used throughout the calculation. Government cull intensities are set to **70%**, and the stage distribution is calculated from baseline projections.
 
-First, setting our values that are used throughout the calculation. Government cull intensities are set to **70%**, and the stage distribution is calculated from baseline projections. 
 ```{r gov values}
 # Constant values - these are the same for all government scenarios
 intensity = 0.7
 stagedist = c( 0.110, 0.445, 0.110, 0.335 )  # as calculated from baseline projection averages
 ```
 
+We will work with hypothetical population of 100 badgers, with the stage abundance vector approximating the stage distribution for this population size. In this example, I will carry out removals over 2 years (double removal frequency).
 
-We will work with hypothetical population of 100 badgers, with the stage abundance vector approximating the stage distribution for this population size. In this example, I will carry out removals over 2 years (double removal frequency). 
 ```{r hypothetical population}
 N = 100   # population size of 100
 abundances = c(10, 45, 10, 35)  # stage abundances in order yf, af, ym, am
 years = 2     # double removal example
 ```
 
+Calculating removal goal as the total number of individuals to remove\
+Removal goal is calculated as the current population size (N) multiplied by the removal intensity (0.7):\
+\$Goal = N \* 0.7 \$
 
-Calculating removal goal as the total number of individuals to remove   
-Removal goal is calculated as the current population size (N) multiplied by the removal intensity (0.7):  
-$Goal = N * 0.7 $
 ```{r removal goal}
 goal <- round(N * intensity)    # round to ensure we only have integer badgers
 print(goal)
 ```
 
-The removals take place over 5 years, so we calculate the goal for individuals to remove each year. 
-Year Goal = $Goal / nYears $
+The removals take place over 5 years, so we calculate the goal for individuals to remove each year. Year Goal = \$Goal / nYears \$
+
 ```{r yearly removal goal}
 year_goal <- round(goal / years)   # rounding as integer
 print(year_goal)   # individuals per year
 ```
 
 ### Random removals
-We must divide this value somehow across our sex and stage combinations (class).  One option is simply dividing the yearly goal by our number of classes (4), but this removes proportionally more yearlings than adults due to the distribution of stages in the population. A better way to divide this is using the stage distribution so individuals are removed more proportionally. 
-Removal Vector = $Year Goal * stage distribution $
+
+We must divide this value somehow across our sex and stage combinations (class). One option is simply dividing the yearly goal by our number of classes (4), but this removes proportionally more yearlings than adults due to the distribution of stages in the population. A better way to divide this is using the stage distribution so individuals are removed more proportionally. Removal Vector = \$Year Goal \* stage distribution \$
+
 ```{r improved yearly division}
 rem_vec <- round(year_goal * stagedist)
 print(rem_vec)
 ```
-We can check how closely this matches our yearly goal by summing the removal vector. 
+
+We can check how closely this matches our yearly goal by summing the removal vector.
+
 ```{r check}
 N_rem <- sum(rem_vec)
 print(N_rem)
 print(year_goal) 
 ```
 
-
-
 When we remove this from our current stage abundances, we get this new vector and population size
+
 ```{r}
 new_vec <- abundances - rem_vec
 print(new_vec)
 print(sum(new_vec))
 ```
 
-### Biased removals 
-We want to bias these removals toward certain stages, making them more likely to be removed during culls. This can be done by keeping the same total and yearly goal, but altering how this is divided across our classes. A bias value defines the strength of the removal skew. 
+### Biased removals
+
+We want to bias these removals toward certain stages, making them more likely to be removed during culls. This can be done by keeping the same total and yearly goal, but altering how this is divided across our classes. A bias value defines the strength of the removal skew.
+
 ```{r}
 bias = 0.15
 ```
 
+In this example, I bias adult females during removals. We add the bias value onto the adult female entry in the distribution, and subtract the bias value equally across remaining classes.
 
-
-In this example, I bias adult females during removals. We add the bias value onto the adult female entry in the distribution, and subtract the bias value equally across remaining classes. 
 ```{r}
 bias_dist <- stagedist    # skewing stage distribution
 bias_dist[2] <- bias_dist[2] + bias    # entry 2 is adult female
@@ -88,35 +90,32 @@ bias_dist[-2] <- bias_dist[-2] - (bias/length(bias_dist[-2]))
 print(bias_dist)
 ```
 
-
 Using this biased distribution, we can calculate how many individuals of each class to remove
+
 ```{r}
 rem_vec2 <- round(year_goal * bias_dist)
 print(rem_vec2)
 ```
 
-
 Subtracting this removal vector from our stages abundances gives the post removal abundances, which can be summed to get the new population size.
+
 ```{r}
 new_vec <- abundances - rem_vec2
 print(new_vec)
 print(sum(new_vec))
 ```
 
+## Independent scenarios - Continuous removal frequency
 
-
-
-## Independent scenarios - Continuous removal frequency 
-For continuous removals, the number to remove was calculated differently. Instead of setting a goal each year, there was constant removal intensity across each year. This was applied by removing a proportion of the population each year. For continuous removals, the intensity is **10% per year**. 
+For continuous removals, the number to remove was calculated differently. Instead of setting a goal each year, there was constant removal intensity across each year. This was applied by removing a proportion of the population each year. For continuous removals, the intensity is **10% per year**.
 
 ```{r continuous values}
 intensity = 0.1
 stagedist = c( 0.110, 0.445, 0.110, 0.335 )  
 ```
 
+We will use the same hypothetical starting population, and calculate how this 10% population reduction is distributed across stages. I do this using a removal proportion per stage, instead a goal to remove per stage, as this is more representative of unregulated, independent culls. I sample removal proportions from a normal distribution, with a mean of 0.1, standard deviation 0.05, as visualled below.
 
-We will use the same hypothetical starting population, and calculate how this 10% population reduction is distributed across stages. I do this using a removal proportion per stage, instead a goal to remove per stage, as this is more representative of unregulated, independent culls. 
-I sample removal proportions from a normal distribution, with a mean of 0.1, standard deviation 0.05, as visualled below.
 ```{r normal plot, echo = FALSE}
 library(ggplot2)
 x <- rnorm(1000, mean = 0.1, sd= 0.05) # sample of 1000 
@@ -150,8 +149,12 @@ base.plot +
 
 
 ```
+```{r}
+
+```
 
 Sampling 4 removal proportions for the stages provides a removal proportion vector. I bound values between 0 and 1 by setting any negative values to 0, and any values greater than 1 to 1.
+
 ```{r}
 rem_props <- rnorm(4, mean = 0.1, sd = 0.05)
 rem_props[rem_props > 1] <- 1
@@ -159,20 +162,24 @@ rem_props[rem_props < 0] <- 0
 print(round(rem_props), 3)
 ```
 
-I multiply this removal proportion vector by the current stage abundance vector to get the number of individuals removed in a removal vector. I use the floor function to round down to get integer individuals. 
+I multiply this removal proportion vector by the current stage abundance vector to get the number of individuals removed in a removal vector. I use the floor function to round down to get integer individuals.
+
 ```{r}
 rem_vec3 <- floor(rem_props * abundances)
 rem_vec3
 ```
 
 Subtracting this removal vector from the current abundances gives the following year stage abundance vector.
+
 ```{r}
 next_vec <- abundances - rem_vec3
 next_vec
 ```
 
 ### Biased continuous removals
-In my biased continuous removals, I generated two normal distributions with altered means to sample removal proportions from, one being a biased distribution, the other unbiased. In the bias distribution, I add 0.1 onto the mean to increase removal probability. For unbiased removals, I minus 0.1. 
+
+In my biased continuous removals, I generated two normal distributions with altered means to sample removal proportions from, one being a biased distribution, the other unbiased. In the bias distribution, I add 0.1 onto the mean to increase removal probability. For unbiased removals, I minus 0.1.
+
 ```{r, bias plot, echo = FALSE}
 df$unbias <- rnorm(1000, mean = 0.05, sd= 0.05)
 df$bias <- rnorm(1000, mean = 0.2, sd= 0.05)
@@ -212,7 +219,8 @@ bias.plot <- ggplot(df, aes(x)) +
 bias.plot
 ```
 
-To sample my removal proportions per class, I generate one sample from the biased distribution, and 3 sampled from the unbiased. In this example, I want to bias adult females, so will increase their removal proportion by 0.1. 
+To sample my removal proportions per class, I generate one sample from the biased distribution, and 3 sampled from the unbiased. In this example, I want to bias adult females, so will increase their removal proportion by 0.1.
+
 ```{r}
 biased <- rnorm(1, mean = (0.1 + 0.1), sd = 0.05)
 unbiased <- rnorm(3, mean = (0.1 - (0.1/3)), sd = 0.05)
@@ -222,15 +230,17 @@ props[-2] <- unbiased
 
 print(round(props), 3)
 ```
-I then multiply the female biased removal proportions by my stage abundance vector to get the number of each sex and class removed. 
+
+I then multiply the female biased removal proportions by my stage abundance vector to get the number of each sex and class removed.
+
 ```{r}
 rem_vec4 <- floor(props * abundances)
 rem_vec4
 ```
 
-When I minus this vector from my current stage abundance vector, I get the stage abundances at the next timestep. 
+When I minus this vector from my current stage abundance vector, I get the stage abundances at the next timestep.
+
 ```{r}
 next_vec <- abundances - rem_vec4
 next_vec
 ```
-
