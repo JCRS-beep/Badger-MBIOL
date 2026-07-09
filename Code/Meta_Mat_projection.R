@@ -2,11 +2,24 @@
 # 5.02.26
 # projecting the large matrix forward given an initial matrix
 
+# Dmat creation function - can be customised to how many moving individuals we have 
+Dmat.create <- function(colNames, nPatches) { 
+  Dmat <- matrix(0, ncol = length(colNames), nrow = nPatches) # row = number patches
+  colnames(Dmat) <- colNames
+  
+  for (p in 1:nPatches){
+    move <- rnorm(length(colNames), mean = 0.2, sd = 0.05) # rnorm to calculate pmove from each patch # IMPROVEMENT = eq to calculate move prob value given vars
+    move[move < 0] <- 0    # if any values lower than 0, set to 0
+    Dmat[p,] <- move
+  }
+  return(Dmat)
+} 
 
+dtest <- Dmat.create(colNames = c("Yearling_female", "Adult_female", "Yearling_male",  "Adult_male"), 
+                     nPatches = 3)
 
 # load Umat, params, stages and meta script
-
-# meta.projection - ORIGINAL
+# meta.projection - ORIGINAL using large meta-matrix
 meta.proj <- function(Umat,   # vector of stage names
                       params, # adjusted beta = 
                       stagenames,
@@ -26,15 +39,15 @@ meta.proj <- function(Umat,   # vector of stage names
   
   
   nDim <- length(stagenames)     # how many stages
-  patches = length(initial)/ nDim # how many times are stages repeated?
-  # if(is.integer(patches) == FALSE) stop("Initial vector provided is incorrect length, must be nPatches*length(patch_vec)")
+  patches = length(initial) / nDim # how many times are stages repeated?
+  # if(is.integer(patches) == FALSE) stop("Initial vector provided is incorrect length, must be nPatches *length(patch_vec)")
   
   # Set up the output - how to set up if multiple patches? Lists within lists...
   
   out <- list(vec = list(matrix(0, ncol = length(stagenames), nrow = time + 1)),    # list of matrices per patch. # I dont like the formatting, why $vec$vec[[i]]?
               group_size = matrix(0, ncol =  patches, nrow = time + 1),    #   each row of matrix is patch size that year
               total_pop = vector(),   # vector for total pop size per year
-              Nremoved = vector(), # total removed in rem year, NO LIST, vec length = num patches
+              Nremoved = vector(), # total removed in rem year, vec length = num patches
               patch_rem = list(), # number removed per patch
               remvec = list())    # vector of length(stages) per patch - list
   
@@ -61,7 +74,7 @@ meta.proj <- function(Umat,   # vector of stage names
   
   # Loop = matrix proj each year  --------
   for (i in 1:time) {   # repeat for as many years as we have
-    # meta creation function to get large matrix for this year
+    # meta creation function to get large matrix for this year - don't need large mat if working in loops
     # combining entries for list vector format to long vec
     
     # Calculating random movement this year per patch
@@ -163,9 +176,10 @@ meta.proj <- function(Umat,   # vector of stage names
 }
 
 
+
 # No meta matrix vers - FORGET BIG MAT, WORK IN LOOPS 
 meta.proj <- function(Umat,   # vector of stage names
-                      params, # adjusted beta = 
+                      params, # adjusted beta = tighter density constraints per group
                       stagenames,
                       initial,   # list of initial abundances - string length patches * nStages
                       colNames, # length = nCol Dmat
@@ -228,7 +242,7 @@ meta.proj <- function(Umat,   # vector of stage names
     # current vec as string
     this_mat <- t(sapply(Vec, function(x) x[i,]))    # getting initial vec as a matrix with this years abundance per patch (patch = row)
     movers_mat <- this_mat  
-    movers_mat[,1] <- 0    # non moving individuals as 0 - following assumes only adults move
+    movers_mat[,1] <- 0    # non moving individuals as 0 -  assumes only adults move
     movers_mat[,3] <- 0 
     
     move_mat <- matrix(0 , nrow = nrow(movers_mat), ncol = ncol(movers_mat))
@@ -246,7 +260,6 @@ meta.proj <- function(Umat,   # vector of stage names
       arrival_matM <- arrival_mat
       
       for (p in 1:patches){   # how many males and females leaving given patch, where they arrive
-
       move_mat[p,] <- floor(movers_mat[p,] * thisDmat[p,])   # leaving each patch
         
       move_nf <- move_mat[p,2]  # number fems leaving group
@@ -319,23 +332,23 @@ meta.proj <- function(Umat,   # vector of stage names
       Vec[[p]][i + 1,] <- next_vec[((p*nDim)-3) : (p*nDim)]      # the next row for each list vec
     } 
     # if any stage becomes negative, set to zero and continue
-    if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE)))) {
+    if (any(sapply(Vec, function(mat) any(mat < 0, na.rm = TRUE || is.na(mat))))) {
       warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
-      Vec <- lapply(Vec, function(mat) { mat[mat < 0] <- 0; mat })
+      Vec <- lapply(Vec, function(mat) { mat[mat < 0 || is.na(mat)] <- 0; mat })
     }
-    
+
     for(p in 1:patches){
       # calculating group size per patch this year
       Group[i + 1,] <- sapply(Vec, function(x) sum(x[i +1, ]))  # list of group size vectors 
     }
     # if any stage becomes negative, set to zero and continue
-    if (any(sapply(Group, function(mat) any(mat < 0, na.rm = TRUE)))) {
+    if (any(sapply(Group, function(mat) any(mat < 0, na.rm = TRUE|| is.na(mat))))) {
       warning(paste("Negative abundances produced at time step", i, "— setting negatives to 0 and continuing."))
       Group <- apply(Group, function(mat) { mat[mat < 0] <- 0; mat })
     }
     
     Pop[i+1] <- sum(Group[i + 1,])
-    if (Pop[i] <= 0) {       # if pop size <= 0, stop and return
+    if (Pop[i] <= 0 || is.na(Pop[i])) {       # if pop size <= 0, stop and return
       warning(paste("Projection stopped at time step", i, "because total pop size reached 0 or below"))
       break
     }
@@ -355,7 +368,24 @@ meta.proj <- function(Umat,   # vector of stage names
   
 }
 
-                  
+# initial vec generation - 3 patches
+sizes <- sample(2:20, 3, replace = TRUE)   # group sizes to generate
+vec <- matrix(0, nrow = length(sizes), ncol = 4)
+ for( i in 1:length(sizes)){
+  vec[i,] <- round(sizes[i] *stagedist)
+}
+
+patch_n0 <- as.vector(t(vec))
+
+meta_test <- meta.proj(Umat,   # vector of stage names
+                       params, # adjusted beta = tighter density constraints per group
+                       stagenames = stages,
+                       initial = patch_n0,   # list of initial abundances - string length patches * nStages
+                       colNames = c("females", "males"), # length = nCol Dmat
+                       time = 20,
+                       return.vec = TRUE,
+                       return.group = TRUE)
+# ISSUES - still getting NA values in vec, group and total pop. 
 
 
 # meta removals

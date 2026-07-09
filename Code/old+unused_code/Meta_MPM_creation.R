@@ -119,24 +119,6 @@ meta.mat <- function(Umat,   # vector of stage names
 
 
 
-# Dmat creation function - can be customised to how many moving individuals we have 
-Dmat.create <- function(colNames, nPatches) {
-  Dmat <- matrix(0, ncol= length(colNames), nrow = nPatches) # row = number patches
-      colnames(Dmat) <- colNames
-  
-  for (p in 1:nPatches){
-    move <- rnorm(length(colNames), mean = 0.2, sd = 0.2) # eq to calculate move prob value given vars, for now rnorm
-    move[move < 0] <- 0    # if any values lower than 0, set to 0
-    Dmat[p,] <- move
-  }
-  return(Dmat)
-} 
-###CH: I think the movement probability might be too high. I would suggest
-###setting the mean to 0.2 or something, and then put a line of code that
-###catches any values less than 0 (either set them to 0 or take the absolute
-###value)
-
-
 
 
 
