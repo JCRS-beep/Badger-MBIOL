@@ -4,9 +4,7 @@
 library(tidyverse)
 library(ggplot2)
 
-# NEXT STEPS = Multiple removals rem_year1, 2....
-# goal - "remove X% of pop every 2 years for 50 years, long term pop growth rate.
-# Syntax = remove at remyear = seq(10,30, by=2) 
+# NEXT STEPS = what to do for low level continuous killings?
 
 # updating function design - multi removals 
 multi.rem <- function(Umat,   # MAX SURVIVAL
@@ -21,7 +19,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                       bias = NULL , # strength of bias as percentage (range??)
                       return.vec= TRUE, 
-                      return.remvec = TRUE) 
+                      return.remvec = FALSE) 
 {
   # input checks
   if (time <= 1) stop("Time must be a positive integer")
@@ -73,7 +71,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
   
   # Loop = density dependent matrix application for each year UNTIL first rem year
   for (i in 1:time) {   #  projection until end time
-    # if removal at t=5, project until t=5, final entry inserted to row 6 (remember vec[5,] holds entries for year=4 (rows 0:time))
+    # if removal at t=5, project until t=5, final entry inserted to row 6 (vec[5,] holds entries for year=4 (rows 0:time))
     
     # Nf calculation
     thisNf <- sum(Vec[i,nStages-1], Vec[i,nStages])    # Nf sums yearling and adult fems in Vec matrix
@@ -98,38 +96,36 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     
     # multiplying to project
     Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
-    # set any negatives to 0
-    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-    Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
-    
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
-    # if pop size <= 0,  and return message with year
-    if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
       idx <- rem_index[as.character(i)]  
+      # target intensity to remove has variation - can be above or below what is really achieved
+      real_int <- rnorm(1, mean = intensity/100, sd = 0.05)
+      preN <- Pop[remyear[1]]  # population size pre cull
       
+      if(idx ==1){       # when idx = 1, remove 70% with goal or proportion to generate rem (number of each sex and stage removed)
       # setting removal goal
-      goal <- round(Pop[remyear[1]] * (intensity/100))   # goal to remove  - pop size before first rem  
-      year_goal <- round(goal/nYears)    # how many removed per year
+      Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  # setting removal goal
+      Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  
+     
+      }  else if(idx >=1){    # if a subsequent year, supplementary culls
+        base <- 0.36*Nremoved[1]   # 36% of first year cull total
+        # set min and max removals
+        min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
+        max = base - (0.125*preN)
+        
+        # dist between min and max with mean = baseline?
+        x <- floor(min:max)  # sample using a sequence
+        NRem <- sample(x, 1) # how many to remove this year
+      }
       
       # pop removal -------------------------
       if(rem_strat == "random"){
         if (is.null(bias) == FALSE) paste("ignoring bias value as removal is random across ages and sexes")
         #generating the distribution - varies with rem strat
         dist <- stagedist
-        rem <-  year_goal * dist    # where does variation come in?
+        rem <-  Nrem * dist    # where does variation come in?
         
         # stage biased
       } else if(rem_strat != "random" && is.numeric(bias) == FALSE){   # for biased rems that are NOT index specific...
@@ -154,7 +150,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
             bias_vec * c(-1, -1, 1, 1)   # bias is subtracted from fems, added to males
           }
           dist <- stagedist + bias_vec    # combining into new removal distribution
-          rem <-  year_goal * dist     # number to remove per stage
+          rem <-  Nrem * dist     # number to remove per stage
         }
         
         
@@ -168,10 +164,8 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
         dist[rem_strat] <- dist[rem_strat] + bias   # increasing specified element
         dist[-rem_strat] <- dist[-rem_strat] - bias/3    # bias removed from others must divide by 3
         
-        rem <-  year_goal * dist    # stages removed per year is total removed per year * stage props
+        rem <-  Nrem * dist    # stages removed per year is total removed per year * stage props
       }
-      
-      # ------------------
       
       # calculating number removed from each stage
       thisRemvec <- round(rem)   # actual removed = rounded abundance * dist
@@ -182,24 +176,29 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       Remvec[idx,] <- thisRemvec
       
       # new population size following removals
-      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
+      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear filled with new stage vec
       Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
       Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
-      
-      # if pop size <= 0, stop and return
-      if(Pop[i]<= 0 || is.na(Pop[i])) {
-        stop(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-        break
-      }
-      # if any stage becomes negative, set to zero and continue
-      if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-        warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-        Vec[Vec < 0] <- 0
-        Vec[is.na(Vec)] <- 0
-      }
+    }
+    # section to put only before output ---------------
+    # set any negatives to 0
+    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
+    Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
+    Pop[i + 1] <- sum(Vec[(i + 1), ])
+    
+    # if any stage becomes negative, set to zero and continue
+    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
+      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+      Vec[Vec < 0] <- 0
+      Vec[is.na(Vec)] <- 0
+    }
+    
+    # if pop size <= 0,  and return message with year
+    if(Pop[i]<= 0 || is.na(Pop[i])) {
+      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+      break
     }
   }
-  # -----------------------  
   
   # out objects
   out$pop <- Pop
@@ -219,25 +218,24 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
 
 
 
-
-
 # testing no removal scenario----
-proj0 <- rem.proj(Umat,      # seems to reach stability quickly - some kind of stochasticity needed?
-                  initial = n0, 
-                  params, 
-                  stagenames = stages,
-                  time = 30, 
-                  DDapply="Fmat", 
-                  intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
-                  remyear = NULL, 
-                  rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                  bias = NULL , # strength of bias as percentage (range??) how to ignore in function if null?
-                  return.vec= TRUE, 
-                  return.remvec = FALSE) 
+proj0 <- multi.rem(Umat,   # MAX SURVIVAL
+                   initial = n0, # initial vec
+                   stagedist,  # proportion of each stage
+                   params, 
+                   stagenames = stages, 
+                   time = 25,     
+                   DDapply="fertility", 
+                   intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                   remyear = integer(0),  # removal year = vector of years 
+                   rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                   bias = NULL , # strength of bias as percentage (range??)
+                   return.vec= TRUE, 
+                   return.remvec = FALSE) 
 
 col_vec <- c("#FF6A6A", "#87CEEB")
 
-(proj0_plot <- dd_plot(proj0,
+(proj0_plot <- dd.plot(proj0,
                        y_val = "Vec",
                        ylab = "Abundance",
                        xlab = "Time (t)",
@@ -246,7 +244,7 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                        cols = col_vec,
                        legend.pos = "top",
                        base_size = 16))
-(N0_plot <- dd_plot(proj0, 
+(N0_plot <- dd.plot(proj0, 
                    y_val= "N", 
                    ylab = "Pop size", 
                    xlab = "Time (t)",
@@ -256,4 +254,18 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                    base_size = 16))  
 
 
-
+# random removal
+proj1 <- multi.rem(Umat,   # MAX SURVIVAL
+                   initial = n0, # initial vec
+                   stagedist,  # proportion of each stage
+                   params, 
+                   stagenames = stages, 
+                   time = 25,     
+                   DDapply="fertility", 
+                   intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                   remyear = 10,  # removal year = vector of years 
+                   rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                   bias = NULL , # strength of bias as percentage (range??)
+                   return.vec= TRUE, 
+                   return.remvec = TRUE) 
+# year after removal doesn't updte Nf and Nm?
