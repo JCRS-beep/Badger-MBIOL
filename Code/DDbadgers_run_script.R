@@ -1,5 +1,7 @@
-# run script 
-# temporay solution to issues in report .rmd
+# Run script for density-dependent badger population modeling with removals
+# Written by Jay Creese with input from Chrissy Hernandez
+# July 2026
+# Last edited: July 2026
 
 ## section 1 -  loading libraries
 
@@ -18,10 +20,10 @@ library(here)
 source(here("Code/Functions/01_all_functions.R")) 
 
 # data extraction
-source(here("Code/code_MBIOL_final/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
+source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
 
 # parameter definition and df set ups
-source(here("Code/code_MBIOL_final//03_parameter_rate_setup.R"))
+source(here("Code/03_parameter_rate_setup.R"))
 
 
 # following sections only relevant for MBIOL project - will be updating the removal scenarios with new functions and different removal biases.
