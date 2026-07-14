@@ -38,3 +38,5 @@ initials <- matrix(0, nrow = reps, ncol = 4)
 for (t in 1:reps){   # loop to fill rows of matrix with vector
   initials[t,] <- floor(stagedist*pop.sizes[t])
 }
+
+

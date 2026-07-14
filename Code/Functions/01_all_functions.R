@@ -1058,6 +1058,3 @@ extinction.risk <- function(proj_list){
 
 
 
-
-
-
