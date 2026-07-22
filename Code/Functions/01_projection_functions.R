@@ -38,7 +38,7 @@ mating.func <- function(params,     # density dependent parameters
   }
   return(f) 
 }
-# Function name= Mating.func
+# Function name= mating.func
 # Inputs:
 #  params: density dependent parameters, including k (max litter size),  h (harem size), max cub survival 
 #  stagenames Stages in life cycle , where length()= rows of matrix
@@ -91,10 +91,9 @@ apply.DD <- function(params,
     
   } else if(DDapply %in% c("Survival", "survival", "Umat")){
     Umat_N <- Umat*rick
-    Amat_N <- Amat + Umat_N # how to combine?
+    Amat_N <- Amat + Umat_N 
     
   } else if(DDapply  %in% c("Fertility", "fertility", "Fmat")) {
-    # embedd mating func?
     f_N <- f*rick
     Amat_N <- Amat
     Amat_N[1,2] <- 0.5 * f_N * S 
@@ -112,7 +111,7 @@ apply.DD <- function(params,
 #  DDapply= across which elements ricker is applied - entire matrix (Amat), survival (Umat), Fertility (Fmat) or recruitment (applies twice to fmat - cub survival and females reproducing
 # Use:  Creates a density dependent Amat depending on DDapplication to existing matrices, Uma and Fmat
 
-# why is remvec negative?
+
 rem.proj <- function(Umat,   # MAX SURVIVAL
                      initial, 
                      params, 

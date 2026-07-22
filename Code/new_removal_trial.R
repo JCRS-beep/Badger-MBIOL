@@ -99,21 +99,23 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
-      idx <- rem_index[as.character(i)]  
+      idx <- rem_index[as.character(i)]     # idx = 1: remyear
+      
+      preN <- Pop[remyear[1]]  # population size pre cull
+      
       # target intensity to remove has variation - can be above or below what is really achieved
       real_int <- rnorm(1, mean = intensity/100, sd = 0.05)
-      preN <- Pop[remyear[1]]  # population size pre cull
       
       if(idx ==1){       # when idx = 1, remove 70% with goal or proportion to generate rem (number of each sex and stage removed)
       # setting removal goal
       Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  # setting removal goal
       Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  
      
-      }  else if(idx >=1){    # if a subsequent year, supplementary culls
+      }  else if(idx > 1){    # if a subsequent year, supplementary culls
         base <- 0.36*Nremoved[1]   # 36% of first year cull total
         # set min and max removals
         min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
-        max = base - (0.125*preN)
+        max = base + (0.125*preN)
         
         # dist between min and max with mean = baseline?
         x <- floor(min:max)  # sample using a sequence

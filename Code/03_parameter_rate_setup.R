@@ -5,13 +5,13 @@
 # setting up parameters and vital rates for demographic model --------
 stages <- c("Yearling_f", "Adult_f", "Yearling_m", "Adult_m")
 
-Umat <- matrix(0, nrow=4, ncol=4)
-rownames(Umat) <- stages
-colnames(Umat) <- stages
-Umat[2,1]<- bright_survival_vec[1]  # yearling f survival
-Umat[2,2]<- bright_survival_vec[2]  # adult f survival - could use macdonald 2002 paper values
-Umat[4,3]<-bright_survival_vec[3]   # yearling m survival
-Umat[4,4]<- bright_survival_vec[4]  # adult m survival
+umat <- matrix(0, nrow=4, ncol=4)
+rownames(umat) <- stages
+colnames(umat) <- stages
+umat[2,1]<- bright_survival_vec[1]  # yearling f survival
+umat[2,2]<- bright_survival_vec[2]  # adult f survival - could use macdonald 2002 paper values
+umat[4,3]<-bright_survival_vec[3]   # yearling m survival
+umat[4,4]<- bright_survival_vec[4]  # adult m survival
 
 # extract straight from data?
 params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997

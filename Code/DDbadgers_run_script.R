@@ -14,8 +14,6 @@ library(readr)
 library(here)
 
 
-# Sourcing other scripts - 02 not working? no digitised papers? (7/13 - 02 works fine for Chrissy - is this comment outdated?)
-
 # # sourcing functions used throughout 
 source(here("Code/Functions/01_all_functions.R")) 
 source(here("Code/Functions/DDbadgers_AnalyseOutputFns.R"))

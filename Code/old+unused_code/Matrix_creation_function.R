@@ -19,7 +19,7 @@ create.matrix<- function(names,   # vector of stage names
     mat[1,nStages]<- r1[1]
   }
   else{
-    mat[1,(nStages-1)]<-  r1[1]   # otherwise assume final stage sexond value forreproduction 
+    mat[1,(nStages-1)]<-  r1[1]   # otherwise assume final stage second value for reproduction 
     mat[1, nStages]<- r1[2]
   }
        
