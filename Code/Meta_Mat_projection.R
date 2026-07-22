@@ -3,20 +3,22 @@
 # projecting the large matrix forward given an initial matrix
 
 # Dmat creation function - can be customised to how many moving individuals we have 
-Dmat.create <- function(colNames, nPatches) { 
+Dmat <- function(colNames, nPatches, 
+                 pdisp) { 
   Dmat <- matrix(0, ncol = length(colNames), nrow = nPatches) # row = number patches
   colnames(Dmat) <- colNames
   
   for (p in 1:nPatches){
-    move <- rnorm(length(colNames), mean = 0.2, sd = 0.05) # rnorm to calculate pmove from each patch # IMPROVEMENT = eq to calculate move prob value given vars
+    move <- rnorm(length(colNames), mean = pdist, sd = 0.05) # rnorm to calculate pmove from each patch # IMPROVEMENT = eq to calculate move prob value given vars
     move[move < 0] <- 0    # if any values lower than 0, set to 0
     Dmat[p,] <- move
   }
   return(Dmat)
 } 
 
-dtest <- Dmat.create(colNames = c("Yearling_female", "Adult_female", "Yearling_male",  "Adult_male"), 
-                     nPatches = 3)
+dtest <- Dmat(colNames = c("Adult_female", "Adult_male"), 
+                     nPatches = 3, 
+                     pdisp = 0.1)
 
 # load Umat, params, stages and meta script
 # meta.projection - ORIGINAL using large meta-matrix
@@ -78,7 +80,7 @@ meta.proj <- function(Umat,   # vector of stage names
     # combining entries for list vector format to long vec
     
     # Calculating random movement this year per patch
-    thisDmat <- Dmat.create(colNames, patches) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
+    thisDmat <- Dmat(colNames, patches, pdisp = 0.1) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
     
     # calculating post move vec for use in meta_create
     # current vec as string
@@ -234,7 +236,7 @@ meta.proj <- function(Umat,   # vector of stage names
   for (i in 1:time) {   # repeat for as many years as we have
    
     # Calculating random movement this year per patch
-    thisDmat <- Dmat.create(colNames, patches) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
+    thisDmat <- Dmat(colNames, patches, pdisp = 0.1) # creates random p(move) per patch, either single prob per patch or varies by stage/sex
     
     
     # calculating post move vec for use in meta_create

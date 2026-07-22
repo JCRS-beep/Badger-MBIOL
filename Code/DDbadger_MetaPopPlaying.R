@@ -5,8 +5,8 @@
 
 # We're gonna build up from the absolute simplest model. Two patches, no dispersal:
 twopatch_Umat<- matrix(data=0, nrow=8, ncol=8)
-twopatch_Umat[1:4,1:4]<- Umat
-twopatch_Umat[5:8,5:8]<- Umat
+twopatch_Umat[1:4,1:4]<- umat
+twopatch_Umat[5:8,5:8]<- umat
 
 # fertility parameters are set in script 03_parameter_rate_setup.R (copied here for reference)
 # params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
@@ -30,11 +30,24 @@ output<- proj_meta_nodisp_norem(twopatch_Umat, n0_2patch, params, stages,
 # So I've written a sort of hybrid approach, where we do a patch-based model
 # where each patch follows an MPM.
 
-output<- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages, 
+output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages, 
                                    npatches=2, DDapply = 'fertility', time = 20,
                                    dispersal_prob=0.1, 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec = TRUE)
 
+# do we want output to show movers from each patch - see how movement is affected by culls?
+
+# multiple patches 
+n0_3patch <- c(initials[1,], initials[2,], initials[3,]) 
+threepatch_Umat <-  matrix(data=0, nrow=12, ncol=12)
+threepatch_Umat[1:4,1:4]<- umat
+threepatch_Umat[5:8,5:8]<- umat
+threepatch_Umat[9:12, 9:12] <- umat
+output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages, 
+                                    npatches=3, DDapply = 'fertility', time = 20,
+                                    dispersal_prob=0.1, 
+                                    dispersal_stages = c("Adult_f", "Adult_m"),
+                                    return.vec = TRUE)
 
 
