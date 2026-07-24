@@ -491,3 +491,46 @@ proj_meta_vardisp_norem <- function(Umat,
     return(Pop)
   }
 }
+
+
+# Linking density with probability of leaving
+# Using absolute number of badgers to calculate density compared to max group size 
+# social groups range 1 - 27, not observed larger than this.
+# Dispersal prob calculated with quadratic between 0 - 1, equal for males and females (dispersal per patch)
+ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
+                 npatches, # number of patches
+                 group_size, 
+                 max_group) {    # what is the carrying capacity (can be vector of K per patch)
+  
+  # getting the index of each stage
+  I_Af<- which(stagenames=="Adult_f")
+  I_Am<- which(stagenames=="Adult_m")
+  I_Yf<- which(stagenames=="Yearling_f")
+  I_Ym<- which(stagenames=="Yearling_m")
+  
+  if (is.null(I_Af) | is.null(I_Am) | is.null(I_Yf) | is.null(I_Ym)){
+    stop("stagenames must include the following four stages, in any order: 
+         'Yearling_f', 'Adult_f', 'Yearling_m' and 'Adult_m'")
+  }
+  
+  if(length(group_size) != npatches){
+    stop("You must provided the sizes for each group")
+  }
+  
+  I_leavers <- which(stagenames %in% dispersal_stages)
+  
+  Dmat <- matrix(0, ncol = length(stagenames), nrow = npatches) # row = number patches
+  colnames(Dmat) <- stagenames
+  
+  max_group_size <- 28 # based on papers recording 26 and 27
+  x <- group_size/ max_group    # proportion each group of max size
+  
+  for (p in 1:npatches){
+    move <- round(x^2, 2)       # quadratic equation for now - rounding to 2 dec places
+    move[move<0] <- 0   # setting any negatives to 0
+    Dmat[p,I_leavers] <- move[p]   # equal for all indivs or variable between sexes? vary K value for males and females?
+  }
+  
+  return(Dmat)
+} 
+

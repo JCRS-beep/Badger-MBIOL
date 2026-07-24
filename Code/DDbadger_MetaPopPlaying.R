@@ -51,3 +51,8 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                     return.vec = TRUE)
 
 
+# testing density dependent dispersal
+dmat_out <- ddDmat(stagenames = stages,dispersal_stages = c("Adult_f", "Adult_m"), # names of all stages, names of only dispersing stages
+       npatches = 3, # number of patches
+       group_size = c(12, 6, 21), 
+       max_group = c(20, 15, 25))
