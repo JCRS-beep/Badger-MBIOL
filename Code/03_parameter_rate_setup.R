@@ -20,7 +20,6 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
                     h= 10)   # harem size per male - assume single male sufficient for groups
 
 
-
 # creating initial vectors here?
 # inital vec for single projection 
 stagedist <- c(0.12, 0.43, 0.12, 0.34)
@@ -40,3 +39,13 @@ for (t in 1:reps){   # loop to fill rows of matrix with vector
 }
 
 
+# PART II - meta-pop model set up
+m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
+                    b= 0.01,       # should vary by group if we set different max group sizes
+                    rep_K= rogers_k,          # max litter size (K), 
+                    h= 10)   # harem size per male - assume single male sufficient for groups
+
+
+set.seed(123)  # setting repitition number 
+groups <- 20        # how many groups?
+limits <- sample(10:28, groups, replace = TRUE)    # max group size = 28, wht to choose for min? 

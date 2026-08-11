@@ -6,8 +6,6 @@
 library(here)
 
 
-# sourcing required functions
-
 
 # projections (model 1) -----
 # baseline = 20 year projection
@@ -272,4 +270,5 @@ cont_proj3 <- repeat.proj(func = "prop",
 
 
 # meta proj scenarios
-# baseline - 20 years in patches
+# baseline - 20 years in patches. How many patches? 
+meta_proj0 <- 

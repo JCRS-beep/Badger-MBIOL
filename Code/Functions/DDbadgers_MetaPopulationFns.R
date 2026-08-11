@@ -181,7 +181,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
     
-    Leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
+    leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
     # dispersal loop (NOTE that for this simple version with a fixed amount of
@@ -194,7 +194,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
       # apply the probability of leaving to the stages that leave:
       subleavers<- rep(0,4)
       subleavers[I_leavers]<- round(dispersal_prob*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
-      Leavers[Ipatch] <- subleavers
+      leavers[Ipatch] <- subleavers
 
       # distribute the leavers equally among the other patches, as arrivers, in
       # the same stage as they left:
@@ -234,7 +234,9 @@ proj_meta_fixeddisp_norem<- function(Umat,
         
     }
     
-    postdispVec<- Vec[i,] - Leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
+    postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
+    Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
+    
     
     # now we do another loop over the patches to calculate reproduction:
     for (p in 1:npatches){
@@ -404,7 +406,7 @@ proj_meta_DDdisp_norem <- function(Umat,
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
     
-    Leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
+    leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
     # group sizes this year
@@ -429,7 +431,7 @@ proj_meta_DDdisp_norem <- function(Umat,
       # apply the probability of leaving to the stages that leave:
       subleavers<- rep(0,4)
       subleavers[I_leavers]<- round(dmat[p,I_leavers]*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
-      Leavers[Ipatch] <- subleavers
+      leavers[Ipatch] <- subleavers
       
       # distribute the leavers equally among the other patches, as arrivers, in
       # the same stage as they left:
@@ -469,7 +471,8 @@ proj_meta_DDdisp_norem <- function(Umat,
         
       }
       
-      postdispVec<- Vec[i,] - Leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
+      postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
+      Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
       
       # now we do another loop over the patches to calculate reproduction:
       for (p in 1:npatches){
@@ -528,3 +531,195 @@ proj_meta_DDdisp_norem <- function(Umat,
     return(Pop)
   }
 }
+
+
+
+# plot functions  - plotting 
+meta_plot <- function(out,   # output obj of dd.proj
+                               y_val= "N",   # plot type - N or Vec 
+                               ylab = "abundance", 
+                               xlab = "time (t)",
+                               rem_year = NULL,
+                               mytheme = theme_classic(), 
+                               cols= "black",    # can be vector of 2 cols
+                               legend.pos = "top",
+                               base_size = 16) {
+  # loading required libraries
+  require(tidyr)
+  require(ggplot2)
+  # creating time vector for n years
+  t <- nrow(out$vec) - 1                 # t= n years (0-t = t+1 entries)
+  time <- as.numeric(c(0:t))       # vector 0:t
+  
+  # for pop size over time graph - must be as df
+  if(y_val %in% c("N", "Pop Size", "pop size", "Pop", "pop")) {
+    pop_df <- data.frame(Year = time,
+                         Pop  = out$pop )# converting pop to a df
+    
+    # creating pop projection plot
+    base.plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
+      geom_line(size = 1.2, colour = "grey30") +
+      geom_point(size = 2, colour = "black") +
+      labs(
+        x = xlab,
+        y = ylab) +
+      scale_y_continuous(
+        name = "Population size",
+        breaks = scales::pretty_breaks(n = 5),
+        expand = expansion(mult = c(0.1, 0.2)))+  # 5% below, 30% above
+      mytheme +
+      theme(
+        text = element_text(size = base_size),
+        plot.title = element_text(size = base_size + 2, face = "bold"),
+        axis.title = element_text(size = base_size),
+        axis.text = element_text(size = base_size - 2),
+        legend.position = legend.pos
+      ) 
+    
+    if (!is.null(rem_year)){
+      plot <- base.plot +
+        geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
+                   colour = "red3", 
+                   linetype = "dashed", linewidth = 1, 
+                   alpha = 0.5) 
+      
+    } else if (is.null(rem_year)){
+      plot <- base.plot 
+    }
+    
+    
+    # Group size by year plot
+   } else if(y_val %in% c("Group", "group")) {
+     df <- data.frame(Year = time,
+                freq  = out$vec)
+      group_df <- as.data.frame(data.frame(
+        Year = df$Year,
+        Group1 = rowSums(df[, 1:4]),
+        Group2 = rowSums(df[, 5:8]),
+        Group3 = rowSums(df[, 9:12])
+      ) %>%
+        pivot_longer(
+          cols = starts_with("Group"),
+          names_to = "Group",
+          names_prefix = "Group",
+          values_to = "Abundance"
+        ))
+      
+      # creating group projection plot
+      base.plot <- ggplot(group_df, aes(x = Year, y = Abundance, colour = Group)) +
+        geom_line(size = 1.2) +
+        geom_point(size = 2) +
+        labs(
+          x = xlab,
+          y = ylab) +
+        scale_y_continuous(
+          name = "Group size",
+          breaks = scales::pretty_breaks(n = 5),
+          expand = expansion(mult = c(0.1, 0.2)))+  # 5% below, 30% above
+        mytheme +
+        theme(
+          text = element_text(size = base_size),
+          plot.title = element_text(size = base_size + 2, face = "bold"),
+          axis.title = element_text(size = base_size),
+          axis.text = element_text(size = base_size - 2),
+          legend.position = legend.pos
+        ) 
+      if (!is.null(rem_year)){
+        plot <- base.plot +
+          geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
+                     colour = "red3", 
+                     linetype = "dashed", linewidth = 1, 
+                     alpha = 0.5) 
+        
+      } else if (is.null(rem_year)){
+        plot <- base.plot 
+      }
+    
+    
+    # alternative plot = vec abundance
+  } else if(y_val %in% c("Vec", "vec")){
+    x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
+    # turning into dataframe
+    df <- as.data.frame(out$vec)
+    
+ 
+    # long format so each row is a single observation 
+    df_long <- as.data.frame(df %>%
+      pivot_longer(
+        cols = -Year,
+        names_to = c("Group", "Stage", "Sex"),
+        names_pattern = "(\\d+)_(Yearling|Adult)_([fm])",
+        values_to = "Count"
+      ))
+
+    # plotting graph 
+    base.plot <- ggplot(data= df_long, 
+                        aes(x=Year, 
+                            y=Abundance, 
+                            colour= Sex, 
+                            linetype= Stage, 
+                            shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
+      geom_point(position= "jitter", size = 2, alpha=0.8) +  # jitter to avoid overlap of yearlings
+      geom_line(data= df_long, size = 1.2, alpha=0.7) +
+      scale_colour_manual(values= cols,
+                          labels=c("Female", "Male")) +
+      labs(
+        x = xlab,
+        y = ylab,
+        colour = "Sex",
+        linetype = "Stage",
+        shape = "Stage") +
+      
+      scale_y_continuous(name = "Population size",
+                         breaks = scales::pretty_breaks(n = 5),
+                         expand = expansion(mult = c(0.1, 0.25))) +  # 5% below, 30% above
+      mytheme +
+      theme(
+        text = element_text(size = base_size),
+        plot.title = element_text(size = base_size + 2, face = "bold"),
+        axis.title = element_text(size = base_size),
+        axis.text = element_text(size = base_size - 2),
+        legend.position = legend.pos,
+        # journal-style compact legend:
+        legend.direction = "horizontal",
+        legend.box = "horizontal",
+        legend.key = element_rect(fill = NA, colour = NA),
+        legend.key.size = unit(0.8, "lines"),
+        legend.title = element_text(face = "bold", size = base_size),
+        legend.text = element_text(size = base_size - 2),
+        legend.spacing.x = unit(0.2, "cm"),
+        legend.spacing.y = unit(0.1, "cm"),
+        legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
+      ) +
+      # make legend compact and show titles above keys (journal style)
+      guides(
+        colour = guide_legend(title.position = "top",
+                              title.hjust = 0.5,
+                              nrow = 1,
+                              byrow = TRUE,
+                              override.aes = list(size = 3, linetype = 1, shape = 16)),
+        linetype = guide_legend(title.position = "top",
+                                title.hjust = 0.5,
+                                nrow = 1,
+                                byrow = TRUE,
+                                override.aes = list(size = 1.2)),
+        shape = guide_legend(title.position = "top",
+                             title.hjust = 0.5,
+                             nrow = 1,
+                             byrow = TRUE,
+                             override.aes = list(size = 3))
+      )
+    
+    if(!is.null(rem_year)){   # if rem years a vector, can we loop geom_line addition?
+      plot <- base.plot +
+        geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
+                   colour = "red3", linetype = "dashed", size=0.8, alpha = 0.3) 
+      
+    } else if (is.null(rem_year)){
+      plot <- base.plot
+    }
+  }
+  
+  return(plot)
+  
+}   

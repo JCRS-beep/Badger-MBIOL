@@ -144,26 +144,27 @@ ggplot(move_df, aes(x = sr, y = Y)) +
 
 
 
-# FUTURE - adding density dependent dispersal
-ddDmat.create <- function(colnames, nPatches, 
+# FUTURE - density dependent dispersal (p leave affected by crowdedness)
+ddDmat.create <- function(colnames, npatches, 
                           group_size, sex_ratio = NULL, 
-                          k) {
-  Dmat <- matrix(0, ncol= length(colnames), nrow = nPatches) # row = number patches
+                          k) {  # K value strength of 
+  Dmat <- matrix(0, ncol= length(colnames), nrow = npatches) # row = number patches
   colnames(Dmat) <- colnames
   
   max_group_size <- 28 # based on papers recording 26 and 27 
   
-  # logistic equation - total group size
-  for (p in 1:nPatches){
-    x <- group_size/ max_group_size    # proportion of max size
-    move <- 1 / (1 - exp((-k(x-0.5)))) 
+  # total group size
+  for (p in 1:npatches){
+    x <- group_size/ max_group_size    # proportion each group of max size
+    move <- 1 / (1 - exp((-k*(x-0.5))))   # logistic equation 
+    move[move<0] <- 0   # setting any negatives to 0
     Dmat[p,] <- move   # equal for all indivs or variable between sexes? vary K value for males and females?
   }
   
   if(!is.null(sex_ratio) == FALSE){
-    for (p in 1:nPatches){
+    for (p in 1:npatches){
       x <- sex_ratio    # proportion of max size
-      move <- 1 / (1 - exp((-k[2](x-0.5)))) # second value for k needed
+      move <- 1 / (1 - exp((-k[2]*(x-0.5)))) # second value for k needed
       Dmat[p,2] <- move   # male movement prob 
     }
   }
@@ -175,5 +176,7 @@ ddDmat.create <- function(colnames, nPatches,
 
 
 
-
+ddDmat.create(colnames = c("Adult_f", "Adult_m"), npatches = 3, 
+               group_size = c(21, 3, 11), sex_ratio = NULL, 
+               k = 0.1)
 
