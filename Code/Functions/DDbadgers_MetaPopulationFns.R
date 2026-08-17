@@ -296,14 +296,9 @@ proj_meta_fixeddisp_norem<- function(Umat,
   }
   }
 
-
-
-
-
-    
    
 
-# Linking density with probability of leaving
+# Linking density with probability of leaving in dispersal matrix
 # Using absolute number of badgers to calculate density compared to max group size 
 # social groups range 1 - 27, not observed larger than this.
 # Dispersal prob calculated with quadratic between 0 - 1, equal for males and females (dispersal per patch)
@@ -332,12 +327,17 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
   Dmat <- matrix(0, ncol = length(stagenames), nrow = npatches) # row = number patches
   colnames(Dmat) <- stagenames
   
+  max_move <- 0.3  # greatest proportion of moving individuals?
   max_group_size <- 28 # based on papers recording 26 and 27
   x <- group_size/ max_group    # proportion each group of max size
   
   for (p in 1:npatches){
-    move <- round(x^2, 2)       # quadratic equation for now - rounding to 2 dec places
+    move <- round(max_move/(log(2)*log(x+1)), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
+                                                              # this gives values > 1, err
+                                                              # max group size = 28
+                                                              # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
     move[move<0] <- 0   # setting any negatives to 0
+    move[move >1] <- 1
     Dmat[p,I_leavers] <- move[p]   # equal for all indivs or variable between sexes? vary K value for males and females?
   }
   
@@ -345,6 +345,8 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
 } 
 
 
+# DD moving projection function
+# incorporating density dependent movement probs in projection function
 proj_meta_DDdisp_norem <- function(Umat,
                                    initial,
                                    params,
@@ -352,7 +354,7 @@ proj_meta_DDdisp_norem <- function(Umat,
                                    npatches,
                                    time,
                                    DDapply="fertility",
-                                   max_group, 
+                                   max_group,        # vector of single value for carying capacity of each group
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE){
   # input checks
@@ -636,7 +638,7 @@ meta_plot <- function(out,   # output obj of dd.proj
       }
     
     
-    # alternative plot = vec abundance
+    # alternative plot = vec abundance  - NOT FINISHED!
   } else if(y_val %in% c("Vec", "vec")){
     x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
     # turning into dataframe
