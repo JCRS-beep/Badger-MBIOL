@@ -73,16 +73,10 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
 
 
 
-# Increasing group number
-set.seed(123)  # setting repitition number 
-groups <- 20        # how many groups?
-limits <- sample(10:28, groups, replace = TRUE)    # max group size = 28, what to choose for min (10 temporary number)? 
-
-
 # multiple patches and density dependent movement -------
 output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, params, stages, 
                        npatches=3, DDapply = 'fertility', time = 20,
-                                   max_group = 28,  # based on reading
+                                   max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
 
@@ -110,32 +104,37 @@ meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         base_size = 16)
 
 
-
 ## Setting tighter density dependence for groups? How to apply density dependence across entire population, limiting group sizes?
 m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                       b= 0.012,       # should vary by group if we set different max group sizes
+                       b= 0.046,       # should vary by group if we set different max group sizes
                        rep_K= rogers_k,          # max litter size (K), 
                        h= 10)   # harem size per male - assume single male sufficient for groups
 
-# new initial vecs
-# group sizes
-size <- c(10,20, 12)
-n0_3patch <- matrix(0, nrow = length(size), ncol = 4)
+# new initial vecs to match smaller group sizes
+size <- c(10,20, 16)  #  group sizes
+patch <- matrix(0, nrow = length(size), ncol = 4)
 
 for (i in 1:length(size)){   # loop to fill rows of matrix with vector
-  n0_3patch[i,] <- floor(stagedist*size[i])
+  patch[i,] <- floor(stagedist*size[i])
 }
+
+# tuning this into a vector
+n0_3patch <- c(t(patch))
 
 
 # trying new params with fixed disp
-output <- proj_meta_fixeddisp_norem(threepatch_Umat,
-                                    n0_3patch,  # if we change max group sizes, must also change starting vecs as there are very large
-                                    m_params, 
-                                    stages, 
-                                    npatches=3, DDapply = 'fertility', time = 20,
-                                    dispersal_prob=0.1, 
-                                    dispersal_stages = c("Adult_f", "Adult_m"),
-                                    return.vec = TRUE)
+output <- proj_meta_DDdisp_norem(threepatch_Umat,
+                                 n0_3patch,  
+                                 m_params, 
+                                 stages, 
+                                 npatches = 3,
+                                 DDapply = 'fertility', 
+                                 time = 20,
+                                 max_group = 28,
+                                 dispersal_stages = c("Adult_f", "Adult_m"),
+                                 return.vec = TRUE)
+
+# visualising output
 meta_fixeddisp_norem_pop2 <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
                                       ylab = "Population size", 
@@ -155,3 +154,81 @@ meta_fixeddisp_norem_group2 <- meta_plot(output,   # output obj of dd.proj
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
                                         base_size = 16)
+
+
+
+# ISSUES - when there are only 1 or 2 adults, pop cannot climb. Needs to climb to a threshold (above 15?) before it can settle ar higher level
+# otherwise, level at 0
+
+
+
+
+## Increasing group number
+# 10 patch Umat
+ten_patch_umat <- matrix(data=0, nrow=40, ncol=40)
+
+for(i in 1:10){
+  x <- (1 +4*(i-1)) : (4*i)      # equation to get row and col boundaries per patch   (4, 8, 12, ...)
+  ten_patch_umat[x,x] <- umat
+}
+
+ 
+set.seed(123)  # setting repitition number 
+groups <- 10        # how many groups?
+limits <- sample(10:28, groups, replace = TRUE)    # max group size = 28, what to choose for min (10 temporary number)? 
+
+# generating initial vecs
+many_patch <- matrix(0, nrow = 10, ncol = 4)
+for (i in 1:length(limits)){   # loop to fill rows of matrix with vector
+  many_patch[i,] <- floor(stagedist*limits[i])
+}
+
+
+
+output <- proj_meta_DDdisp_norem(ten_patch_umat,
+                                 many_patch,  
+                                 m_params, 
+                                 stages, 
+                                 npatches = 10,
+                                 DDapply = 'fertility', 
+                                 time = 20,
+                                 max_group = 28,
+                                 dispersal_stages = c("Adult_f", "Adult_m"),
+                                 return.vec = TRUE)
+
+
+df <- data.frame(freq  = out$vec)
+group_df <- as.data.frame(data.frame(
+  Year = c(0:20),
+  Group1 = rowSums(df[, 1:4]),
+  Group2 = rowSums(df[, 5:8]),
+  Group3 = rowSums(df[, 9:12])
+) %>%
+  pivot_longer(
+    cols = starts_with("Group"),
+    names_to = "Group",
+    names_prefix = "Group",
+    values_to = "Abundance"
+  ))
+
+group_df <-   group_df |> pivot_longer(
+  cols = starts_with("v"),
+  names_to = "Group",
+  names_prefix = "Group",
+  values_to = "Abundance"
+)
+
+plot <- ggplot(data= group_df, aes(x= Year, y=Abundance, colour = Group)) +
+  geom_line()+
+  geom_point()
+
+
+many_group_plot <- meta_plot(output,   # output obj of dd.proj
+                             y_val= "Group",   # plot type - N or Vec 
+                             ylab = "Group size", 
+                             xlab = "time (t)",
+                             rem_year = NULL,
+                             mytheme = theme_classic(), 
+                             cols= "black",    # can be vector of 2 cols
+                             legend.pos = "top",
+                             base_size = 16)

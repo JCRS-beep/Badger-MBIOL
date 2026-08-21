@@ -106,6 +106,7 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
                 vec = matrix())
     out$pop <- Pop
     out$vec <- Vec 
+    
     return(out)
   } else {
     return(Pop)
@@ -168,13 +169,20 @@ proj_meta_fixeddisp_norem<- function(Umat,
   # Set up  output
   Vec <- matrix(0, ncol = length(stagenames)*npatches, nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
-  Leavers <- matrix(0, ncol = ncol(Vec), nrow = time) # matrix to fill with the number of individuals leaving each patch each year (by each stage)
+  Group <- matrix(0, ncol = npatches, nrow = time+1)   # group sizes each year
+  Leavers <- matrix(0, ncol = ncol(Vec), nrow = time)   # matrix to fill with the number of individuals leaving each patch each year (by each stage)
   
   colnames(Vec) <- rep(stagenames, npatches)  # naming cls matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
   Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
   Pop[1] <- as.numeric(sum(n0))
-  
+ 
+  for(i in 1:npatches){
+    x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
+    Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
+  }
+
+   
 #  colnames(Leavers) <- seq(1, npatches)   # patch names 
  # rownames(Leavers) <- 0:(time) 
   
@@ -184,9 +192,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
     leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
-    # dispersal loop (NOTE that for this simple version with a fixed amount of
-    # dispersal, we don't need to do a loop, but I'm pointing you in the
-    # direction of the next steps)
+    # dispersal loop 
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
       subVec <- as.vector(Vec[p, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
@@ -231,12 +237,20 @@ proj_meta_fixeddisp_norem<- function(Umat,
           }
         }
         }
-        
     }
     
+    # group sizes this year
+      sizes <- vector()
+      # sum every 4 entries
+      for (p in 1:npatches){
+        sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
+      }
+      
+      # filling in group size this year
+      Group[i + 1,] <- sizes
+      
     postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
     Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
-    
     
     # now we do another loop over the patches to calculate reproduction:
     for (p in 1:npatches){
@@ -286,10 +300,15 @@ proj_meta_fixeddisp_norem<- function(Umat,
   if (isTRUE(return.vec)) {
     out <- list(pop = vector(), 
                 vec = matrix(), 
-                leavers = matrix())
+                group = matrix(),
+                leavers = matrix()
+                )
+    
     out$pop <- Pop
     out$vec <- Vec 
+    out$group <- Group
     out$leavers <- Leavers
+    
     return(out)
   } else {
     return(Pop)
@@ -298,7 +317,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
 
    
 
-# Linking density with probability of leaving in dispersal matrix
+# Linking density with probability of leaving in dispersal matrix ----
 # Using absolute number of badgers to calculate density compared to max group size 
 # social groups range 1 - 27, not observed larger than this.
 # Dispersal prob calculated with quadratic between 0 - 1, equal for males and females (dispersal per patch)
@@ -328,11 +347,10 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
   colnames(Dmat) <- stagenames
   
   max_move <- 0.3  # greatest proportion of moving individuals?
-  max_group_size <- 28 # based on papers recording 26 and 27
-  x <- group_size/ max_group    # proportion each group of max size
+  x <- group_size / max_group    # proportion each group of max size
   
   for (p in 1:npatches){
-    move <- round(max_move/(log(2)*log(x+1)), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
+    move <- round(max_move/(log(2))*log(x+1), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
                                                               # this gives values > 1, err
                                                               # max group size = 28
                                                               # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
@@ -345,7 +363,8 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
 } 
 
 
-# DD moving projection function
+
+# DD moving projection function -----
 # incorporating density dependent movement probs in projection function
 proj_meta_DDdisp_norem <- function(Umat,
                                    initial,
@@ -397,6 +416,7 @@ proj_meta_DDdisp_norem <- function(Umat,
   # Set up  output
   Vec <- matrix(0, ncol = length(stagenames)*npatches, nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
+  Group <- matrix(0, ncol = npatches, nrow = time+1)   # group sizes each year
   Leavers <- matrix(0, ncol = ncol(Vec), nrow = time) # matrix to fill with the number of individuals leaving each patch each year (by each stage)
   
   colnames(Vec) <- rep(stagenames, npatches)  # naming cls matrix as stages 
@@ -404,6 +424,10 @@ proj_meta_DDdisp_norem <- function(Umat,
   Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
   Pop[1] <- as.numeric(sum(n0))
   
+  for(i in 1:npatches){
+    x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
+    Group[1,i] <- sum(Vec[1, x])
+  }
   
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
@@ -418,10 +442,15 @@ proj_meta_DDdisp_norem <- function(Umat,
     sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
     }
     
+    # filling in group size this year
+    Group[i + 1,] <- sizes
+    
     dmat <- ddDmat(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
                    npatches, # number of patches
                    group_size = sizes, 
                    max_group)
+    
+   
     
     # dispersal loop (NOTE that for this simple version with a fixed amount of
     # dispersal, we don't need to do a loop, but I'm pointing you in the
@@ -524,10 +553,13 @@ proj_meta_DDdisp_norem <- function(Umat,
   if (isTRUE(return.vec)) {
     out <- list(pop = vector(), 
                 vec = matrix(), 
+                group = matrix(),
                 leavers = matrix())
     out$pop <- Pop
     out$vec <- Vec 
+    out$group <- Group
     out$leavers <- Leavers
+    
     return(out)
   } else {
     return(Pop)
@@ -536,7 +568,8 @@ proj_meta_DDdisp_norem <- function(Umat,
 
 
 
-# plot functions  - plotting 
+
+# plot functions  - have not done vec 
 meta_plot <- function(out,   # output obj of dd.proj
                                y_val= "N",   # plot type - N or Vec 
                                ylab = "abundance", 
@@ -592,21 +625,20 @@ meta_plot <- function(out,   # output obj of dd.proj
     
     # Group size by year plot
    } else if(y_val %in% c("Group", "group")) {
-     df <- data.frame(Year = time,
-                freq  = out$vec)
-      group_df <- as.data.frame(data.frame(
-        Year = df$Year,
-        Group1 = rowSums(df[, 1:4]),
-        Group2 = rowSums(df[, 5:8]),
-        Group3 = rowSums(df[, 9:12])
-      ) %>%
-        pivot_longer(
-          cols = starts_with("Group"),
-          names_to = "Group",
-          names_prefix = "Group",
-          values_to = "Abundance"
-        ))
-      
+     df <- data.frame(freq  = out$vec)
+     group_df <- as.data.frame(data.frame(
+       Year = c(0:20),
+       Group1 = rowSums(df[, 1:4]),
+       Group2 = rowSums(df[, 5:8]),
+       Group3 = rowSums(df[, 9:12])
+     ) %>%
+       pivot_longer(
+         cols = starts_with("Group"),
+         names_to = "Group",
+         names_prefix = "Group",
+         values_to = "Abundance"
+       ))
+     
       # creating group projection plot
       base.plot <- ggplot(group_df, aes(x = Year, y = Abundance, colour = Group)) +
         geom_line(size = 1.2) +
