@@ -49,3 +49,6 @@ m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal 
 set.seed(123)  # setting repitition number 
 groups <- 20        # how many groups?
 limits <- sample(10:28, groups, replace = TRUE)    # max group size = 28, wht to choose for min? 
+
+
+

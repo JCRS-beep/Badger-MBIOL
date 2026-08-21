@@ -219,7 +219,8 @@ multi_proj3 <- repeat.proj(func = "goal",
                            
 
 # continuous removals all years of projection at low levels
-# removing 10% every year = needs old rem.proj function OR 15 years of 10 % = intensity of 150%?
+# removing 10% every year = why ask this? Already established that high intensity better than low intensity
+                                         # from literature, that's why we choose 70% 
 cont_proj1 <- repeat.proj(func = "prop",  # removing perentage each year instead of setting goal
                          Umat,      
                          initial.vecs = initials,
@@ -269,6 +270,20 @@ cont_proj3 <- repeat.proj(func = "prop",
                           reps = 100) 
 
 
-# meta proj scenarios
+## meta proj scenarios - MODEL 2 ----
 # baseline - 20 years in patches. How many patches? 
-meta_proj0 <- 
+
+# SINGLE YEAR
+# 70% random (single year)
+# 70% fem bias 
+# 70% male bias
+
+# 2 YEARS
+# 70% random 
+# 70% fem bias 
+# 70% male bias
+
+# 5 YEARS
+# 70% random (single year)
+# 70% fem bias 
+# 70% male bias
