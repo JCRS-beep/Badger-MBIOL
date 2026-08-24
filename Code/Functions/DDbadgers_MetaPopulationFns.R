@@ -628,7 +628,7 @@ meta_plot <- function(out,   # output obj of dd.proj
      df <- data.frame(freq  = out$vec)
      group_df <- as.data.frame(data.frame(
        Year = c(0:20),
-       Group1 = rowSums(df[, 1:4]),
+       Group1 = rowSums(df[, 1:4]),    # make non specific to 3 pathces
        Group2 = rowSums(df[, 5:8]),
        Group3 = rowSums(df[, 9:12])
      ) %>%

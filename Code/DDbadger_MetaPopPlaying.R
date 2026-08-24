@@ -183,10 +183,10 @@ for (i in 1:length(limits)){   # loop to fill rows of matrix with vector
   many_patch[i,] <- floor(stagedist*limits[i])
 }
 
-
+n0_many <- c(t(many_patch))
 
 output <- proj_meta_DDdisp_norem(ten_patch_umat,
-                                 many_patch,  
+                                 n0_many,  
                                  m_params, 
                                  stages, 
                                  npatches = 10,
@@ -197,38 +197,32 @@ output <- proj_meta_DDdisp_norem(ten_patch_umat,
                                  return.vec = TRUE)
 
 
-df <- data.frame(freq  = out$vec)
-group_df <- as.data.frame(data.frame(
-  Year = c(0:20),
-  Group1 = rowSums(df[, 1:4]),
-  Group2 = rowSums(df[, 5:8]),
-  Group3 = rowSums(df[, 9:12])
-) %>%
-  pivot_longer(
-    cols = starts_with("Group"),
-    names_to = "Group",
-    names_prefix = "Group",
-    values_to = "Abundance"
-  ))
+ # using group output from function
+g_df <- as.data.frame(output$group)
+g_df$Year <- c(0:20)
 
-group_df <-   group_df |> pivot_longer(
+g_df <- g_df |>
+   pivot_longer(
   cols = starts_with("v"),
   names_to = "Group",
   names_prefix = "Group",
   values_to = "Abundance"
-)
+  )
 
-plot <- ggplot(data= group_df, aes(x= Year, y=Abundance, colour = Group)) +
-  geom_line()+
+
+
+plot <- ggplot(data= g_df, aes(x= Year, y=Abundance, colour = Group)) +
+  geom_line() +
   geom_point()
 
 
-many_group_plot <- meta_plot(output,   # output obj of dd.proj
-                             y_val= "Group",   # plot type - N or Vec 
-                             ylab = "Group size", 
+many_group_pop <- meta_plot(output,   # output obj of dd.proj
+                             y_val= "Pop",   # plot type - N or Vec 
+                             ylab = "Population size", 
                              xlab = "time (t)",
                              rem_year = NULL,
                              mytheme = theme_classic(), 
                              cols= "black",    # can be vector of 2 cols
                              legend.pos = "top",
                              base_size = 16)
+
