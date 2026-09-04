@@ -195,8 +195,12 @@ proj_meta_fixeddisp_norem<- function(Umat,
     # dispersal loop 
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
-      subVec <- as.vector(Vec[p, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
-      
+      subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
+      ########CH: Jay, I found a bug on this line - you were previously indexing
+      ########by row p (for the patches) rather than by row i for the year. Now
+      ########the patches all converge to the same size. You'll probably need to
+      ########carry this change through to your other functions.
+            
       # apply the probability of leaving to the stages that leave:
       subleavers<- rep(0,4)
       subleavers[I_leavers]<- round(dispersal_prob*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals

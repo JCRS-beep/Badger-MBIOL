@@ -50,6 +50,8 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                     dispersal_prob=0.1, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
                                     return.vec = TRUE)
+####CH: On 4 Sept, Chrissy updated this function - re-run and see how it changed!
+
 # population over time
 meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
