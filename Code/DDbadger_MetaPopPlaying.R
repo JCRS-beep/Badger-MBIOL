@@ -159,11 +159,6 @@ meta_fixeddisp_norem_group2 <- meta_plot(output,   # output obj of dd.proj
 
 
 
-# ISSUES - when there are only 1 or 2 adults, pop cannot climb. Needs to climb to a threshold (above 15?) before it can settle ar higher level
-# otherwise, level at 0
-
-
-
 
 ## Increasing group number
 # 10 patch Umat

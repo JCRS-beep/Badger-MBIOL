@@ -456,12 +456,10 @@ proj_meta_DDdisp_norem <- function(Umat,
     
    
     
-    # dispersal loop (NOTE that for this simple version with a fixed amount of
-    # dispersal, we don't need to do a loop, but I'm pointing you in the
-    # direction of the next steps)
+    # dispersal loop 
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
-      subVec <- as.vector(Vec[p, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
+      subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
       
       # apply the probability of leaving to the stages that leave:
       subleavers<- rep(0,4)
