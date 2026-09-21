@@ -14,13 +14,21 @@ twopatch_Umat[5:8,5:8]<- umat
 #                     rep_K= rogers_k,          # max litter size (K), 
 #                     h= 10)   # harem size per male - assume single male sufficient for groups
 
-# I want the two patches to have different starting populations, so I'm just
-# pasting together two of the initial pop vectors from the non-spatial model
-n0_2patch<- c(initials[1,], initials[2,]) 
 
-output<- proj_meta_nodisp_norem(twopatch_Umat, n0_2patch, params, stages, 
-                         npatches=2, DDapply = "fertility", time=20, 
-                         return.vec = TRUE)
+# I want the two patches to have different starting populations, so I'm just
+# pasting together two of the initial pop vectors from the non-spatial model 
+# NOTE - to test model outputs I'm using equal starting pops for now
+n0_2patch <- round(c((initials[1,]/4), (initials[1,]/4)))  # starting with equal group sizes to test if function performs correctly
+
+output<- proj_meta_nodisp_norem(twopatch_Umat,     # must be a big matrix with diaongal Umats
+                                n0_2patch,
+                                params,
+                                stages,
+                                npatches = 2,
+                                time = 20,
+                                DDapply="fertility",
+                                return.vec= TRUE)   
+
 
 # Okay, now two patches with dispersal: The problem with adding dispersal is
 # that we want them to disperse before they mate, and then mating is
@@ -31,14 +39,15 @@ output<- proj_meta_nodisp_norem(twopatch_Umat, n0_2patch, params, stages,
 # where each patch follows an MPM.
 
 output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages, 
-                                   npatches=2, DDapply = 'fertility', time = 20,
+                                   npatches=2, time = 20,
+                                   DDapply = 'fertility', 
                                    dispersal_prob=0.1, 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec = TRUE)
-
+# GOOD ! When starting vecs equal, the function leads to exact same outcomes - same group sizes each year, same leavers...
 
 # multiple patch UMAT 
-n0_3patch <- c(initials[1,], initials[2,], initials[3,]) 
+n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4)))
 threepatch_Umat <-  matrix(data=0, nrow=12, ncol=12)
 threepatch_Umat[1:4,1:4]<- umat
 threepatch_Umat[5:8,5:8]<- umat
@@ -50,7 +59,6 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                     dispersal_prob=0.1, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
                                     return.vec = TRUE)
-####CH: On 4 Sept, Chrissy updated this function - re-run and see how it changed!
 
 # population over time
 meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
@@ -81,9 +89,8 @@ output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                    max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
+# High number of leavers (43 in year 1, group 1). Limits for moving number incorrect? 
 
-
-# interesting - decreasing pop size due to movement limits. Definitely issues in leavers matrix calculation - impossible numbers
 # population over time
 meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
@@ -94,6 +101,7 @@ meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
                                       base_size = 16)
+# increases above 600?
 
 meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         y_val= "Group",   # plot type - N or Vec 
@@ -104,9 +112,12 @@ meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
                                         base_size = 16)
+# why such different patterns for the groups? one increases much faster than others - 
 
 
-## Setting tighter density dependence for groups? How to apply density dependence across entire population, limiting group sizes?
+
+
+## Setting tighter density dependence for groups
 m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
                        b= 0.046,       # should vary by group if we set different max group sizes
                        rep_K= rogers_k,          # max litter size (K), 
@@ -172,7 +183,7 @@ for(i in 1:10){
  
 set.seed(123)  # setting repitition number 
 groups <- 10        # how many groups?
-limits <- sample(10:28, groups, replace = TRUE)    # max group size = 28, what to choose for min (10 temporary number)? 
+limits <- sample(10:20, groups, replace = TRUE)    # max group size = 28, what to choose for min (10 temporary number)? 
 
 # generating initial vecs
 many_patch <- matrix(0, nrow = 10, ncol = 4)

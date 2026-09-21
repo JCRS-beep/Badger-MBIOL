@@ -46,11 +46,20 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
   # Set up  output
   Vec <- matrix(0, ncol = length(stagenames)*npatches, nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
+  Group <- matrix(0, ncol = npatches, nrow = time+1)   # group sizes each year
+
   
   colnames(Vec) <- rep(stagenames, npatches)  # naming cols matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
+  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals       
   Pop[1] <- as.numeric(sum(n0))
+  
+  for(i in 1:npatches){
+    x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
+    Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
+  }
+  
+  
   
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
@@ -92,6 +101,16 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
       Vec[is.na(Vec)] <- 0
     }
     
+    # group sizes this year
+    sizes <- vector()
+    # sum every 4 entries
+    for (p in 1:npatches){
+      sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
+    }
+    
+    # filling in group size this year
+    Group[i + 1,] <- sizes
+    
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
     # if pop size <= 0, stop and return message with year
@@ -105,7 +124,9 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
     out <- list(pop = vector(), 
                 vec = matrix())
     out$pop <- Pop
+    out$group <- Group
     out$vec <- Vec 
+    
     
     return(out)
   } else {
@@ -174,7 +195,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
   
   colnames(Vec) <- rep(stagenames, npatches)  # naming cls matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
+  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals  
   Pop[1] <- as.numeric(sum(n0))
  
   for(i in 1:npatches){
@@ -182,7 +203,6 @@ proj_meta_fixeddisp_norem<- function(Umat,
     Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
   }
 
-   
 #  colnames(Leavers) <- seq(1, npatches)   # patch names 
  # rownames(Leavers) <- 0:(time) 
   
@@ -196,10 +216,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
       subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
-      ########CH: Jay, I found a bug on this line - you were previously indexing
-      ########by row p (for the patches) rather than by row i for the year. Now
-      ########the patches all converge to the same size. You'll probably need to
-      ########carry this change through to your other functions.
+      
             
       # apply the probability of leaving to the stages that leave:
       subleavers<- rep(0,4)
@@ -327,7 +344,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
 # Dispersal prob calculated with quadratic between 0 - 1, equal for males and females (dispersal per patch)
 ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
                  npatches, # number of patches
-                 group_size, 
+                 group_size, # sizes of each group 
                  max_group) {    # what is the carrying capacity (can be vector of K per patch)
   
   # getting the index of each stage
@@ -354,7 +371,7 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
   x <- group_size / max_group    # proportion each group of max size
   
   for (p in 1:npatches){
-    move <- round(max_move/(log(2))*log(x+1), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
+    move <- round(max_move/(log(2))*log(x + 1), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
                                                               # this gives values > 1, err
                                                               # max group size = 28
                                                               # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
@@ -366,6 +383,8 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
   return(Dmat)
 } 
 
+# the maximum value is not enforced - want to max out 0.3 but may rise over
+# occurs when groups shoots over max size, (x > 1)
 
 
 # DD moving projection function -----
