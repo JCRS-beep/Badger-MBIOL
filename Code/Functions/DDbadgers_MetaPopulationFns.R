@@ -101,11 +101,11 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
       Vec[is.na(Vec)] <- 0
     }
     
-    # group sizes this year
+    # group sizes next year
     sizes <- vector()
     # sum every 4 entries
     for (p in 1:npatches){
-      sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
+      sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])   # previous indexing issue - vec[i,] keeps calculating this years size
     }
     
     # filling in group size this year
@@ -260,11 +260,11 @@ proj_meta_fixeddisp_norem<- function(Umat,
         }
     }
     
-    # group sizes this year
+    # group sizes next year
       sizes <- vector()
       # sum every 4 entries
       for (p in 1:npatches){
-        sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
+        sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
       }
       
       # filling in group size this year
@@ -458,11 +458,11 @@ proj_meta_DDdisp_norem <- function(Umat,
     leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
-    # group sizes this year
+    # group sizes next year
     sizes <- vector()
     # sum every 4 entries
     for (p in 1:npatches){
-    sizes[p] <- sum(Vec[i, (1+4*(p-1)):(4*p)])
+    sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
     }
     
     # filling in group size this year
