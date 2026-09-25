@@ -209,7 +209,8 @@ proj_meta_fixeddisp_norem<- function(Umat,
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
     
-    leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
+    leavers <- rep(0, ncol(Vec))    # individuals leaving patches - to go in output#
+                                    # synatxing (p1, p1, p1, p1, p2, p2, p2, p2...)
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
     # dispersal loop 
@@ -219,7 +220,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
       
             
       # apply the probability of leaving to the stages that leave:
-      subleavers<- rep(0,4)
+      subleavers<- rep(0,4)    # leavers from this patch
       subleavers[I_leavers]<- round(dispersal_prob*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
       leavers[Ipatch] <- subleavers
 
@@ -227,7 +228,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
       # the same stage as they left:
       if (npatches==2){
         subarrivers<- subleavers      
-        arrivers[-Ipatch]<- subarrivers
+        arrivers[-Ipatch]<- subarrivers     # arrivers into other patch 
         
       } else {     # divide movers across other patches
         # random sample of patches to decide where individuals go (later replace with some distance equation?)
@@ -258,18 +259,10 @@ proj_meta_fixeddisp_norem<- function(Umat,
           }
         }
         }
-    }
-    
-    # group sizes next year
-      sizes <- vector()
-      # sum every 4 entries
-      for (p in 1:npatches){
-        sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
       }
-      
-      # filling in group size this year
-      Group[i + 1,] <- sizes
-      
+    }   # DEBUGGING : closing bracket in wrong place - reproduction was calculated before dispersal vec 
+        # was completed for all patches
+    
     postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
     Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
     
@@ -308,6 +301,17 @@ proj_meta_fixeddisp_norem<- function(Umat,
       Vec[is.na(Vec)] <- 0
     }
     
+    # group sizes next year
+    sizes <- vector()
+    # sum every 4 entries
+    for (p in 1:npatches){
+      sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
+    }
+    
+    # filling in group size this year
+    Group[i + 1,] <- sizes
+    
+    # pop sizes by year
     Pop[i + 1] <- sum(Vec[(i + 1), ])
     
     # if pop size <= 0, stop and return message with year
@@ -316,7 +320,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
       break
     }
    }
-  }
+  
   # output objects
   if (isTRUE(return.vec)) {
     out <- list(pop = vector(), 
@@ -458,11 +462,11 @@ proj_meta_DDdisp_norem <- function(Umat,
     leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
     arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
     
-    # group sizes next year
+    # group sizes this year
     sizes <- vector()
     # sum every 4 entries
     for (p in 1:npatches){
-    sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
+    sizes[p] <- sum(Vec[i , (1+4*(p-1)):(4*p)])
     }
     
     # filling in group size this year
@@ -522,6 +526,7 @@ proj_meta_DDdisp_norem <- function(Umat,
         }
         
       }
+    }   # Brackets now in correct places
       
       postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
       Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
@@ -561,6 +566,16 @@ proj_meta_DDdisp_norem <- function(Umat,
         Vec[is.na(Vec)] <- 0
       }
       
+      # group sizes next year
+      next_sizes <- vector()
+      # sum every 4 entries
+      for (p in 1:npatches){
+        next_sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
+      }
+      
+      # filling in group size this year
+      Group[i + 1,] <- next_sizes
+      
       Pop[i + 1] <- sum(Vec[(i + 1), ])
       
       # if pop size <= 0, stop and return message with year
@@ -569,7 +584,7 @@ proj_meta_DDdisp_norem <- function(Umat,
         break
       }
     }
-  }
+  
   # output objects
   if (isTRUE(return.vec)) {
     out <- list(pop = vector(), 
@@ -648,7 +663,7 @@ meta_plot <- function(out,   # output obj of dd.proj
    } else if(y_val %in% c("Group", "group")) {
      df <- data.frame(freq  = out$vec)
      group_df <- as.data.frame(data.frame(
-       Year = c(0:20),
+       Year = time,
        Group1 = rowSums(df[, 1:4]),    # make non specific to 3 pathces
        Group2 = rowSums(df[, 5:8]),
        Group3 = rowSums(df[, 9:12])

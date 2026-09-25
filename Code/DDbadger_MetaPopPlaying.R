@@ -44,21 +44,25 @@ output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages,
                                    dispersal_prob=0.1, 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec = TRUE)
-# GOOD ! When starting vecs equal, the function leads to exact same outcomes - same group sizes each year, same leavers...
+# debugging completed - projections now equal with equal starting vectors. 
 
 # multiple patch UMAT 
-n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4)))
+# unequal initial vec
+n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4))) # equal patch sizes initially
+
 threepatch_Umat <-  matrix(data=0, nrow=12, ncol=12)
 threepatch_Umat[1:4,1:4]<- umat
 threepatch_Umat[5:8,5:8]<- umat
 threepatch_Umat[9:12, 9:12] <- umat
 
-# Testing fixed dispersal projection 
+# Testing fixed dispersal projection with unequal initial outputs
 output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages, 
-                                    npatches=3, DDapply = 'fertility', time = 20,
+                                    npatches=3, DDapply = 'fertility', time = 30,
                                     dispersal_prob=0.1, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
                                     return.vec = TRUE)
+# good - equal group sizes across years
+
 
 # population over time
 meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
@@ -85,7 +89,7 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
 
 # multiple patches and density dependent movement -------
 output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, params, stages, 
-                       npatches=3, DDapply = 'fertility', time = 20,
+                       npatches=3, DDapply = 'fertility', time = 50,
                                    max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
@@ -112,7 +116,7 @@ meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
                                         base_size = 16)
-# why such different patterns for the groups? one increases much faster than others - 
+# why such different patterns for the groups?
 
 
 
