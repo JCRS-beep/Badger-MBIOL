@@ -46,7 +46,7 @@ output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages,
                                    return.vec = TRUE)
 # debugging completed - projections now equal with equal starting vectors. 
 
-# multiple patch UMAT 
+# multiple patch UMAT ----
 # unequal initial vec
 n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4))) # equal patch sizes initially
 
@@ -57,7 +57,7 @@ threepatch_Umat[9:12, 9:12] <- umat
 
 # Testing fixed dispersal projection with unequal initial outputs
 output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages, 
-                                    npatches=3, DDapply = 'fertility', time = 30,
+                                    npatches=3, DDapply = 'fertility', time = 50,
                                     dispersal_prob=0.1, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
                                     return.vec = TRUE)
@@ -93,7 +93,8 @@ output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                    max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
-# High number of leavers (43 in year 1, group 1). Limits for moving number incorrect? 
+# High number of leavers (43 in year 1, group 1) due to large group sizes compared to limits set in DD movement function
+# may improve once new params introduced
 
 # population over time
 meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
@@ -105,7 +106,7 @@ meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
                                       base_size = 16)
-# increases above 600?
+# increases above 1500?
 
 meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         y_val= "Group",   # plot type - N or Vec 
@@ -119,11 +120,16 @@ meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
 # why such different patterns for the groups?
 
 
+# looking how reproduction vaies with Nm and Nf in density dependent version
+# creating an updated function that tells up 
+
 
 
 ## Setting tighter density dependence for groups
 m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                       b= 0.046,       # should vary by group if we set different max group sizes
+                       b= 0.046,  # how to claculate instead of choosing random value? Want groups to max out around 28 
+                                  # plot 
+                                  # should vary by group if we set different max group sizes
                        rep_K= rogers_k,          # max litter size (K), 
                        h= 10)   # harem size per male - assume single male sufficient for groups
 

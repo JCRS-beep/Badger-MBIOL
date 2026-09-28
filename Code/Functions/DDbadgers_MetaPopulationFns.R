@@ -59,8 +59,6 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
     Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
   }
   
-  
-  
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
     # each timestep, reset the size of thisAmat to match Umat.
@@ -202,9 +200,6 @@ proj_meta_fixeddisp_norem<- function(Umat,
     x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
     Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
   }
-
-#  colnames(Leavers) <- seq(1, npatches)   # patch names 
- # rownames(Leavers) <- 0:(time) 
   
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
@@ -224,6 +219,12 @@ proj_meta_fixeddisp_norem<- function(Umat,
       subleavers[I_leavers]<- round(dispersal_prob*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
       leavers[Ipatch] <- subleavers
 
+      
+      if(sum(subleavers) == 0) { # if none leave, can skip all further steps and set arrivers as the same value
+        arrivers <- arrivers
+      }
+      else {
+      
       # distribute the leavers equally among the other patches, as arrivers, in
       # the same stage as they left:
       if (npatches==2){
@@ -241,7 +242,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
         rownames(mat_subarrival) <- arrival_patches
         
         # option - loop for each stage in disp stage - incorrectly assigning - overly complicated, simplify ---
-        for(j in 1:length(I_leavers)){    # why is j giong to 4?
+        for(j in 1:length(I_leavers)){    
           stageI <- I_leavers[j]
           stage_I_arrival <- sample(arrival_patches, subleavers[stageI], replace = TRUE)   # samples patches for the stage j in dispersal stages
           
@@ -256,6 +257,7 @@ proj_meta_fixeddisp_norem<- function(Umat,
           else {mat_subarrival[matrow,stageI] <- sum(stage_I_arrival == a)   # arrivers for this patch
         
           arrivers[thisIpatch] <- c(mat_subarrival[matrow,])
+          }
           }
         }
         }
@@ -291,8 +293,10 @@ proj_meta_fixeddisp_norem<- function(Umat,
       }
       
       # Project just this patch forward:
-      Vec[(i+1), Ipatch]<- floor(subAmat %*% Vec[i, Ipatch]) # amat values multiplied by vec, round down for integers 
-      
+      Vec[(i+1), Ipatch]<- floor(subAmat %*% postdispVec[Ipatch]) # amat values multiplied by vec, round down for integers 
+                                            # DEBUGGING:
+                                            # should multiply subAmat by POST DISP vec (not vec) - rep values based on new abundances, multiply rep values by 
+                                            # post mvoement vec
     }
     # if any stage becomes negative, set to zero and continue
     if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
@@ -661,22 +665,14 @@ meta_plot <- function(out,   # output obj of dd.proj
     
     # Group size by year plot
    } else if(y_val %in% c("Group", "group")) {
-     df <- data.frame(freq  = out$vec)
-     group_df <- as.data.frame(data.frame(
-       Year = time,
-       Group1 = rowSums(df[, 1:4]),    # make non specific to 3 pathces
-       Group2 = rowSums(df[, 5:8]),
-       Group3 = rowSums(df[, 9:12])
-     ) %>%
-       pivot_longer(
-         cols = starts_with("Group"),
-         names_to = "Group",
-         names_prefix = "Group",
-         values_to = "Abundance"
-       ))
+     df <- as.data.frame(out$group)
+     colnames(df) <- paste0("Group", seq_len(ncol(df)))
+     df$Year <- time
+     group_df <- pivot_longer(df, cols = starts_with("Group"),
+                                         names_to = "Group", values_to = "Value") 
      
       # creating group projection plot
-      base.plot <- ggplot(group_df, aes(x = Year, y = Abundance, colour = Group)) +
+     base.plot <- ggplot(group_df, aes(Year, Value, colour = Group)) +
         geom_line(size = 1.2) +
         geom_point(size = 2) +
         labs(
