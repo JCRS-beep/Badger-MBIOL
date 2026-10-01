@@ -202,67 +202,47 @@ proj_meta_fixeddisp_norem<- function(Umat,
   }
   
   # Loop = density dependent matrix application for each year and patch
+  # storing dispersal history in array to track origin and destination
   for (i in 1:time) {   #  projection until end time
+    # setting up array to store stages moving, origin and destination
+    moves <- array(0, dim = c(npatches, npatches, length(stagenames)),
+                   dimnames = list(from = 1:npatches, to = 1:npatches,
+                                   stage = stagenames))
     
-    leavers <- rep(0, ncol(Vec))    # individuals leaving patches - to go in output#
-                                    # synatxing (p1, p1, p1, p1, p2, p2, p2, p2...)
-    arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
+    leavers <- rep(0, ncol(Vec))    # individuals leaving patches - to go in output
+    arrivers <- rep(0, ncol(Vec))   # individuals arriving in other patch
     
     # dispersal loop 
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
       subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
       
-            
+      
       # apply the probability of leaving to the stages that leave:
-      subleavers<- rep(0,4)    # leavers from this patch
+      subleavers<- rep(0,nStages)    # leavers from this patch
       subleavers[I_leavers]<- round(dispersal_prob*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
       leavers[Ipatch] <- subleavers
-
       
-      if(sum(subleavers) == 0) { # if none leave, can skip all further steps and set arrivers as the same value
-        arrivers <- arrivers
-      }
-      else {
+      arrival_patches <- setdiff(1:npatches, p)   # setdiff compares differences between dataframes, removes p from all other patches
       
-      # distribute the leavers equally among the other patches, as arrivers, in
-      # the same stage as they left:
-      if (npatches==2){
-        subarrivers<- subleavers      
-        arrivers[-Ipatch]<- subarrivers     # arrivers into other patch 
-        
-      } else {     # divide movers across other patches
-        # random sample of patches to decide where individuals go (later replace with some distance equation?)
-        nleavers <- sum(subleavers) # number of moving individuals
-        x <- seq(npatches)
-        arrival_patches <- x[x != p]   # all patches excluding current patch
-        
-        remaining_subleavers <- subleavers   # how many leavers from this patch remain
-        mat_subarrival <- matrix(0, nrow = length(arrival_patches), ncol = nStages)
-        rownames(mat_subarrival) <- arrival_patches
-        
-        # option - loop for each stage in disp stage - incorrectly assigning - overly complicated, simplify ---
-        for(j in 1:length(I_leavers)){    
-          stageI <- I_leavers[j]
-          stage_I_arrival <- sample(arrival_patches, subleavers[stageI], replace = TRUE)   # samples patches for the stage j in dispersal stages
-          
-          for (a in arrival_patches){  
-            thisIpatch <- c(1+4*(a-1)):(4*a)          
-            matrow <- which(rownames(mat_subarrival) == a)
-            
-          if(matrow == 0) {
-            arrivers[thisIpatch] <- rep(0, 4)
-          }
-         
-          else {mat_subarrival[matrow,stageI] <- sum(stage_I_arrival == a)   # arrivers for this patch
-        
-          arrivers[thisIpatch] <- c(mat_subarrival[matrow,])
-          }
-          }
-        }
+      for (s in I_leavers) {
+        n <- subleavers[s]
+        if (n > 0) {
+          # index into arrival_patches 
+          dest <- arrival_patches[sample.int(length(arrival_patches), n, replace = TRUE)]
+          moves[p, , s] <- tabulate(dest, nbins = npatches)   # from p to  dest
         }
       }
-    }   # DEBUGGING : closing bracket in wrong place - reproduction was calculated before dispersal vec 
+    }
+    
+    # arrivers = sum over source patches -> (to x stage), flattened to match Vec layout
+    to_by_stage <- apply(moves[, , ], c(2, 3), sum)    # syntaxing errs here
+    arrivers <- as.vector(t(to_by_stage))
+    
+    # check : everyone who left must arrive somewhere
+    if(sum(arrivers) != sum(leavers)) stop("Numbers of leavers and arrivers not equal, issues in dispersal calculation")
+    
+       # DEBUGGING : closing bracket in wrong place - reproduction was calculated before dispersal vec 
         # was completed for all patches
     
     postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch

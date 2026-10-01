@@ -1,5 +1,7 @@
 # modified functions to visualise outputs
+# Extracting equation between density dependent multipliers / fertility and group size
 
+ 
 MOD_meta_fixeddisp_norem<- function(Umat,
                                      initial,
                                      params,
@@ -258,7 +260,8 @@ plot_patch_matrix <- function(mat,                  # e.g. output$fert (Amat) or
     df_long <- df_long[order(df_long$Group, df_long$Year), ]   # keep time order for geom_path
     
     p <- ggplot(df_long, aes(Size, Value, colour = Group)) +
-      geom_point(size = 2) +
+      geom_point(size = 1.5) +
+      geom_line(linewidth = 1)
       labs(x = "Group size", y = ylab)
     if (path) p <- p + geom_path(alpha = 0.5)
   }
@@ -271,11 +274,11 @@ plot_patch_matrix <- function(mat,                  # e.g. output$fert (Amat) or
 plot_patch_matrix(output$fert, "Fertility (Adult_f -> Yearling_f)", years = 1:30)  # fertility vs year
 plot_patch_matrix(output$fert, "Fertility", size_mat = output$group)   # fertility vs group size
 
-plot_patch_matrix(output$DDval, "ricker value", size_mat = output$group)   # ricker vs group size
+curve <- plot_patch_matrix(output$DDval, "ricker value", size_mat = output$group)   # ricker vs group size - this is how we extract our dd value
 
 
-# one panel per group (better with many groups)
-plot_patch_matrix(output$fert, "Fertility", size_mat = output$group, facet = TRUE)
 
+# Analysis ----
+# we want the exact same curve shape, but instead of max size 150, max size 30?
+# equation linking this curve
 
-# what next? we want the exact same curve shape, but instead of max size 150, max size 30?

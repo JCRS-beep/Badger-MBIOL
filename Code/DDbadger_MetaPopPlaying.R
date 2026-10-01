@@ -48,12 +48,22 @@ output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages,
 
 # multiple patch UMAT ----
 # unequal initial vec
+n0_eq_3patch <- round(c(rep(initials[1,]/4,3)))
 n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4))) # equal patch sizes initially
 
 threepatch_Umat <-  matrix(data=0, nrow=12, ncol=12)
 threepatch_Umat[1:4,1:4]<- umat
 threepatch_Umat[5:8,5:8]<- umat
 threepatch_Umat[9:12, 9:12] <- umat
+
+# Testing fixed dispersal projection with equal initial outputs
+output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_eq_3patch, params, stages, 
+                                    npatches=3, DDapply = 'fertility', time = 50,
+                                    dispersal_prob=0.1, 
+                                    dispersal_stages = c("Adult_f", "Adult_m"),
+                                    return.vec = TRUE)
+# good - equal group sizes across years
+
 
 # Testing fixed dispersal projection with unequal initial outputs
 output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages, 
