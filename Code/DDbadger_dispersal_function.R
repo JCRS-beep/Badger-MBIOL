@@ -228,7 +228,7 @@ test_proj <- MOD_meta_DDdisp_norem(threepatch_Umat, n0_small_3patch, new_params,
                                               dispersal_stages = c("Adult_f", "Adult_m"),
                                               return.vec=TRUE)
 
-meta_fixedDD_norem_group <- meta_plot(test_proj,   # output obj of dd.proj
+meta_DD_norem_group <- meta_plot(test_proj,   # output obj of dd.proj
                                       y_val= "Group",   # plot type - N or Vec 
                                       ylab = "Group size", 
                                       xlab = "time (t)",

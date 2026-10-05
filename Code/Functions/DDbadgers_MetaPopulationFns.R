@@ -327,13 +327,12 @@ proj_meta_fixeddisp_norem <- function(Umat,
    
 
 # DD dispersal probability matrix ----
-# social groups range 1 - 27, not observed larger than this, set max_group to 28
+# social groups range 1 - 27, not observed larger than this,
 # Dispersal prob calculated with logistic between 0 - 0.3, 
 # Dispersal equal for males and females in each patch
 ddDmat <- function(stagenames,dispersal_stages, 
                    npatches, 
-                   group_size, # sizes of each group 
-                   max_group) {    # what is the carrying capacity (can be vector (k per patch))
+                   group_size) {    # what is the carrying capacity (can be vector (k per patch))
   
   # getting the index of each stage
   I_Af<- which(stagenames=="Adult_f")
@@ -357,11 +356,10 @@ ddDmat <- function(stagenames,dispersal_stages,
   
   max_move <- 0.3  # greatest proportion of moving individuals?
   xhalf <- 15
+  steepness = 0.5
   for (p in 1:npatches){
-    p_move<- round(max_move/(1+exp(-steepness*(x-xhalf))), 3)      # param(N) = param_max/(log(2))*log(N+1) - rounding to 3 dec places. 
-    # this gives values > 1, err
-    # max group size = 28
-    # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
+    p_move<- round(max_move/(1+exp(-steepness*(group_size-xhalf))), 3)       
+    
     p_move[p_move<0] <- 0   # setting any negatives to 0
     p_move[p_move >1] <- 1
     Dmat[p,I_leavers] <- p_move[p]   # equal for all indivs or variable between sexes? vary K value for males and females?
@@ -380,7 +378,6 @@ proj_meta_DDdisp_norem <- function(Umat,
                                    npatches,
                                    time,
                                    DDapply="fertility",
-                                   max_group,        # vector of single value for carying capacity of each group
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE){
   # input checks
@@ -448,8 +445,7 @@ proj_meta_DDdisp_norem <- function(Umat,
     
     dmat <- ddDmat(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
                    npatches, # number of patches
-                   group_size = sizes, 
-                   max_group)
+                   group_size = sizes)
     
     # record of individuals moving from group p to p'
     moves <- array(0, dim = c(npatches, npatches, length(stagenames)),
@@ -598,8 +594,8 @@ meta_plot <- function(out,   # output obj of dd.proj
     
     # creating pop projection plot
     base.plot <- ggplot(pop_df, aes(x = Year, y = Pop)) +
-      geom_line(size = 1.2, colour = "grey30") +
-      geom_point(size = 2, colour = "black") +
+      geom_line(size = 1, colour = "grey30") +
+      geom_point(size = 1.5, colour = "black") +
       labs(
         x = xlab,
         y = ylab) +
@@ -638,8 +634,8 @@ meta_plot <- function(out,   # output obj of dd.proj
      
       # creating group projection plot
      base.plot <- ggplot(group_df, aes(Year, Value, colour = Group)) +
-        geom_line(size = 1.2) +
-        geom_point(size = 2) +
+        geom_line(size = 1) +
+        geom_point(size = 1.5) +
         labs(
           x = xlab,
           y = ylab) +
@@ -665,90 +661,6 @@ meta_plot <- function(out,   # output obj of dd.proj
       } else if (is.null(rem_year)){
         plot <- base.plot 
       }
-    
-    
-    # alternative plot = vec abundance  - NOT FINISHED!
-  } else if(y_val %in% c("Vec", "vec")){
-    x_val <- ncol(out$vec)   # number of classes and sexes (if nStages = 2 and sex =2, x =4)
-    # turning into dataframe
-    df <- as.data.frame(out$vec)
-    
- 
-    # long format so each row is a single observation 
-    df_long <- as.data.frame(df %>%
-      pivot_longer(
-        cols = -Year,
-        names_to = c("Group", "Stage", "Sex"),
-        names_pattern = "(\\d+)_(Yearling|Adult)_([fm])",
-        values_to = "Count"
-      ))
-
-    # plotting graph 
-    base.plot <- ggplot(data= df_long, 
-                        aes(x=Year, 
-                            y=Abundance, 
-                            colour= Sex, 
-                            linetype= Stage, 
-                            shape= Stage)) +  # sexes diff cols, shapes and lines diff for stages
-      geom_point(position= "jitter", size = 2, alpha=0.8) +  # jitter to avoid overlap of yearlings
-      geom_line(data= df_long, size = 1.2, alpha=0.7) +
-      scale_colour_manual(values= cols,
-                          labels=c("Female", "Male")) +
-      labs(
-        x = xlab,
-        y = ylab,
-        colour = "Sex",
-        linetype = "Stage",
-        shape = "Stage") +
-      
-      scale_y_continuous(name = "Population size",
-                         breaks = scales::pretty_breaks(n = 5),
-                         expand = expansion(mult = c(0.1, 0.25))) +  # 5% below, 30% above
-      mytheme +
-      theme(
-        text = element_text(size = base_size),
-        plot.title = element_text(size = base_size + 2, face = "bold"),
-        axis.title = element_text(size = base_size),
-        axis.text = element_text(size = base_size - 2),
-        legend.position = legend.pos,
-        # journal-style compact legend:
-        legend.direction = "horizontal",
-        legend.box = "horizontal",
-        legend.key = element_rect(fill = NA, colour = NA),
-        legend.key.size = unit(0.8, "lines"),
-        legend.title = element_text(face = "bold", size = base_size),
-        legend.text = element_text(size = base_size - 2),
-        legend.spacing.x = unit(0.2, "cm"),
-        legend.spacing.y = unit(0.1, "cm"),
-        legend.margin = margin(t = 0, r = 0, b = 0, l = 0)
-      ) +
-      # make legend compact and show titles above keys (journal style)
-      guides(
-        colour = guide_legend(title.position = "top",
-                              title.hjust = 0.5,
-                              nrow = 1,
-                              byrow = TRUE,
-                              override.aes = list(size = 3, linetype = 1, shape = 16)),
-        linetype = guide_legend(title.position = "top",
-                                title.hjust = 0.5,
-                                nrow = 1,
-                                byrow = TRUE,
-                                override.aes = list(size = 1.2)),
-        shape = guide_legend(title.position = "top",
-                             title.hjust = 0.5,
-                             nrow = 1,
-                             byrow = TRUE,
-                             override.aes = list(size = 3))
-      )
-    
-    if(!is.null(rem_year)){   # if rem years a vector, can we loop geom_line addition?
-      plot <- base.plot +
-        geom_vline(xintercept = rem_year,                       # Adding a line to show removal year
-                   colour = "red3", linetype = "dashed", size=0.8, alpha = 0.3) 
-      
-    } else if (is.null(rem_year)){
-      plot <- base.plot
-    }
   }
   
   return(plot)

@@ -86,7 +86,7 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                       legend.pos = "top",
                                       base_size = 16)
 
-## DENSITTY DEPENDENCE ---------
+
 # setting new beta value for tighter DD params (explained in other script)
 plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
 #  want plateau when N = 28 
@@ -108,6 +108,36 @@ for (i in 1:length(size)){   # loop to fill rows of matrix with vector
 n0_3patch <- c(t(patch))
 
 
+# Testing fixed dispersal projection withnew params
+output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
+                                    npatches=3, DDapply = 'fertility', time = 100,
+                                    dispersal_prob=0.1, 
+                                    dispersal_stages = c("Adult_f", "Adult_m"),
+                                    return.vec = TRUE)
+
+# population over time
+meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
+                                      y_val= "N",   # plot type - N or Vec 
+                                      ylab = "Population size", 
+                                      xlab = "time (t)",
+                                      rem_year = NULL,
+                                      mytheme = theme_classic(), 
+                                      cols= "black",    # can be vector of 2 cols
+                                      legend.pos = "top",
+                                      base_size = 16)
+
+meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
+                                        y_val= "Group",   # plot type - N or Vec 
+                                        ylab = "Group size", 
+                                        xlab = "time (t)",
+                                        rem_year = NULL,
+                                        mytheme = theme_classic(), 
+                                        cols= "black",    # can be vector of 2 cols
+                                        legend.pos = "top",
+                                        base_size = 16)
+
+
+## DENSITTY DEPENDENCE ---------
 # multiple patches and density dependent movement 
 output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
                        npatches=3, DDapply = 'fertility', time = 50,
@@ -147,6 +177,7 @@ varied_k_proj <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, 
                                  max_group = c(10, 30, 20),  # not enforced well - overshoots 
                                  dispersal_stages = c("Adult_f", "Adult_m"),
                                  return.vec=TRUE)
+
 varied_k_plot <- meta_plot(varied_k_proj,   # output obj of dd.proj
                                      y_val= "Group",   # plot type - N or Vec 
                                      ylab = "Group size", 
@@ -156,10 +187,6 @@ varied_k_plot <- meta_plot(varied_k_proj,   # output obj of dd.proj
                                      cols= "black",    # can be vector of 2 cols
                                      legend.pos = "top",
                                      base_size = 16)
-
-
-
-
 
 
 
