@@ -56,13 +56,6 @@ threepatch_Umat[1:4,1:4]<- umat
 threepatch_Umat[5:8,5:8]<- umat
 threepatch_Umat[9:12, 9:12] <- umat
 
-# Testing fixed dispersal projection with equal initial outputs
-output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_eq_3patch, params, stages, 
-                                    npatches=3, DDapply = 'fertility', time = 50,
-                                    dispersal_prob=0.1, 
-                                    dispersal_stages = c("Adult_f", "Adult_m"),
-                                    return.vec = TRUE)
-# good - equal group sizes across years
 
 
 # Testing fixed dispersal projection with unequal initial outputs
@@ -71,8 +64,6 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                     dispersal_prob=0.1, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
                                     return.vec = TRUE)
-# good - equal group sizes across years
-
 
 # population over time
 meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
@@ -95,10 +86,30 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                       legend.pos = "top",
                                       base_size = 16)
 
+## DENSITTY DEPENDENCE ---------
+# setting new beta value for tighter DD params (explained in other script)
+plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
+#  want plateau when N = 28 
+new_b <- log(plateau_rick)/-30    ## solving for new_b exp(-new_b * 28) = 0.2927426
+
+# updated param set up - tighter DD with smaller beta
+new_params <- params 
+new_params$b = new_b
+
+# new initial vecs to match smaller group sizes
+size <- c(10,20, 16)  #  group sizes
+patch <- matrix(0, nrow = length(size), ncol = 4)
+
+for (i in 1:length(size)){   # loop to fill rows of matrix with vector
+  patch[i,] <- floor(stagedist*size[i])
+}
+
+# tuning this into a vector
+n0_3patch <- c(t(patch))
 
 
-# multiple patches and density dependent movement -------
-output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, params, stages, 
+# multiple patches and density dependent movement 
+output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
                        npatches=3, DDapply = 'fertility', time = 50,
                                    max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
@@ -118,7 +129,7 @@ meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       base_size = 16)
 # increases above 1500?
 
-meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
+meta_DDdisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         y_val= "Group",   # plot type - N or Vec 
                                         ylab = "Group size", 
                                         xlab = "time (t)",
@@ -127,66 +138,31 @@ meta_fixedDD_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
                                         base_size = 16)
-# why such different patterns for the groups?
+# better 
+# next step is to have plateaus at different sizes (group that moves between 10-20 size, 2-8, 16-26 ect..)
+# Can be done by changing max_group for each group?
 
-
-# looking how reproduction vaies with Nm and Nf in density dependent version
-# creating an updated function that tells up 
-
-
-
-## Setting tighter density dependence for groups
-m_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                       b= 0.046,  # how to claculate instead of choosing random value? Want groups to max out around 28 
-                                  # plot 
-                                  # should vary by group if we set different max group sizes
-                       rep_K= rogers_k,          # max litter size (K), 
-                       h= 10)   # harem size per male - assume single male sufficient for groups
-
-# new initial vecs to match smaller group sizes
-size <- c(10,20, 16)  #  group sizes
-patch <- matrix(0, nrow = length(size), ncol = 4)
-
-for (i in 1:length(size)){   # loop to fill rows of matrix with vector
-  patch[i,] <- floor(stagedist*size[i])
-}
-
-# tuning this into a vector
-n0_3patch <- c(t(patch))
-
-
-# trying new params with fixed disp
-output <- proj_meta_DDdisp_norem(threepatch_Umat,
-                                 n0_3patch,  
-                                 m_params, 
-                                 stages, 
-                                 npatches = 3,
-                                 DDapply = 'fertility', 
-                                 time = 20,
-                                 max_group = 28,
+varied_k_proj <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
+                                 npatches=3, DDapply = 'fertility', time = 50,
+                                 max_group = c(10, 30, 20),  # not enforced well - overshoots 
                                  dispersal_stages = c("Adult_f", "Adult_m"),
-                                 return.vec = TRUE)
+                                 return.vec=TRUE)
+varied_k_plot <- meta_plot(varied_k_proj,   # output obj of dd.proj
+                                     y_val= "Group",   # plot type - N or Vec 
+                                     ylab = "Group size", 
+                                     xlab = "time (t)",
+                                     rem_year = NULL,
+                                     mytheme = theme_classic(), 
+                                     cols= "black",    # can be vector of 2 cols
+                                     legend.pos = "top",
+                                     base_size = 16)
 
-# visualising output
-meta_fixeddisp_norem_pop2 <- meta_plot(output,   # output obj of dd.proj
-                                      y_val= "N",   # plot type - N or Vec 
-                                      ylab = "Population size", 
-                                      xlab = "time (t)",
-                                      rem_year = NULL,
-                                      mytheme = theme_classic(), 
-                                      cols= "black",    # can be vector of 2 cols
-                                      legend.pos = "top",
-                                      base_size = 16)
 
-meta_fixeddisp_norem_group2 <- meta_plot(output,   # output obj of dd.proj
-                                        y_val= "Group",   # plot type - N or Vec 
-                                        ylab = "Group size", 
-                                        xlab = "time (t)",
-                                        rem_year = NULL,
-                                        mytheme = theme_classic(), 
-                                        cols= "black",    # can be vector of 2 cols
-                                        legend.pos = "top",
-                                        base_size = 16)
+
+
+
+
+
 
 
 
@@ -215,7 +191,7 @@ n0_many <- c(t(many_patch))
 
 output <- proj_meta_DDdisp_norem(ten_patch_umat,
                                  n0_many,  
-                                 m_params, 
+                                 new_params, 
                                  stages, 
                                  npatches = 10,
                                  DDapply = 'fertility', 

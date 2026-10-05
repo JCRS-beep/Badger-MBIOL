@@ -138,7 +138,7 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
 # dispersing, (2) dispersing occurs before any survival, growth, or
 # reproduction, (3) dispersers are equally likely to arrive in any of the other
 # patches besides the one they started in.
-proj_meta_fixeddisp_norem<- function(Umat,
+proj_meta_fixeddisp_norem <- function(Umat,
                                      initial,
                                      params,
                                      stagenames,
@@ -196,9 +196,9 @@ proj_meta_fixeddisp_norem<- function(Umat,
   Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals  
   Pop[1] <- as.numeric(sum(n0))
  
-  for(i in 1:npatches){
-    x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
-    Group[1,i] <- sum(Vec[1, x])     # filling first row of group matrix
+  for(p in 1:npatches){
+    x <- (1 +4*(p-1)) : (4*p)   # boundaries containing each patch abundances
+    Group[1,p] <- sum(Vec[1, x])     # filling first row of group matrix
   }
   
   # Loop = density dependent matrix application for each year and patch
@@ -326,14 +326,14 @@ proj_meta_fixeddisp_norem<- function(Umat,
 
    
 
-# Linking density with probability of leaving in dispersal matrix ----
-# Using absolute number of badgers to calculate density compared to max group size 
-# social groups range 1 - 27, not observed larger than this.
-# Dispersal prob calculated with quadratic between 0 - 1, equal for males and females (dispersal per patch)
-ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
-                 npatches, # number of patches
-                 group_size, # sizes of each group 
-                 max_group) {    # what is the carrying capacity (can be vector of K per patch)
+# DD dispersal probability matrix ----
+# social groups range 1 - 27, not observed larger than this, set max_group to 28
+# Dispersal prob calculated with logistic between 0 - 0.3, 
+# Dispersal equal for males and females in each patch
+ddDmat <- function(stagenames,dispersal_stages, 
+                   npatches, 
+                   group_size, # sizes of each group 
+                   max_group) {    # what is the carrying capacity (can be vector (k per patch))
   
   # getting the index of each stage
   I_Af<- which(stagenames=="Adult_f")
@@ -356,23 +356,19 @@ ddDmat <- function(stagenames,dispersal_stages, # names of all stages, names of 
   colnames(Dmat) <- stagenames
   
   max_move <- 0.3  # greatest proportion of moving individuals?
-  x <- group_size / max_group    # proportion each group of max size
-  
+  xhalf <- 15
   for (p in 1:npatches){
-    move <- round(max_move/(log(2))*log(x + 1), 2)       # param(N) = param_max/(log(2))*log(N+1) - rounding to 2 dec places. 
-                                                              # this gives values > 1, err
-                                                              # max group size = 28
-                                                              # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
-    move[move<0] <- 0   # setting any negatives to 0
-    move[move >1] <- 1
-    Dmat[p,I_leavers] <- move[p]   # equal for all indivs or variable between sexes? vary K value for males and females?
+    p_move<- round(max_move/(1+exp(-steepness*(x-xhalf))), 3)      # param(N) = param_max/(log(2))*log(N+1) - rounding to 3 dec places. 
+    # this gives values > 1, err
+    # max group size = 28
+    # log(2) = 0.69   log(N+1) ~ 0.2, makes param N very large
+    p_move[p_move<0] <- 0   # setting any negatives to 0
+    p_move[p_move >1] <- 1
+    Dmat[p,I_leavers] <- p_move[p]   # equal for all indivs or variable between sexes? vary K value for males and females?
   }
   
   return(Dmat)
 } 
-
-# the maximum value is not enforced - want to max out 0.3 but may rise over
-# occurs when groups shoots over max size, (x > 1)
 
 
 # DD moving projection function -----
@@ -428,153 +424,143 @@ proj_meta_DDdisp_norem <- function(Umat,
   Vec <- matrix(0, ncol = length(stagenames)*npatches, nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
   Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
   Group <- matrix(0, ncol = npatches, nrow = time+1)   # group sizes each year
-  Leavers <- matrix(0, ncol = ncol(Vec), nrow = time) # matrix to fill with the number of individuals leaving each patch each year (by each stage)
+  Leavers <- matrix(0, ncol = ncol(Vec), nrow = time)   # matrix to fill with the number of individuals leaving each patch each year (by each stage)
   
   colnames(Vec) <- rep(stagenames, npatches)  # naming cls matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals              
+  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals  
   Pop[1] <- as.numeric(sum(n0))
   
-  for(i in 1:npatches){
-    x <- (1 +4*(i-1)) : (4*i)   # boundaries containing each patch abundances
-    Group[1,i] <- sum(Vec[1, x])
+  for(p in 1:npatches){
+    x <- (1 +4*(p-1)) : (4*p)   # boundaries containing each patch abundances
+    Group[1,p] <- sum(Vec[1, x])     # filling first row of group matrix
   }
   
   # Loop = density dependent matrix application for each year and patch
   for (i in 1:time) {   #  projection until end time
-    
-    leavers <- rep(0, ncol(Vec))    # individuals leaving patch p - to go in output
-    arrivers <- rep(0, ncol(Vec))   # individuals arriving in patch p+1 (other patch)
-    
     # group sizes this year
     sizes <- vector()
     # sum every 4 entries
     for (p in 1:npatches){
-    sizes[p] <- sum(Vec[i , (1+4*(p-1)):(4*p)])
+      sizes[p] <- sum(Vec[i , (1+4*(p-1)):(4*p)])
     }
     
-    # filling in group size this year
-    Group[i + 1,] <- sizes
     
     dmat <- ddDmat(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
                    npatches, # number of patches
                    group_size = sizes, 
                    max_group)
     
-   
+    # record of individuals moving from group p to p'
+    moves <- array(0, dim = c(npatches, npatches, length(stagenames)),
+                   dimnames = list(from = 1:npatches, to = 1:npatches,
+                                   stage = stagenames))
+    
+    leavers <- rep(0, ncol(Vec))    # individuals leaving patches - to go in output
+    arrivers <- rep(0, ncol(Vec))   # individuals arriving in other patch
     
     # dispersal loop 
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
       subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
       
+      
       # apply the probability of leaving to the stages that leave:
-      subleavers<- rep(0,4)
+      subleavers<- rep(0,nStages)    # leavers from this patch
+      
+      # DD MATRIX APPLICATION HERE
       subleavers[I_leavers]<- round(dmat[p,I_leavers]*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
+      
+      
       leavers[Ipatch] <- subleavers
       
-      # distribute the leavers equally among the other patches, as arrivers, in
-      # the same stage as they left:
-      if (npatches==2){
-        subarrivers<- subleavers      
-        arrivers[-Ipatch]<- subarrivers
-        
-      } else {     # divide movers across other patches
-        # random sample of patches to decide where individuals go (later replace with some distance equation?)
-        nleavers <- sum(subleavers) # number of moving individuals
-        x <- seq(npatches)
-        arrival_patches <- x[x != p]   # all patches excluding current patch
-        
-        remaining_subleavers <- subleavers   # how many leavers from this patch remain
-        mat_subarrival <- matrix(0, nrow = length(arrival_patches), ncol = nStages)
-        rownames(mat_subarrival) <- arrival_patches
-        
-        # option - loop for each stage in disp stage - incorrectly assigning - overly complicated, simplify ---
-        for(j in 1:length(I_leavers)){    # why is j giong to 4?
-          stageI <- I_leavers[j]
-          stage_I_arrival <- sample(arrival_patches, subleavers[stageI], replace = TRUE)   # samples patches for the stage j in dispersal stages
-          
-          for (a in arrival_patches){  
-            thisIpatch <- c(1+4*(a-1)):(4*a)          
-            matrow <- which(rownames(mat_subarrival) == a)
-            
-            if(matrow == 0) {
-              arrivers[thisIpatch] <- rep(0, 4)
-            }
-            
-            else {mat_subarrival[matrow,stageI] <- sum(stage_I_arrival == a)   # arrivers for this patch
-            
-            arrivers[thisIpatch] <- c(mat_subarrival[matrow,])
-            }
-          }
+      arrival_patches <- setdiff(1:npatches, p)   # setdiff compares differences between dataframes, removes p from all other patches
+      
+      for (s in I_leavers) {
+        n <- subleavers[s]
+        if (n > 0) {
+          # index into arrival_patches 
+          dest <- arrival_patches[sample.int(length(arrival_patches), n, replace = TRUE)]
+          moves[p, , s] <- tabulate(dest, nbins = npatches)   # from p to  dest
         }
-        
       }
-    }   # Brackets now in correct places
+    }  # Brackets now in correct places
+    
+    # arrivers = sum over source patches -> (to x stage), flattened to match Vec layout
+    to_by_stage <- apply(moves[, , ], c(2, 3), sum)    # syntaxing errs here
+    arrivers <- as.vector(t(to_by_stage))
+    
+    # check : everyone who left must arrive somewhere
+    if(sum(arrivers) != sum(leavers)) stop("Numbers of leavers and arrivers not equal, issues in dispersal calculation")
+    
+    postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
+    Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
+    
+    # now we do another loop over the patches to calculate reproduction:
+    for (p in 1:npatches){
+      Ipatch<- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
+      # extract the Umat for this patch:
+      thisUmat<- Umat[Ipatch, Ipatch]
       
-      postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
-      Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
+      # Nf calculation
+      subNf <- sum(postdispVec[(4*(p-1)+I_Af)], postdispVec[(4*(p-1)+I_Yf)])    # Nf sums yearling and adult fems in Vec matrix
+      subNm <- sum(postdispVec[(4*(p-1)+I_Am)], postdispVec[(4*(p-1)+I_Ym)])   # Nm 
       
-      # now we do another loop over the patches to calculate reproduction:
-      for (p in 1:npatches){
-        Ipatch<- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
-        # extract the Umat for this patch:
-        thisUmat<- Umat[Ipatch, Ipatch]
-        
-        # Nf calculation
-        subNf <- sum(postdispVec[(4*(p-1)+I_Af)], postdispVec[(4*(p-1)+I_Yf)])    # Nf sums yearling and adult fems in Vec matrix
-        subNm <- sum(postdispVec[(4*(p-1)+I_Am)], postdispVec[(4*(p-1)+I_Ym)])   # Nm 
-        
-        # ricker density dependence
-        subN <- sum(postdispVec[Ipatch])  # pop sizes sums row i for cols corresponding to patch p
-        subAmat <- apply.DD(params, thisUmat, subN, DDapply, stagenames,   
-                            subNf,        
-                            subNm)    
-        
-        # If the projection matrix has negative or NA values, return message, replace with 0, and continue
-        if (any(subAmat < 0, na.rm = TRUE)) {
-          warning(paste("Negative values in projection matrix at time step", i,
-                        "- setting negative entries to 0 and continuing."))
-          subAmat[subAmat < 0] <- 0
-          subAmat[is.na(subAmat)] <- 0
-        }
-        
-        # Project just this patch forward:
-        Vec[(i+1), Ipatch]<- floor(subAmat %*% Vec[i, Ipatch]) # amat values multiplied by vec, round down for integers 
-        
-      }
-      # if any stage becomes negative, set to zero and continue
-      if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-        warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-        Vec[Vec < 0] <- 0
-        Vec[is.na(Vec)] <- 0
+      # ricker density dependence
+      subN <- sum(postdispVec[Ipatch])  # pop sizes sums row i for cols corresponding to patch p
+      subAmat <- apply.DD(params, thisUmat, subN, DDapply, stagenames,   
+                          subNf,        
+                          subNm)    
+      
+      # If the projection matrix has negative or NA values, return message, replace with 0, and continue
+      if (any(subAmat < 0, na.rm = TRUE)) {
+        warning(paste("Negative values in projection matrix at time step", i,
+                      "- setting negative entries to 0 and continuing."))
+        subAmat[subAmat < 0] <- 0
+        subAmat[is.na(subAmat)] <- 0
       }
       
-      # group sizes next year
-      next_sizes <- vector()
-      # sum every 4 entries
-      for (p in 1:npatches){
-        next_sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
-      }
-      
-      # filling in group size this year
-      Group[i + 1,] <- next_sizes
-      
-      Pop[i + 1] <- sum(Vec[(i + 1), ])
-      
-      # if pop size <= 0, stop and return message with year
-      if(Pop[i]<= 0 || is.na(Pop[i])) {
-        warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-        break
-      }
+      # Project just this patch forward:
+      Vec[(i+1), Ipatch]<- floor(subAmat %*% postdispVec[Ipatch]) # amat values multiplied by vec, round down for integers 
+      # DEBUGGING:
+      # should multiply subAmat by POST DISP vec (not vec) - rep values based on new abundances, multiply rep values by 
+      # post mvoement vec
     }
+    # if any stage becomes negative, set to zero and continue
+    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
+      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+      Vec[Vec < 0] <- 0
+      Vec[is.na(Vec)] <- 0
+    }
+    
+    # group sizes next year
+    sizes <- vector()
+    # sum every 4 entries
+    for (p in 1:npatches){
+      sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
+    }
+    
+    # filling in group size this year
+    Group[i + 1,] <- sizes
+    
+    # pop sizes by year
+    Pop[i + 1] <- sum(Vec[(i + 1), ])
+    
+    # if pop size <= 0, stop and return message with year
+    if(Pop[i]<= 0 || is.na(Pop[i])) {
+      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+      break
+    }
+  }
   
   # output objects
   if (isTRUE(return.vec)) {
     out <- list(pop = vector(), 
                 vec = matrix(), 
                 group = matrix(),
-                leavers = matrix())
+                leavers = matrix()
+    )
+    
     out$pop <- Pop
     out$vec <- Vec 
     out$group <- Group
@@ -585,7 +571,6 @@ proj_meta_DDdisp_norem <- function(Umat,
     return(Pop)
   }
 }
-
 
 
 
@@ -643,7 +628,7 @@ meta_plot <- function(out,   # output obj of dd.proj
     }
     
     
-    # Group size by year plot
+    # Group size by year plot  - update from vis file
    } else if(y_val %in% c("Group", "group")) {
      df <- as.data.frame(out$group)
      colnames(df) <- paste0("Group", seq_len(ncol(df)))

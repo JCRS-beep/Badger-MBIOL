@@ -279,6 +279,33 @@ curve <- plot_patch_matrix(output$DDval, "ricker value", size_mat = output$group
 
 
 # Analysis ----
-# we want the exact same curve shape, but instead of max size 150, max size 30?
-# equation linking this curve
+# we want the exact same curve shape, but instead of max size 160, max size 30?
+# equation for this curve linking pop size and DD value = e^-bN
+plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
+#  want plateau when N = 28 
+new_b <- log(plateau_rick)/-30    ## solving for new_b exp(-new_b * 28) = 0.2927426
 
+
+# solving for new_b = 0.04094872
+
+new_params <- data.frame(Sc_max= rogers_cub_survival,  
+                       b= new_b,        # should vary by group if we set different max group sizes?
+                       rep_K= rogers_k,          
+                       h= 10)   # harem size per male - assume single male sufficient for groups
+
+n0_small_3patch <- round(c((initials[1,]/4), (initials[74,]/4), (initials[3,]/4)))
+
+output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_small_3patch, new_params, stages, 
+                                   npatches=3, DDapply = 'fertility', time = 100,
+                                   dispersal_prob=0.1, 
+                                   dispersal_stages = c("Adult_f", "Adult_m"),
+                                   return.vec = TRUE)
+
+meta_plot(output, y_val= "Group",   # plot type - N or Vec 
+          ylab = "Group size", 
+          xlab = "time (t)",
+          rem_year = NULL,
+          mytheme = theme_classic(), 
+          cols= "black",    # can be vector of 2 cols
+          legend.pos = "top",
+          base_size = 16)
