@@ -1,13 +1,39 @@
 # Updated removal function
 # 8.7.2026
 # 
-library(tidyverse)
-library(ggplot2)
 
-# NEXT STEPS = what to do for low level continuous killings?
+# Intensive culls - 70% reduction first year, subsequent years..., MINIMUM 4 years (remyears set 5:8)
+# Supplementary  culling - only if initial cull successful.  2 year licence. Can be culled up to 5 years
+# setting min and max used for supplementary badger culling
+
+# truncated normal dist function to sample from 
+# Sample n integers between min and max with a bell-shaped (truncated normal) distribution
+# mean = midpoint of min and max 
+# sd defaults to (max - min)/4, so min and max sit ~2 SDs from the mean
+trunc.norm <- function(n = 1, min, max, mean = (min + max)/2, sd = (max - min)/3) {
+  
+  min <- max(0, min)       # can never remove fewer than 0 individuals
+  max <- max(min, max)     # guards against max < min
+  #  mean = (min + max)/2
+  #  sd = (max - min)/4
+  if (max == min) return(rep(round(min), n))   # no range to sample from
+  
+  out <- numeric(n)
+  for (k in 1:n) {
+    x <- rnorm(1, mean, sd)
+    # resample until the draw falls in range (true truncated normal)
+    while (x < min || x > max) {
+      x <- rnorm(1, mean, sd)
+    }
+    out[k] <- x
+  }
+  
+  round(out)   # integer number of individuals
+}
+
 
 # updating function design - multi removals 
-multi.rem <- function(Umat,   # MAX SURVIVAL
+multi.rem <- function(umat,   # MAX SURVIVAL
                       initial, # initial vec
                       stagedist,  # proportion of each stage
                       params, 
@@ -79,7 +105,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     
     # ricker density dependence each year
     thisN <- sum(Vec[i,])  # pop sizes sums row i for cols included in N
-    thisAmat <- apply.DD(params, Umat, thisN, DDapply, stagenames,   
+    thisAmat <- apply.DD(params, umat, thisN, DDapply, stagenames,   
                          thisNf,        
                          thisNm)    
     
@@ -99,27 +125,45 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
-      idx <- rem_index[as.character(i)]     # idx = 1: remyear
+      idx <- rem_index[as.character(i)]     # idx = 1: remyear. What removal year are we 
       
-      preN <- Pop[remyear[1]]  # population size pre cull
-      
-      # target intensity to remove has variation - can be above or below what is really achieved
-      real_int <- rnorm(1, mean = intensity/100, sd = 0.05)
-      
-      if(idx ==1){       # when idx = 1, remove 70% with goal or proportion to generate rem (number of each sex and stage removed)
+      # FIRST YEAR
+      if(idx == 1){       # when idx = 1, remove 70% with goal or proportion to generate rem (number of each sex and stage removed)
       # setting removal goal
-      Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  # setting removal goal
-      Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  
-     
-      }  else if(idx > 1){    # if a subsequent year, supplementary culls
-        base <- 0.36*Nremoved[1]   # 36% of first year cull total
+        real_int <- rnorm(1, mean = intensity/100, sd = 0.05)   # variation in numbers removed # for repeatability, just use intensity?
+        
+        preN <- Pop[remyear[1]]  # population size pre cull # move until i
+        Nrem <- round(preN * real_int)   # goal to remove  - pop size before first rem  
+        Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
+
+        # SUBSEQUENT YEARS
+      }  else if(idx > 1 && idx <= 4){    # if supplementary, change strat to calculate max and min
+        estN <- 0.8 * preN - sum(Nremoved)     # ISSUE : estimated pop size- cannot be tracked directly. This leads to negative estN
+                                                       # Use estimate from year before culls minus the culled N since. 2/5 multiplier from published methods
+        estN[estN < 0] <- 0                                               
+        # set min and max removals
+        base <- 0.36 * estN                # base using estimated pop size
+        min = base - (0.125*estN)          # difference between min and max = 25% of pre-cull total
+        max = base + (0.125*estN)
+        # need to prevent minimum falling bellow 0 - removing negative individuals
+        min[min < 0] <- 0
+
+        # set seed for repeatability and use a normal dist instead
+        Nrem <- trunc.norm(1, min, max) # how many to remove this year using truncated norm dist between min and max values
+        Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
+        
+        # SUPPLEMENTARY CULLS - ISSUE this part removes too many
+      }  else if(idx > 4){    # if SBC, change strat to calculate max and min
+        base <- 0.36 * Nremoved[1]   # 36% of first year cull total - SBC 
         # set min and max removals
         min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
         max = base + (0.125*preN)
         
         # dist between min and max with mean = baseline?
-        x <- floor(min:max)  # sample using a sequence
-        NRem <- sample(x, 1) # how many to remove this year
+        # set seed for repeatability and use a normal dist instead
+        Nrem <- trunc.norm(1, min, max)  # how many to remove this year
+        Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
+        
       }
       
       # pop removal -------------------------
@@ -127,7 +171,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
         if (is.null(bias) == FALSE) paste("ignoring bias value as removal is random across ages and sexes")
         #generating the distribution - varies with rem strat
         dist <- stagedist
-        rem <-  Nrem * dist    # where does variation come in?
+        rem <-  round(Nrem * dist)    # where does variation come in?
         
         # stage biased
       } else if(rem_strat != "random" && is.numeric(bias) == FALSE){   # for biased rems that are NOT index specific...
@@ -213,15 +257,12 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
     out$vec <- Vec        
   } 
   return(out)
-  
 }
 
 
 
-
-
 # testing no removal scenario----
-proj0 <- multi.rem(Umat,   # MAX SURVIVAL
+proj0 <- multi.rem(umat,   # MAX SURVIVAL
                    initial = n0, # initial vec
                    stagedist,  # proportion of each stage
                    params, 
@@ -256,18 +297,73 @@ col_vec <- c("#FF6A6A", "#87CEEB")
                    base_size = 16))  
 
 
-# random removal
-proj1 <- multi.rem(Umat,   # MAX SURVIVAL
+# random removal at year 10 - 13 
+proj1 <- multi.rem(umat,   # MAX SURVIVAL
                    initial = n0, # initial vec
                    stagedist,  # proportion of each stage
                    params, 
                    stagenames = stages, 
-                   time = 25,     
+                   time = 50,     
                    DDapply="fertility", 
                    intensity= 70,  # percentage you want REMOVED from pop at time T=ry
-                   remyear = 10,  # removal year = vector of years 
+                   remyear = c(10:13),  # removal year = vector of years 
                    rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                    bias = NULL , # strength of bias as percentage (range??)
                    return.vec= TRUE, 
                    return.remvec = TRUE) 
 # year after removal doesn't updte Nf and Nm?
+# Doesn not remove smaller intensity after first rem year
+(proj1_vec <- dd.plot(proj1,
+                       y_val = "Vec",
+                       ylab = "Abundance",
+                       xlab = "Time (t)",
+                       rem_year = 10,
+                       mytheme = theme_classic(),
+                       cols = col_vec,
+                       legend.pos = "top",
+                       base_size = 16))
+(proj1_pop <- dd.plot(proj1, 
+                    y_val= "N", 
+                    ylab = "Pop size", 
+                    xlab = "Time (t)",
+                    rem_year = 10,
+                    mytheme = theme_classic(), 
+                    cols= col_vec,    # can be vector of cols
+                    legend.pos = "topright",
+                    base_size = 16))  
+
+
+# random removal at year 10 - 19 - SBC leads to too many removed - need to reduce removal target 
+proj2 <- multi.rem(umat,   # MAX SURVIVAL
+                   initial = n0, # initial vec
+                   stagedist,  # proportion of each stage
+                   params, 
+                   stagenames = stages, 
+                   time = 50,     
+                   DDapply="fertility", 
+                   intensity= 70,  # percentage you want REMOVED from pop at time T=ry
+                   remyear = c(10:19),  # removal year = vector of years 
+                   rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                   bias = NULL , # strength of bias as percentage (range??)
+                   return.vec= TRUE, 
+                   return.remvec = TRUE) 
+# year after removal doesn't updte Nf and Nm?
+# Doesn not remove smaller intensity after first rem year
+(proj2_vec <- dd.plot(proj2,
+                      y_val = "Vec",
+                      ylab = "Abundance",
+                      xlab = "Time (t)",
+                      rem_year = 10,
+                      mytheme = theme_classic(),
+                      cols = col_vec,
+                      legend.pos = "top",
+                      base_size = 16))
+(proj2_pop <- dd.plot(proj2, 
+                      y_val= "N", 
+                      ylab = "Pop size", 
+                      xlab = "Time (t)",
+                      rem_year = 10,
+                      mytheme = theme_classic(), 
+                      cols= col_vec,    # can be vector of cols
+                      legend.pos = "topright",
+                      base_size = 16))  

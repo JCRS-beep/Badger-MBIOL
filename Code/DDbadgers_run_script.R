@@ -20,7 +20,7 @@ source(here("Code/Functions/DDbadgers_AnalyseOutputFns.R"))
 source(here("Code/Functions/DDbadgers_MetaPopulationFns.R"))
 
 # data extraction
-source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all data)
+source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all)
 
 # parameter definition and df set ups
 source(here("Code/03_parameter_rate_setup.R"))

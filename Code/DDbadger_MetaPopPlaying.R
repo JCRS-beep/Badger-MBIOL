@@ -48,8 +48,8 @@ output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages,
 
 # multiple patch UMAT ----
 # unequal initial vec
-n0_eq_3patch <- round(c(rep(initials[1,]/4,3)))
-n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4))) # equal patch sizes initially
+n0_eq_3patch <- round(c(rep(initials[1,]/4,3)))      # equal patch sizes initially
+n0_3patch <- round(c((initials[1,]/4), (initials[2,]/4), (initials[3,]/4))) # different patch sizes initially
 
 threepatch_Umat <-  matrix(data=0, nrow=12, ncol=12)
 threepatch_Umat[1:4,1:4]<- umat
@@ -116,7 +116,7 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, new_params, stag
                                     return.vec = TRUE)
 
 # population over time
-meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
+(meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
                                       ylab = "Population size", 
                                       xlab = "time (t)",
@@ -124,9 +124,9 @@ meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
-                                      base_size = 16)
+                                      base_size = 16))
 
-meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
+(meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         y_val= "Group",   # plot type - N or Vec 
                                         ylab = "Group size", 
                                         xlab = "time (t)",
@@ -134,21 +134,18 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         mytheme = theme_classic(), 
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
-                                        base_size = 16)
+                                        base_size = 16))
 
 
 ## DENSITTY DEPENDENCE ---------
 # multiple patches and density dependent movement 
 output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
                        npatches=3, DDapply = 'fertility', time = 50,
-                                   max_group = 28,  # based on reading - carrying capacity 
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
-# High number of leavers (43 in year 1, group 1) due to large group sizes compared to limits set in DD movement function
-# may improve once new params introduced
 
 # population over time
-meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
+(meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
                                       ylab = "Population size", 
                                       xlab = "time (t)",
@@ -156,10 +153,9 @@ meta_DDdisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
-                                      base_size = 16)
-# increases above 1500?
+                                      base_size = 16))
 
-meta_DDdisp_norem_group <- meta_plot(output,   # output obj of dd.proj
+(meta_DDdisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         y_val= "Group",   # plot type - N or Vec 
                                         ylab = "Group size", 
                                         xlab = "time (t)",
@@ -167,31 +163,10 @@ meta_DDdisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                         mytheme = theme_classic(), 
                                         cols= "black",    # can be vector of 2 cols
                                         legend.pos = "top",
-                                        base_size = 16)
-# better 
+                                        base_size = 16))
+
 # next step is to have plateaus at different sizes (group that moves between 10-20 size, 2-8, 16-26 ect..)
-# Can be done by changing max_group for each group?
-
-varied_k_proj <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
-                                 npatches=3, DDapply = 'fertility', time = 50,
-                                 max_group = c(10, 30, 20),  # not enforced well - overshoots 
-                                 dispersal_stages = c("Adult_f", "Adult_m"),
-                                 return.vec=TRUE)
-
-varied_k_plot <- meta_plot(varied_k_proj,   # output obj of dd.proj
-                                     y_val= "Group",   # plot type - N or Vec 
-                                     ylab = "Group size", 
-                                     xlab = "time (t)",
-                                     rem_year = NULL,
-                                     mytheme = theme_classic(), 
-                                     cols= "black",    # can be vector of 2 cols
-                                     legend.pos = "top",
-                                     base_size = 16)
-
-
-
-
-
+# Can be done by changing beta per patch to represent spatial variation
 
 
 ## Increasing group number
@@ -222,15 +197,14 @@ output <- proj_meta_DDdisp_norem(ten_patch_umat,
                                  stages, 
                                  npatches = 10,
                                  DDapply = 'fertility', 
-                                 time = 20,
-                                 max_group = 28,
+                                 time = 100,
                                  dispersal_stages = c("Adult_f", "Adult_m"),
                                  return.vec = TRUE)
 
 
  # using group output from function
 g_df <- as.data.frame(output$group)
-g_df$Year <- c(0:20)
+g_df$Year <- c(0:100)
 
 g_df <- g_df |>
    pivot_longer(
@@ -244,7 +218,7 @@ g_df <- g_df |>
 
 plot <- ggplot(data= g_df, aes(x= Year, y=Abundance, colour = Group)) +
   geom_line() +
-  geom_point()
+  geom_point()     # too many groups to see patterns
 
 
 many_group_pop <- meta_plot(output,   # output obj of dd.proj
@@ -257,3 +231,5 @@ many_group_pop <- meta_plot(output,   # output obj of dd.proj
                              legend.pos = "top",
                              base_size = 16)
 
+
+# NEXT STEPS removals (in removal script)
