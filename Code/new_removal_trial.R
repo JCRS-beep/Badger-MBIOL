@@ -94,7 +94,6 @@ multi.rem <- function(umat,   # MAX SURVIVAL
   rem_index <- if (length(remyear) > 0) setNames(seq_along(remyear), remyear)  # takes length rem year, names assigned as seq of integers 
   else integer(0)   # otherwise remyear = 0
   
-  
   # Loop = density dependent matrix application for each year UNTIL first rem year
   for (i in 1:time) {   #  projection until end time
     # if removal at t=5, project until t=5, final entry inserted to row 6 (vec[5,] holds entries for year=4 (rows 0:time))
@@ -109,19 +108,14 @@ multi.rem <- function(umat,   # MAX SURVIVAL
                          thisNf,        
                          thisNm)    
     
-    
     # If the projection matrix has negative or NA values, return message, replace with 0, and continue
-    
     if (any(thisAmat < 0, na.rm = TRUE)) {
       warning(paste("Negative values in projection matrix at time step", i,
                     "- setting negative entries to 0 and continuing."))
       thisAmat[thisAmat < 0] <- 0
       thisAmat[is.na(thisAmat)] <- 0
     }
-    
-    
-    # multiplying to project
-    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
+    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # multiply to project
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
@@ -143,8 +137,8 @@ multi.rem <- function(umat,   # MAX SURVIVAL
         estN[estN < 0] <- 0                                               
         # set min and max removals
         base <- 0.36 * estN                # base using estimated pop size
-        min = base - (0.125*estN)          # difference between min and max = 25% of pre-cull total
-        max = base + (0.125*estN)
+        min = base - (0.25*estN)          # difference between min and max = 25% of pre-cull total
+        max = base 
         # need to prevent minimum falling bellow 0 - removing negative individuals
         min[min < 0] <- 0
 
@@ -153,11 +147,12 @@ multi.rem <- function(umat,   # MAX SURVIVAL
         Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
         
         # SUPPLEMENTARY CULLS - ISSUE this part removes too many
-      }  else if(idx > 4){    # if SBC, change strat to calculate max and min
-        base <- 0.36 * Nremoved[1]   # 36% of first year cull total - SBC 
+      }  else if(idx > 4){    # if SBC, change strat to calculate max and min. Needs to be much lower intensity?
+        base <- 0.2 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
         # set min and max removals
         min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
-        max = base + (0.125*preN)
+        max = base + (0.125*preN)       # set maximum as as base to avoid large removals freqs?
+        min[min < 0] <- 0
         
         # dist between min and max with mean = baseline?
         # set seed for repeatability and use a normal dist instead
@@ -222,23 +217,21 @@ multi.rem <- function(umat,   # MAX SURVIVAL
       Remvec[idx,] <- thisRemvec
       
       # new population size following removals
-      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear filled with new stage vec
-      Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-      Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
+      Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) - thisRemvec  # year after remyear filled with new stage vec
     }
     # section to put only before output ---------------
     # set any negatives to 0
-    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
     Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
-    # if any stage becomes negative, set to zero and continue
+
+        # if any stage becomes negative, set to zero and continue
     if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
       warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
       Vec[Vec < 0] <- 0
       Vec[is.na(Vec)] <- 0
     }
     
+    Pop[i + 1] <- sum(Vec[(i + 1), ])
+
     # if pop size <= 0,  and return message with year
     if(Pop[i]<= 0 || is.na(Pop[i])) {
       warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))

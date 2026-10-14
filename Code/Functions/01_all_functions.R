@@ -195,24 +195,7 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       thisAmat[is.na(thisAmat)] <- 0
     }
     
-    
-    # multiplying to project
-    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
-    
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
-    # if pop size <= 0,  and return message with year
-    if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-   
+     
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index, remove prob and add to following year
       idx <- rem_index[as.character(i)]  
       
@@ -290,7 +273,23 @@ rem.proj <- function(Umat,   # MAX SURVIVAL
       Remvec[idx,] <- thisRemvec
       
       # new population size following removals
-      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
+      # multiplying to project
+      Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) - thisRemvec # amat values multiplied by vec, round down for integers  
+      # if any stage becomes negative, set to zero and continue
+      if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
+        warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
+        Vec[Vec < 0] <- 0
+        Vec[is.na(Vec)] <- 0
+      }
+      
+      Pop[i + 1] <- sum(Vec[(i + 1), ])
+      
+      # if pop size <= 0,  and return message with year
+      if(Pop[i]<= 0 || is.na(Pop[i])) {
+        warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+        break
+      }
+      
       Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
       Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
       
@@ -411,26 +410,7 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       thisAmat[is.na(thisAmat)] <- 0
     }
     
-    
-    # multiplying to project
-    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
-    # set any negatives to 0
-    Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-    Vec[i + 1, ][is.na(Vec[i + 1, ])] <- 0  # setting na values to 0
-    
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
-    # if pop size <= 0,  and return message with year
-    if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
+    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) # multiply to project
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
@@ -498,23 +478,24 @@ multi.rem <- function(Umat,   # MAX SURVIVAL
       Remvec[idx,] <- thisRemvec
       
       # new population size following removals
-      Vec[i + 1 ,] <- Vec[i ,]  - thisRemvec  # year after remyear = 2 rows later filled with new stage vec
-      Vec[i + 1, ][Vec[i + 1, ] < 0] <- 0
-      Pop[i + 1] <- sum(Vec[i + 1,]) # filling in total pop size
-      
-      # if pop size <= 0, stop and return
-      if(Pop[i]<= 0 || is.na(Pop[i])) {
-        stop(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-        break
-      }
+      Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) - thisRemvec      #  # multiplying to project amat values multiplied by vec, round down for integers  
+    }
+       # set any negatives to 0
       # if any stage becomes negative, set to zero and continue
       if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
         warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
         Vec[Vec < 0] <- 0
         Vec[is.na(Vec)] <- 0
       }
+      Pop[i + 1] <- sum(Vec[(i + 1), ])
+      
+      # if pop size <= 0,  and return message with year
+      if(Pop[i]<= 0 || is.na(Pop[i])) {
+        warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
+        break
+      }
     }
-  }
+  
   # -----------------------  
   
   # out objects
