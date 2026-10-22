@@ -3,49 +3,6 @@
 # July 13 2026
 # Last updated:
 
-# We're gonna build up from the absolute simplest model. Two patches, no dispersal:
-twopatch_Umat<- matrix(data=0, nrow=8, ncol=8)
-twopatch_Umat[1:4,1:4]<- umat
-twopatch_Umat[5:8,5:8]<- umat
-
-# fertility parameters are set in script 03_parameter_rate_setup.R (copied here for reference)
-# params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-#                     b= beta,       # calculated from mcdonald 2016
-#                     rep_K= rogers_k,          # max litter size (K), 
-#                     h= 10)   # harem size per male - assume single male sufficient for groups
-
-
-# I want the two patches to have different starting populations, so I'm just
-# pasting together two of the initial pop vectors from the non-spatial model 
-# NOTE - to test model outputs I'm using equal starting pops for now
-n0_2patch <- round(c((initials[1,]/4), (initials[1,]/4)))  # starting with equal group sizes to test if function performs correctly
-
-output<- proj_meta_nodisp_norem(twopatch_Umat,     # must be a big matrix with diaongal Umats
-                                n0_2patch,
-                                params,
-                                stages,
-                                npatches = 2,
-                                time = 20,
-                                DDapply="fertility",
-                                return.vec= TRUE)   
-
-
-# Okay, now two patches with dispersal: The problem with adding dispersal is
-# that we want them to disperse before they mate, and then mating is
-# density-dependent. So this is why we keep running into issues with the
-# megamatrix approach, and switching to loops. I think we also wanted to work
-# with discrete individuals, which is also a bit clunky in the matrix setting.
-# So I've written a sort of hybrid approach, where we do a patch-based model
-# where each patch follows an MPM.
-
-output <- proj_meta_fixeddisp_norem(twopatch_Umat, n0_2patch, params, stages, 
-                                   npatches=2, time = 20,
-                                   DDapply = 'fertility', 
-                                   dispersal_prob=0.1, 
-                                   dispersal_stages = c("Adult_f", "Adult_m"),
-                                   return.vec = TRUE)
-# debugging completed - projections now equal with equal starting vectors. 
-
 # multiple patch UMAT ----
 # unequal initial vec
 n0_eq_3patch <- round(c(rep(initials[1,]/4,3)))      # equal patch sizes initially
@@ -56,6 +13,15 @@ threepatch_Umat[1:4,1:4]<- umat
 threepatch_Umat[5:8,5:8]<- umat
 threepatch_Umat[9:12, 9:12] <- umat
 
+
+output<- proj_meta_nodisp_norem(threepatch_Umat,     # must be a big matrix with diaongal Umats
+                                n0_3patch,
+                                params,
+                                stages,
+                                npatches = 3,
+                                time = 30,
+                                DDapply="fertility",
+                                return.vec= TRUE)   
 
 
 # Testing fixed dispersal projection with unequal initial outputs
@@ -169,7 +135,7 @@ output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages,
 # Can be done by changing beta per patch to represent spatial variation
 
 
-## Increasing group number
+## Increasing group number-----
 # 10 patch Umat
 ten_patch_umat <- matrix(data=0, nrow=40, ncol=40)
 
@@ -232,4 +198,39 @@ many_group_pop <- meta_plot(output,   # output obj of dd.proj
                              base_size = 16)
 
 
-# NEXT STEPS removals (in removal script)
+# NEXT STEPS removals (in removal script) ----
+test_proj_rem <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
+                                      stagedist,  # proportion of each stage
+                                      params, 
+                                      stagenames = stages, 
+                                      npatches = 3,
+                                      time = 50,     
+                                      DDapply="fertility", 
+                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
+                                      remyear = c(10:16),  # removal year = vector of years 
+                                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                                      bias = NULL , # strength of bias as percentage (range??)
+                                      return.vec= TRUE, 
+                                      return.remvec = TRUE)
+
+(meta_nodisp_rem_pop <- meta_plot(test_proj_rem,   # output obj of dd.proj
+                                    y_val= "N",   # plot type - N or Vec 
+                                    ylab = "Population size", 
+                                    xlab = "time (t)",
+                                    rem_year = NULL,
+                                    mytheme = theme_classic(), 
+                                    cols= "black",    # can be vector of 2 cols
+                                    legend.pos = "top",
+                                    base_size = 16))
+
+(meta_nodisp_rem_group <- meta_plot(test_proj_rem,   # output obj of dd.proj
+                                      y_val= "Group",   # plot type - N or Vec 
+                                      ylab = "Group size", 
+                                      xlab = "time (t)",
+                                      rem_year = NULL,
+                                      mytheme = theme_classic(), 
+                                      cols= "black",    # can be vector of 2 cols
+                                      legend.pos = "top",
+                                      base_size = 16))
+
+# incorporating dispersal 
