@@ -32,7 +32,7 @@ trunc.norm <- function(n = 1, min, max, mean = (min + max)/2, sd = (max - min)/3
 # starting simple - how to remove a determined number at a determined year
 # ISSUES : it looks like a very small proportion are removed in subsequent culls, instead of 36% closer to 4%. Needs fixing in both functions
 
-proj_meta_nodisp_rem<- function(Umat,   
+proj_meta_nodisp_rem <- function(Umat,   
                                 initial, 
                                 stagedist,  # proportion of each stage
                                 params, 
@@ -682,19 +682,37 @@ proj_meta_DDdisp_rem <- function(Umat,
 # testing DDdisp and removals
 test_DDdisp_rem <- proj_meta_DDdisp_rem(threepatch_Umat, n0_3patch, 
                                         stagedist,  # proportion of each stage
-                                        params, 
+                                        new_params, 
                                         stagenames = stages, 
                                         npatches = 3,
                                         time = 50,     
                                         DDapply="fertility", 
                                         dispersal_stages = c("Adult_f", "Adult_m"),
-                                        remyear = c(10:14),  # removal year = vector of years 
+                                        remyear = 10,  # removal year = vector of years 
                                         rem_strat = "random",  # if specified 
                                         bias = NULL, 
                                         return.vec=TRUE, 
                                         return.remvec = TRUE)
 
-# Error in proj_meta_DDdisp_rem(threepatch_Umat, n0_3patch, stagedist, params,  : 
-# object 'thisAmat' not found
+(meta_nodisp_rem_pop <- meta_plot(test_DDdisp_rem,   # output obj of dd.proj
+                                  y_val= "N",   # plot type - N or Vec 
+                                  ylab = "Population size", 
+                                  xlab = "time (t)",
+                                  rem_year = NULL,
+                                  mytheme = theme_classic(), 
+                                  cols= "black",    # can be vector of 2 cols
+                                  legend.pos = "top",
+                                  base_size = 16))
+
+(meta_nodisp_rem_group <- meta_plot(test_DDdisp_rem,   # output obj of dd.proj
+                                    y_val= "Group",   # plot type - N or Vec 
+                                    ylab = "Group size", 
+                                    xlab = "time (t)",
+                                    rem_year = NULL,
+                                    mytheme = theme_classic(), 
+                                    cols= "black",    # can be vector of 2 cols
+                                    legend.pos = "top",
+                                    base_size = 16))
+
 
 

@@ -32,7 +32,7 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                     return.vec = TRUE)
 
 # population over time
-meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
+(meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "N",   # plot type - N or Vec 
                                       ylab = "Population size", 
                                       xlab = "time (t)",
@@ -40,9 +40,9 @@ meta_fixeddisp_norem_pop <- meta_plot(output,   # output obj of dd.proj
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
-                                      base_size = 16)
+                                      base_size = 16))
 
-meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
+(meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                       y_val= "Group",   # plot type - N or Vec 
                                       ylab = "Group size", 
                                       xlab = "time (t)",
@@ -50,7 +50,7 @@ meta_fixeddisp_norem_group <- meta_plot(output,   # output obj of dd.proj
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
-                                      base_size = 16)
+                                      base_size = 16))
 
 
 # setting new beta value for tighter DD params (explained in other script)
@@ -232,5 +232,4 @@ test_proj_rem <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
                                       base_size = 16))
-
-# incorporating dispersal 
+#
