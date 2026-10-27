@@ -25,7 +25,7 @@ proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal
   if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
   
   # Check that the n_stages*n_patches = n_col of Umat:
-  nStages<- length(stagenames)
+  nStages <- length(stagenames)
   if (ncol(Umat)!=nStages*npatches){
     stop("Umat dimensions do not match the number of stages multiplied by the 
          number of patches.")

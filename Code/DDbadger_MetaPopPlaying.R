@@ -199,31 +199,49 @@ many_group_pop <- meta_plot(output,   # output obj of dd.proj
 
 
 # NEXT STEPS removals (in removal script) ----
-test_proj_rem <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
+test_proj_rem1 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
                                       stagedist,  # proportion of each stage
-                                      params, 
+                                      params,     # using old parameters at first
                                       stagenames = stages, 
                                       npatches = 3,
                                       time = 50,     
                                       DDapply="fertility", 
                                       #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
-                                      remyear = c(10:16),  # removal year = vector of years 
+                                      remyear = 10,  # removal year = vector of years 
+                                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                                      bias = NULL , # strength of bias as percentage (range??)
+                                      return.vec= TRUE, 
+                                      return.remvec = TRUE)
+# string of removal years (subsequent only)
+test_proj_rem2 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
+                                      stagedist,  # proportion of each stage
+                                      params,     # using old parameters at first
+                                      stagenames = stages, 
+                                      npatches = 3,
+                                      time = 50,     
+                                      DDapply="fertility", 
+                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
+                                      remyear = c(10:14),  # removal year = vector of years 
+                                      rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                                      bias = NULL , # strength of bias as percentage (range??)
+                                      return.vec= TRUE, 
+                                      return.remvec = TRUE)
+# supplementary removal years 
+test_proj_rem3 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
+                                      stagedist,  # proportion of each stage
+                                      params,     # using old parameters at first
+                                      stagenames = stages, 
+                                      npatches = 3,
+                                      time = 50,     
+                                      DDapply="fertility", 
+                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
+                                      remyear = c(10:19),  # removal year = vector of years 
                                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                                       bias = NULL , # strength of bias as percentage (range??)
                                       return.vec= TRUE, 
                                       return.remvec = TRUE)
 
-(meta_nodisp_rem_pop <- meta_plot(test_proj_rem,   # output obj of dd.proj
-                                    y_val= "N",   # plot type - N or Vec 
-                                    ylab = "Population size", 
-                                    xlab = "time (t)",
-                                    rem_year = NULL,
-                                    mytheme = theme_classic(), 
-                                    cols= "black",    # can be vector of 2 cols
-                                    legend.pos = "top",
-                                    base_size = 16))
-
-(meta_nodisp_rem_group <- meta_plot(test_proj_rem,   # output obj of dd.proj
+group1 <- meta_plot(test_proj_rem1,   # output obj of dd.proj
                                       y_val= "Group",   # plot type - N or Vec 
                                       ylab = "Group size", 
                                       xlab = "time (t)",
@@ -231,5 +249,49 @@ test_proj_rem <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
-                                      base_size = 16))
-#
+                                      base_size = 16)
+group2 <- meta_plot(test_proj_rem2,   # output obj of dd.proj
+                    y_val= "Group",   # plot type - N or Vec 
+                    ylab = "Group size", 
+                    xlab = "time (t)",
+                    rem_year = NULL,
+                    mytheme = theme_classic(), 
+                    cols= "black",    # can be vector of 2 cols
+                    legend.pos = "top",
+                    base_size = 16)
+group3 <- meta_plot(test_proj_rem3,   # output obj of dd.proj
+                    y_val= "Group",   # plot type - N or Vec 
+                    ylab = "Group size", 
+                    xlab = "time (t)",
+                    rem_year = NULL,
+                    mytheme = theme_classic(), 
+                    cols= "black",    # can be vector of 2 cols
+                    legend.pos = "top",
+                    base_size = 16)
+# plot altogether
+(group1+group2/group3)
+
+
+# trying same with new density dependent parameters
+test_proj_rem_newp <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
+                                       stagedist,  # proportion of each stage
+                                       new_params,     # using old parameters at first
+                                       stagenames = stages, 
+                                       npatches = 3,
+                                       time = 50,     
+                                       DDapply="fertility", 
+                                       #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
+                                       remyear = NULL,  # removal year = vector of years 
+                                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                                       bias = NULL , # strength of bias as percentage (range??)
+                                       return.vec= TRUE, 
+                                       return.remvec = TRUE)
+# again getting stuck after year 2? 
+
+
+
+
+
+# 
+# test syntax
+
