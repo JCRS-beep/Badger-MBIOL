@@ -843,7 +843,6 @@ proj_meta_nodisp_rem <- function(Umat,
 
 
 
-
 # removal function with fixed dispersal
 proj_meta_DDdisp_rem <- function(Umat,
                                  initial,
@@ -1187,6 +1186,27 @@ proj_meta_DDdisp_rem <- function(Umat,
 }
 
 
+
+trunc.norm <- function(n = 1, min, max, mean = (min + max)/2, sd = (max - min)/3) {
+  
+  min <- max(0, min)       # can never remove fewer than 0 individuals
+  max <- max(min, max)     # guards against max < min
+  #  mean = (min + max)/2
+  #  sd = (max - min)/4
+  if (max == min) return(rep(round(min), n))   # no range to sample from
+  
+  out <- numeric(n)
+  for (k in 1:n) {
+    x <- rnorm(1, mean, sd)
+    # resample until the draw falls in range (true truncated normal)
+    while (x < min || x > max) {
+      x <- rnorm(1, mean, sd)
+    }
+    out[k] <- x
+  }
+  
+  round(out)   # integer number of individuals
+}
 
 
 

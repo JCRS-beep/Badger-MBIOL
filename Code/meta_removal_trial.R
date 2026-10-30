@@ -176,6 +176,16 @@ proj_meta_nodisp_rem <- function(Umat,
         base <- 0.36 * estN                # base using estimated pop size
         min = base - (0.25*estN)          # difference between min and max = 25% of pre-cull total
         max = base + (0.25*estN)
+        }
+        
+        # SUPPLEMENTARY CULLS - ISSUE this part removes too many
+        else if(idx > 5){    # if SBC, change strat to calculate max and min. Needs to be much lower intensity?
+        base <- 0.1 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
+        # set min and max removals
+        min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
+        max = base                         # set maximum as as base to avoid large removals freqs?
+      
+      }
         # need to prevent minimum falling bellow 0 - removing negative individuals
         min[min < 0] <- 0
         
@@ -183,43 +193,23 @@ proj_meta_nodisp_rem <- function(Umat,
         Nrem <- trunc.norm(1, min, max) # how many to remove this year using truncated norm dist between min and max values
         Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
         
-        # SUPPLEMENTARY CULLS - ISSUE this part removes too many
-      }  else if(idx > 5){    # if SBC, change strat to calculate max and min. Needs to be much lower intensity?
-        base <- 0.1 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
-        # set min and max removals
-        min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
-        max = base                         # set maximum as as base to avoid large removals freqs?
-        min[min < 0] <- 0
+        # NEEDS WORK - HOW TO TRACK WHICH PATCH AND STAGE WE REMOVE FROM TO MAKE REMVEC------
+        thisDist <- Vec[i-1,]/Pop[i-1]    # getting a stagedist for this year 
+        # sampling the patches that we remove from
+        rem_mat <- matrix(0, ncol = (nStages*npatches), nrow = Nrem)    # mat that tracks each removal stage and patch for each individual removed
         
-        # dist between min and max with mean = baseline?
-        # set seed for repeatability and use a normal dist instead
-        Nrem <- trunc.norm(1, min, max)  # how many to remove this year
-        Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
+        group_rem <- vector(length = npatches)     # vec of how many removals from each group 
+        stage_rem <- matrix(0, nrow = npatches, ncol = nStages)    # our removal matrix, tracking which stage is removed and from what group
+        
+        for (x in 1:nrow(rem_mat)){
+          a <- sample(c(1:npatches), 1)        # patch sample
+          s <- sample(c(1:4), 1, prob = thisDist)        # stage sample
+          rem_mat[x, (s + 4*(a-1))] <- 1    
+        }
+        
+        thisRemvec <- colSums(rem_mat)
         
       }
-        
-        # NEEDS WORK - HOW TO TRACK WHICH PATCH AND STAGE WE REMOVE FROM TO MAKE REMVEC
-        # sampling the patches that we remove from
-        patch_vec <- c(1:npatches)   # getting a list of the patches we can remove from. This works when 
-        
-        group_rem <- vector(length = npatches)     # vec of which group we see removals
-        stage_rem <- matrix(0, nrow = npatches, ncol = nStages)    # our removal vector
-        
-        v <- sample(patch_vec, size = Nrem, replace = TRUE)
-      
-        for(p in 1:npatches){
-          group_rem[p] <- sum(v == p)   # count all the times this patch occurs
-          
-          # which stages are these individuals removed from?
-          # loop across number of removals?
-          for(l in 1:group_rem[p]){
-          a <- sample(c(1:4),1, replace = TRUE, prob = stagedist)     # sample from stages, n = Nrem from this group, prob = stage dist
-        
-          stage_rem[p,a] <- 
-          rem[(1 +4*(p-1)) : (4*p)] <- stage_rem[p,]
-        }
-       
-        }
       
       # calculating actual number removed from each stage for output
       thisRemvec <- round(rem)   # actual removed = rounded abundance * dist
