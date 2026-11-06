@@ -2,8 +2,6 @@
 # Written by Chrissy Hernandez
 # July 2026
 
-
-
 ### Simple projection function for a metapopulation with no dispersal and no removals:
 proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal Umats
                                   initial,
@@ -569,6 +567,31 @@ proj_meta_DDdisp_norem <- function(Umat,
 }
 
 
+### REMOVAL FUNCTIONS--
+# truncated normal dist function to sample from 
+# Sample n integers between min and max with a bell-shaped (truncated normal) distribution
+# mean = midpoint of min and max 
+# sd defaults to (max - min)/4, so min and max sit ~2 SDs from the mean
+trunc.norm <- function(n = 1, min, max, mean = (min + max)/2, sd = (max - min)/3) {
+  
+  min <- max(0, min)       # can never remove fewer than 0 individuals
+  max <- max(min, max)     # guards against max < min
+  #  mean = (min + max)/2
+  #  sd = (max - min)/4
+  if (max == min) return(rep(round(min), n))   # no range to sample from
+  
+  out <- numeric(n)
+  for (k in 1:n) {
+    x <- rnorm(1, mean, sd)
+    # resample until the draw falls in range (true truncated normal)
+    while (x < min || x > max) {
+      x <- rnorm(1, mean, sd)
+    }
+    out[k] <- x
+  }
+  
+  round(out)   # integer number of individuals
+}
 
 # first removal function without dispersal
 proj_meta_nodisp_rem <- function(Umat,   
@@ -682,7 +705,8 @@ proj_meta_nodisp_rem <- function(Umat,
     }  
     
     # multiplying to project
-    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
+    Vec[(i + 1), ] <- round(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
+    # CHANGED FROM FLOOR TO ROUND TO FIX RECOVERY ISSUES IN PROJECTION
     # overwritten when this is a remyear
     
     # checking for removal years --------
@@ -1082,8 +1106,10 @@ proj_meta_DDdisp_rem <- function(Umat,
       Remgroup[idx,] <- group_rem
       
       # new population size following removals
-      Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) - thisRemvec  # year after remyear filled with new stage vec. Why is this not filling correct year?
+      Vec[(i + 1), ] <- round(thisAmat %*% Vec[i, ]) - thisRemvec       # year after remyear filled with new stage vec. 
+      # CHANGED FORM FLOOR TO ROUND
     }
+    
     
     # if any stage becomes negative, set to zero and continue
     if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
