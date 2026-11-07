@@ -1,50 +1,22 @@
 # Meta removal trial
 # 8/10/2026
-# 
-
-# truncated normal dist function to sample from 
-# Sample n integers between min and max with a bell-shaped (truncated normal) distribution
-# mean = midpoint of min and max 
-# sd defaults to (max - min)/4, so min and max sit ~2 SDs from the mean
-trunc.norm <- function(n = 1, min, max, mean = (min + max)/2, sd = (max - min)/3) {
-  
-  min <- max(0, min)       # can never remove fewer than 0 individuals
-  max <- max(min, max)     # guards against max < min
-  #  mean = (min + max)/2
-  #  sd = (max - min)/4
-  if (max == min) return(rep(round(min), n))   # no range to sample from
-  
-  out <- numeric(n)
-  for (k in 1:n) {
-    x <- rnorm(1, mean, sd)
-    # resample until the draw falls in range (true truncated normal)
-    while (x < min || x > max) {
-      x <- rnorm(1, mean, sd)
-    }
-    out[k] <- x
-  }
-  
-  round(out)   # integer number of individuals
-}
-
 
 # updating my removal functions to remove per patch
 # starting simple - how to remove a determined number at a determined year. Ignore rem_strat for now
 # ISSUES : it looks like a very small proportion are removed in subsequent culls, instead of 36% closer to 4%. Needs fixing in both functions
-
 proj_meta_nodisp_rem <- function(Umat,   
-                                initial, 
-                                stagedist,  # proportion of each stage
-                                params, 
-                                stagenames, 
-                                npatches,
-                                time,     
-                                DDapply="fertility", 
-                                remyear = NULL,  # removal year = vector of years 
-                                rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
-                                bias = NULL , # strength of bias as percentage (range??)
-                                return.vec= TRUE, 
-                                return.remvec = FALSE){
+                                 initial, 
+                                 stagedist,  # proportion of each stage
+                                 params, 
+                                 stagenames, 
+                                 npatches,
+                                 time,     
+                                 DDapply="fertility", 
+                                 remyear = NULL,  # removal year = vector of years 
+                                 rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                                 bias = NULL , # strength of bias as percentage (range??)
+                                 return.vec= TRUE, 
+                                 return.remvec = FALSE){
   # input checks
   if (time <= 1) stop("Time must be a positive integer")
   else(time <- as.integer(time))
@@ -55,7 +27,7 @@ proj_meta_nodisp_rem <- function(Umat,
   if(is.null(stagenames) || length(stagenames) == 0) stop("stagenames must be provided for correct matrix dimensions")
   
   if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
- 
+  
   nStages <- length(stagenames)
   
   # Check that the n_stages*n_patches = n_col of Umat:
@@ -79,14 +51,14 @@ proj_meta_nodisp_rem <- function(Umat,
   
   # removal set up
   if(is.numeric(remyear) == TRUE){
-  # ensure remyear are integers and between 1 - time
-  remyear <- unique(as.integer(remyear))
-  remyear <- remyear[remyear >= 1 & remyear <= time] 
-  if (length(remyear) == 0) warning("No valid removal year in 1:time after filtering")
-  
-  nYears <- length(remyear)   # over how many years are removals taking place?  remove year_goal for each value of rem_index
-  # Map removal year -> index into Remvec / Nremoved:
-  rem_index <- setNames(seq_along(remyear), remyear)  # takes length rem year, names assigned as seq of integers 
+    # ensure remyear are integers and between 1 - time
+    remyear <- unique(as.integer(remyear))
+    remyear <- remyear[remyear >= 1 & remyear <= time] 
+    if (length(remyear) == 0) warning("No valid removal year in 1:time after filtering")
+    
+    nYears <- length(remyear)   # over how many years are removals taking place?  remove year_goal for each value of rem_index
+    # Map removal year -> index into Remvec / Nremoved:
+    rem_index <- setNames(seq_along(remyear), remyear)  # takes length rem year, names assigned as seq of integers 
   }
   else (rem_index <- NULL)
   # Set up  output
@@ -99,7 +71,7 @@ proj_meta_nodisp_rem <- function(Umat,
     Remgroup <- matrix(0, nrow = length(remyear), ncol = npatches)    # how many removed per group per year (col per group)
     Remvec <- matrix(0, nrow = length(remyear), ncol =nStages*npatches)  
   }
- 
+  
   colnames(Vec) <- rep(stagenames, npatches)  # naming cols matrix as stages 
   rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
   Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals       
@@ -137,20 +109,38 @@ proj_meta_nodisp_rem <- function(Umat,
         subAmat[subAmat < 0] <- 0
         subAmat[is.na(subAmat)] <- 0
       }
-    
+      
       # Insert the subAmat into the correct place in the matrix (on the diagonal block):
       thisAmat[(1+4*(p-1)):(4*p), (1+4*(p-1)):(4*p)]<- subAmat
     }  
     
     # multiplying to project
-    Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
-                                                    # overwritten when this is a remyear
+    Vec[(i + 1), ] <- round(thisAmat %*% Vec[i, ])  # amat values multiplied by vec, round down for integers  
+    # CHANGED FROM FLOOR TO ROUND TO FIX RECOVERY ISSUES IN PROJECTION
+    # overwritten when this is a remyear
     
     # checking for removal years --------
     if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
       idx <- rem_index[as.character(i)]     # idx = 1: remyear. What removal year are we 
       
       rem <- vector(length = nStages*npatches)       # blank vector to fill as removal vector
+      
+      # stage distribution this year to sample probability of removal
+      thisDist <- matrix(Vec[i-1,]/Pop[i-1], nrow = npatches, ncol = nStages)     # getting a stagedist for this year - needs averaging across groups
+      avStageDist <- round(colMeans(thisDist), 2) # place in table and average across cols
+      
+      if(rem_strat == "random"){
+        dist <- avStageDist
+      }
+      
+      
+      ## bias vector for different removal strategies
+      # sex biased
+      #     if(rem_strat == )
+      
+      # stage biased
+      
+      # sett biased
       
       # FIRST YEAR
       if(idx == 1){       # when idx = 1, remove 70% with goal 
@@ -161,7 +151,7 @@ proj_meta_nodisp_rem <- function(Umat,
         
         #using stagedist to remove group totals across stages 
         for (p in 1:length(group_remvec)){   
-          rem[(1 +4*(p-1)) : (4*p)] <- group_remvec[p] * stagedist
+          rem[(1 +4*(p-1)) : (4*p)] <- group_remvec[p] * dist
         }    
         
         thisRemvec <- round(rem)   # actual removed = rounded abundance * dist
@@ -169,23 +159,23 @@ proj_meta_nodisp_rem <- function(Umat,
         # SUBSEQUENT YEARS - very low numbers removed
       }  else {
         if(idx > 1 && idx <= 5){    # if supplementary, change strat to calculate max and min
-        estN <- 0.8 * preN - sum(Nremoved)     # ISSUE : negative estN?
-        # Use estimate from year before culls minus the culled N since. reduce by 1/5 (from published methods)
-        estN[estN < 0] <- 0                                               
-        # set min and max removals
-        base <- 0.36 * estN                # base using estimated pop size
-        min = base - (0.25*estN)          # difference between min and max = 25% of pre-cull total
-        max = base + (0.25*estN)
+          estN <- 0.8 * preN - sum(Nremoved)     # ISSUE : negative estN?
+          # Use estimate from year before culls minus the culled N since. reduce by 1/5 (from published methods)
+          estN[estN < 0] <- 0                                               
+          # set min and max removals
+          base <- 0.36 * estN                # base using estimated pop size
+          min = base - (0.25*estN)          # difference between min and max = 25% of pre-cull total
+          max = base + (0.25*estN)
         }
         
         # SUPPLEMENTARY CULLS - ISSUE this part removes too many
         else if(idx > 5){    # if SBC, change strat to calculate max and min. Needs to be much lower intensity?
-        base <- 0.1 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
-        # set min and max removals
-        min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
-        max = base                         # set maximum as as base to avoid large removals freqs?
-      
-      }
+          base <- 0.1 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
+          # set min and max removals
+          min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
+          max = base                         # set maximum as as base to avoid large removals freqs?
+          
+        }
         # need to prevent minimum falling bellow 0 - removing negative individuals
         min[min < 0] <- 0
         
@@ -193,9 +183,6 @@ proj_meta_nodisp_rem <- function(Umat,
         Nrem <- trunc.norm(1, min, max) # how many to remove this year using truncated norm dist between min and max values
         Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
         
-        # NEEDS WORK - HOW TO TRACK WHICH PATCH AND STAGE WE REMOVE FROM TO MAKE REMVEC------
-        thisDist <- matrix(Vec[i-1,]/Pop[i-1], nrow = npatches, ncol = nStages)     # getting a stagedist for this year - needs averaging across groups
-        avDist <- round(colMeans(thisDist), 2) # place in table and average across cols
         
         # sampling the patches that we remove from
         rem_mat <- matrix(0, ncol = (nStages*npatches), nrow = Nrem)    # mat that tracks each removal stage and patch for each individual removed
@@ -205,7 +192,7 @@ proj_meta_nodisp_rem <- function(Umat,
         
         for (x in 1:nrow(rem_mat)){
           a <- sample(c(1:npatches), 1)        # patch sample
-          s <- sample(c(1:4), 1, prob = avDist)        # stage sample
+          s <- sample(c(1:4), 1, prob = avStageDist)        # stage sample
           rem_mat[x, (s + 4*(a-1))] <- 1    
         }
         
@@ -214,12 +201,12 @@ proj_meta_nodisp_rem <- function(Umat,
       }
       
       # calculating actual number removed from each stage for output
-     
       
-       group_rem <- vector()       # previous indexing issue - vec[i,] keeps calculating this years size
-        for (p in 1:npatches){
-          group_rem[p] <- sum(thisRemvec[(1+4*(p-1)):(4*p)])      # incorrect indexing here. We want to sum every 4 entries in the vector
-        }# removed per group
+      
+      group_rem <- vector()       # previous indexing issue - vec[i,] keeps calculating this years size
+      for (p in 1:npatches){
+        group_rem[p] <- sum(thisRemvec[(1+4*(p-1)):(4*p)])      # incorrect indexing here. We want to sum every 4 entries in the vector
+      }# removed per group
       
       
       #  into outputs
@@ -255,7 +242,7 @@ proj_meta_nodisp_rem <- function(Umat,
       warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
       break
     }
-   }  
+  }  
   
   # output objects
   if (isTRUE(return.vec)) {    # if we want remvec only
@@ -265,11 +252,11 @@ proj_meta_nodisp_rem <- function(Umat,
     out$pop <- Pop
     out$group <- Group
     out$vec <- Vec 
-  
-   if(isTRUE(return.vec) && isTRUE(return.remvec)){   # remvec and 
-    out$Nremoved <- Nremoved
-    out$Group_remvec <- Remgroup
-    out$Remvec <- Remvec
+    
+    if(isTRUE(return.vec) && isTRUE(return.remvec)){   # remvec and 
+      out$Nremoved <- Nremoved
+      out$Group_remvec <- Remgroup
+      out$Remvec <- Remvec
     }
     
     return(out)
@@ -277,7 +264,7 @@ proj_meta_nodisp_rem <- function(Umat,
     return(Pop)
   }
 }
-# ISSUES TO DEBUG - subsequent removals rounding leads to very few individuals removed. Need to change how we split removal goal across groups and stages
+
 
 # testing patch based removals
 n0_3patch <- round(c(rep(initials[1,]/4,3)))   # equal initial params
@@ -329,323 +316,6 @@ test_proj_rem <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
 
 
 # incorporating dispersal into function
-proj_meta_DDdisp_rem <- function(Umat,
-                                 initial,
-                                 stagedist,  # proportion of each stage
-                                 params,
-                                 stagenames,
-                                 npatches,
-                                 time,
-                                 DDapply="fertility",
-                                 dispersal_stages = c("Adult_f", "Adult_m"),
-                                 remyear = NULL,  # removal year = vector of years 
-                                 rem_strat = "random",  # if specified 
-                                 bias = NULL, 
-                                 return.vec=TRUE, 
-                                 return.remvec = FALSE){
-  # input checks
-  if (time <= 1) stop("Time must be a positive integer")
-  else(time <- as.integer(time))
-  
-  if (is.null(initial)) stop("You must provide initial population vector with each stage abundance")
-  else(n0 <- as.numeric(initial))
-  
-  if(is.null(stagenames) || length(stagenames) == 0) stop("stagenames must be provided for correct matrix dimensions")
-  
-  if (is.null(params)) stop("Please provide parameters for selected density-dependent function")
-  
-  # Check that the n_stages*n_patches = n_col of Umat:
-  nStages<- length(stagenames)
-  if (ncol(Umat)!=nStages*npatches){
-    stop("Umat dimensions do not match the number of stages multiplied by the 
-         number of patches.")
-  }
-  
-  # Check that they used "Adult_f" and "Adult_m" in the stage names, since we
-  # use a mating function that looks for those.
-  I_Af<- which(stagenames=="Adult_f")
-  I_Am<- which(stagenames=="Adult_m")
-  I_Yf<- which(stagenames=="Yearling_f")
-  I_Ym<- which(stagenames=="Yearling_m")
-  if (is.null(I_Af) | is.null(I_Am) | is.null(I_Yf) | is.null(I_Ym)){
-    stop("To use the mating function and density dependence, the function call 
-         expects the stagenames to include the following four stages, in any order: 
-         'Yearling_f', 'Adult_f', 'Yearling_m' and 'Adult_m'")
-  }
-  
-  # Check that the stages identified as dispersers are found in stagenames:
-  I_leavers<- which(stagenames %in% dispersal_stages)
-  if (length(I_leavers)!= length(dispersal_stages)){
-    stop("Check names of dispersal stages - the number of stagenames identified 
-         as dispersers does not match the number of dispersal stages specified.")
-  }
-  
-  # removal set up
-  if(is.numeric(remyear) == TRUE){
-    # ensure remyear are integers and between 1 - time
-    remyear <- unique(as.integer(remyear))
-    remyear <- remyear[remyear >= 1 & remyear <= time] 
-    if (length(remyear) == 0) warning("No valid removal year in 1:time after filtering")
-    
-    nYears <- length(remyear)   # over how many years are removals taking place?  remove year_goal for each value of rem_index
-    # Map removal year -> index into Remvec / Nremoved:
-    rem_index <- setNames(seq_along(remyear), remyear)  # takes length rem year, names assigned as seq of integers 
-  }
-  else (rem_index <- NULL)
-  
-  # Set up  output
-  Vec <- matrix(0, ncol = length(stagenames)*npatches, nrow = time + 1)  # matrix to fill with stage abundance.  row= time, col= stage
-  Pop <- numeric(length= (time + 1))       # vector to fill with total pop size each year
-  Group <- matrix(0, ncol = npatches, nrow = time+1)   # group sizes each year
-  Leavers <- matrix(0, ncol = ncol(Vec), nrow = time)   # matrix to fill with the number of individuals leaving each patch each year (by each stage)
-  
-  if (is.numeric(remyear) == TRUE) {
-    Nremoved <- numeric(length(remyear))      # how many removed total each year
-    Remgroup <- matrix(0, nrow = length(remyear), ncol = npatches)    # how many removed per group per year (col per group)
-    Remvec <- matrix(0, nrow = length(remyear), ncol =nStages*npatches)  
-  }
-  
-  colnames(Vec) <- rep(stagenames, npatches)  # naming cls matrix as stages 
-  rownames(Vec) <- 0:(time)   # rows correspond to each year of projection. Row 0 = initial or n0
-  Vec[1, ] <- floor(n0)     # makes sure this is as an integer, no decimals  
-  Pop[1] <- as.numeric(sum(n0))
-  
-  for(p in 1:npatches){
-    x <- (1 +4*(p-1)) : (4*p)   # boundaries containing each patch abundances
-    Group[1,p] <- sum(Vec[1, x])     # filling first row of group matrix
-  }
-  
-  # Loop = density dependent matrix application for each year and patch
-  for (i in 1:time) {   #  projection until end time
-    # each timestep, reset the size of thisAmat to match Umat.
-    thisAmat <- Umat
-    
-    # group sizes this year
-    sizes <- vector()
-    # sum every 4 entries
-    for (p in 1:npatches){
-      sizes[p] <- sum(Vec[i , (1+4*(p-1)):(4*p)])
-    }
-    
-    
-    dmat <- ddDmat(stagenames,dispersal_stages, # names of all stages, names of only dispersing stages
-                   npatches, # number of patches
-                   group_size = sizes)
-    
-    # record of individuals moving from group p to p'
-    moves <- array(0, dim = c(npatches, npatches, length(stagenames)),
-                   dimnames = list(from = 1:npatches, to = 1:npatches,
-                                   stage = stagenames))
-    
-    leavers <- rep(0, ncol(Vec))    # individuals leaving patches - to go in output
-    arrivers <- rep(0, ncol(Vec))   # individuals arriving in other patch
-    
-    # dispersal loop 
-    for (p in 1:npatches){
-      Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
-      subVec <- as.vector(Vec[i, Ipatch])    # have to specify row (year) we want, to remove names format as numeric vector
-      
-      
-      # apply the probability of leaving to the stages that leave:
-      subleavers<- rep(0,nStages)    # leavers from this patch
-      
-      # DD MATRIX APPLICATION HERE
-      subleavers[I_leavers]<- round(dmat[p,I_leavers]*subVec[I_leavers])   # round instead of floor - does not underestimate moving individuals
-      
-      
-      leavers[Ipatch] <- subleavers
-      
-      arrival_patches <- setdiff(1:npatches, p)   # setdiff compares differences between dataframes, removes p from all other patches
-      
-      for (s in I_leavers) {
-        n <- subleavers[s]
-        if (n > 0) {
-          # index into arrival_patches 
-          dest <- arrival_patches[sample(c(1:length(arrival_patches)), size = n, replace = TRUE)]
-          moves[p, , s] <- tabulate(dest, nbins = npatches)   # from p to  dest
-        }
-      }
-    }  # Brackets now in correct places
-    
-    # arrivers = sum over source patches -> (to x stage), flattened to match Vec layout
-    to_by_stage <- apply(moves[, , ], c(2, 3), sum)    # syntaxing errs here
-    arrivers <- as.vector(t(to_by_stage))
-    
-    # check : everyone who left must arrive somewhere
-    if(sum(arrivers) != sum(leavers)) stop("Numbers of leavers and arrivers not equal, issues in dispersal calculation")
-    
-    postdispVec<- Vec[i,] - leavers + arrivers    # works in long vec - dont need to loop to calculate for each patch
-    Leavers[i,] <- leavers # assigning leavers vec to relevant row in Leavers matrix
-    
-    # another loop over the patches to calculate reproduction:
-    for (p in 1:npatches){
-      Ipatch<- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
-      # extract the Umat for this patch: why do we need this step?
-      thisUmat<- Umat[Ipatch, Ipatch]
-      
-      # Nf calculation
-      subNf <- sum(postdispVec[(4*(p-1)+I_Af)], postdispVec[(4*(p-1)+I_Yf)])    # Nf sums yearling and adult fems in Vec matrix
-      subNm <- sum(postdispVec[(4*(p-1)+I_Am)], postdispVec[(4*(p-1)+I_Ym)])   # Nm 
-      
-      # ricker density dependence
-      subN <- sum(postdispVec[Ipatch])  # pop sizes sums row i for cols corresponding to patch p
-      subAmat <- apply.DD(params, thisUmat, subN, DDapply, stagenames,   
-                          subNf,        
-                          subNm)    
-      
-      # If the projection matrix has negative or NA values, return message, replace with 0, and continue
-      if (any(subAmat < 0, na.rm = TRUE)) {
-        warning(paste("Negative values in projection matrix at time step", i,
-                      "- setting negative entries to 0 and continuing."))
-        subAmat[subAmat < 0] <- 0
-        subAmat[is.na(subAmat)] <- 0
-      }
-      
-      # Insert the subAmat into the correct place in the matrix (on the diagonal block):
-      thisAmat[Ipatch, Ipatch]<- subAmat
-    }  
-    
-      
-      # Project just this patch forward:
-      Vec[(i+1), ] <- floor(thisAmat %*% postdispVec) # amat values multiplied by vec, round down for integers 
-     
-    # checking for removal years --------
-      # checking for removal years --------
-      if (as.character(i) %in% names(rem_index)) {  # if year i is present in remyear index
-        idx <- rem_index[as.character(i)]     # idx = 1: remyear. What removal year are we 
-        
-        rem <- vector(length = nStages*npatches)       # blank vector to fill as removal vector
-        
-        # FIRST YEAR
-        if(idx == 1){       # when idx = 1, remove 70% with goal 
-          preN <- Pop[remyear[1]]  # population size pre cull # move until i
-          Nrem <- round(preN * 0.7)   # goal to remove  - 70% of pop size before first rem  
-          Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
-          group_remvec <- rep(round(Nrem/ npatches), npatches)
-          
-          #using stagedist to remove group totals across stages 
-          for (p in 1:length(group_remvec)){   
-            rem[(1 +4*(p-1)) : (4*p)] <- group_remvec[p] * stagedist
-          }    
-          
-          thisRemvec <- round(rem)   # actual removed = rounded abundance * dist
-          
-          # SUBSEQUENT YEARS - very low numbers removed
-        }  else {
-          if(idx > 1 && idx <= 5){    # if supplementary, change strat to calculate max and min
-            estN <- 0.8 * preN - sum(Nremoved)     # ISSUE : negative estN?
-            # Use estimate from year before culls minus the culled N since. reduce by 1/5 (from published methods)
-            estN[estN < 0] <- 0                                               
-            # set min and max removals
-            base <- 0.36 * estN                # base using estimated pop size
-            min = base - (0.25*estN)          # difference between min and max = 25% of pre-cull total
-            max = base + (0.25*estN)
-          }
-          
-          # SUPPLEMENTARY CULLS - ISSUE this part removes too many
-          else if(idx > 5){    # if SBC, change strat to calculate max and min. Needs to be much lower intensity?
-            base <- 0.1 * Nremoved[1]   # 36% of first year cull total - SBC. CHanging this to 10% because of low population sizes
-            # set min and max removals
-            min = base - (0.125*preN)          # difference between min and max = 25% of pre-cull total
-            max = base                         # set maximum as as base to avoid large removals freqs?
-            
-          }
-          # need to prevent minimum falling bellow 0 - removing negative individuals
-          min[min < 0] <- 0
-          
-          # set seed for repeatability and use a normal dist instead
-          Nrem <- trunc.norm(1, min, max) # how many to remove this year using truncated norm dist between min and max values
-          Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
-          
-          # NEEDS WORK - HOW TO TRACK WHICH PATCH AND STAGE WE REMOVE FROM TO MAKE REMVEC------
-          thisDist <- matrix(Vec[i-1,]/Pop[i-1], nrow = npatches, ncol = nStages)     # getting a stagedist for this year - needs averaging across groups
-          avDist <- round(colMeans(thisDist), 2) # place in table and average across cols
-          
-          # sampling the patches that we remove from
-          rem_mat <- matrix(0, ncol = (nStages*npatches), nrow = Nrem)    # mat that tracks each removal stage and patch for each individual removed
-          
-          group_rem <- vector(length = npatches)     # vec of how many removals from each group 
-          stage_rem <- matrix(0, nrow = npatches, ncol = nStages)    # our removal matrix, tracking which stage is removed and from what group
-          
-          for (x in 1:nrow(rem_mat)){
-            a <- sample(c(1:npatches), 1)        # patch sample
-            s <- sample(c(1:4), 1, prob = avDist)        # stage sample
-            rem_mat[x, (s + 4*(a-1))] <- 1    
-          }
-          
-          thisRemvec <- colSums(rem_mat)
-          
-        }
-        
-        # calculating actual number removed from each stage for output
-        
-        
-        group_rem <- vector()       # previous indexing issue - vec[i,] keeps calculating this years size
-        for (p in 1:npatches){
-          group_rem[p] <- sum(thisRemvec[(1+4*(p-1)):(4*p)])      # incorrect indexing here. We want to sum every 4 entries in the vector
-        }# removed per group
-        
-        
-        #  into outputs
-        Nremoved[idx] <- sum(thisRemvec)  # total number removed   
-        Remvec[idx,] <- thisRemvec
-        Remgroup[idx,] <- group_rem
-        
-        # new population size following removals
-        Vec[(i + 1), ] <- floor(thisAmat %*% Vec[i, ]) - thisRemvec  # year after remyear filled with new stage vec. Why is this not filling correct year?
-      }
-    
-    # if any stage becomes negative, set to zero and continue
-    if (any(Vec < 0, na.rm = TRUE) || any(is.na(Vec))) {
-      warning(paste("Negative abundances produced at time step", i, "setting negatives to 0 and continuing."))
-      Vec[Vec < 0] <- 0
-      Vec[is.na(Vec)] <- 0
-    }
-    
-    # group sizes next year
-    sizes <- vector()
-    # sum every 4 entries
-    for (p in 1:npatches){
-      sizes[p] <- sum(Vec[i + 1, (1+4*(p-1)):(4*p)])
-    }
-    
-    # filling in group size this year
-    Group[i + 1,] <- sizes
-    
-    # pop sizes by year
-    Pop[i + 1] <- sum(Vec[(i + 1), ])
-    
-    # if pop size <= 0, stop and return message with year
-    if(Pop[i]<= 0 || is.na(Pop[i])) {
-      warning(paste("Projection stopped at time step", i, "because pop size reached 0 or below"))
-      break
-    }
-  }
-  
-  # output objects
-  if (isTRUE(return.vec)) {
-    out <- list(pop = vector(), 
-                vec = matrix(), 
-                group = matrix(),
-                leavers = matrix()
-    )
-    
-    out$pop <- Pop
-    out$vec <- Vec 
-    out$group <- Group
-    out$leavers <- Leavers
-    
-    if(isTRUE(return.vec) && isTRUE(return.remvec)){   # remvec and 
-      out$Nremoved <- Nremoved
-      out$Group_remvec <- Remgroup
-      out$Remvec <- Remvec
-    }
-    
-    return(out)
-  } else {
-    return(Pop)
-  }
-}
 
 
 # testing DDdisp and removals

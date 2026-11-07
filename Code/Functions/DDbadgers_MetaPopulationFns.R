@@ -715,6 +715,23 @@ proj_meta_nodisp_rem <- function(Umat,
       
       rem <- vector(length = nStages*npatches)       # blank vector to fill as removal vector
       
+      # stage distribution this year to sample probability of removal
+      thisDist <- matrix(Vec[i-1,]/Pop[i-1], nrow = npatches, ncol = nStages)     # getting a stagedist for this year - needs averaging across groups
+      avStageDist <- round(colMeans(thisDist), 2) # place in table and average across cols
+      
+      if(rem_strat == "random"){
+        dist <- avStageDist
+      }
+      
+      
+      ## bias vector for different removal strategies
+      # sex biased
+ #     if(rem_strat == )
+      
+      # stage biased
+      
+      # sett biased
+      
       # FIRST YEAR
       if(idx == 1){       # when idx = 1, remove 70% with goal 
         preN <- Pop[remyear[1]]  # population size pre cull # move until i
@@ -724,7 +741,7 @@ proj_meta_nodisp_rem <- function(Umat,
         
         #using stagedist to remove group totals across stages 
         for (p in 1:length(group_remvec)){   
-          rem[(1 +4*(p-1)) : (4*p)] <- group_remvec[p] * stagedist
+          rem[(1 +4*(p-1)) : (4*p)] <- group_remvec[p] * dist
         }    
         
         thisRemvec <- round(rem)   # actual removed = rounded abundance * dist
@@ -756,10 +773,7 @@ proj_meta_nodisp_rem <- function(Umat,
         Nrem <- trunc.norm(1, min, max) # how many to remove this year using truncated norm dist between min and max values
         Nrem <- min(Nrem, Pop[i])    # if Nrem greater than the current pop size, then remove pop size (shows up correct in Nremoved vec)
         
-        # NEEDS WORK - HOW TO TRACK WHICH PATCH AND STAGE WE REMOVE FROM TO MAKE REMVEC------
-        thisDist <- matrix(Vec[i-1,]/Pop[i-1], nrow = npatches, ncol = nStages)     # getting a stagedist for this year - needs averaging across groups
-        avDist <- round(colMeans(thisDist), 2) # place in table and average across cols
-        
+       
         # sampling the patches that we remove from
         rem_mat <- matrix(0, ncol = (nStages*npatches), nrow = Nrem)    # mat that tracks each removal stage and patch for each individual removed
         
@@ -768,7 +782,7 @@ proj_meta_nodisp_rem <- function(Umat,
         
         for (x in 1:nrow(rem_mat)){
           a <- sample(c(1:npatches), 1)        # patch sample
-          s <- sample(c(1:4), 1, prob = avDist)        # stage sample
+          s <- sample(c(1:4), 1, prob = avStageDist)        # stage sample
           rem_mat[x, (s + 4*(a-1))] <- 1    
         }
         

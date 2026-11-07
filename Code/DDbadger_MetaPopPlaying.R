@@ -177,7 +177,6 @@ test_proj_rem1 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
                                       npatches = 3,
                                       time = 50,     
                                       DDapply="fertility", 
-                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
                                       remyear = 10,  # removal year = vector of years 
                                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                                       bias = NULL , # strength of bias as percentage (range??)
@@ -191,7 +190,6 @@ test_proj_rem2 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
                                       npatches = 3,
                                       time = 50,     
                                       DDapply="fertility", 
-                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
                                       remyear = c(10:14),  # removal year = vector of years 
                                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                                       bias = NULL , # strength of bias as percentage (range??)
@@ -205,7 +203,6 @@ test_proj_rem3 <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch,
                                       npatches = 3,
                                       time = 50,     
                                       DDapply="fertility", 
-                                      #      intensity= 70,  # percentage you want REMOVED from pop at time T=ry. Remove this - always 70
                                       remyear = c(10:19),  # removal year = vector of years 
                                       rem_strat = "random",  # if specified removals, "adults, females, yearlings, males, yearling females, 
                                       bias = NULL , # strength of bias as percentage (range??)
@@ -216,7 +213,7 @@ group1 <- meta_plot(test_proj_rem1,   # output obj of dd.proj
                                       y_val= "Group",   # plot type - N or Vec 
                                       ylab = "Group size", 
                                       xlab = "time (t)",
-                                      rem_year = NULL,
+                                      rem_year = 10,
                                       mytheme = theme_classic(), 
                                       cols= "black",    # can be vector of 2 cols
                                       legend.pos = "top",
@@ -225,7 +222,7 @@ group2 <- meta_plot(test_proj_rem2,   # output obj of dd.proj
                     y_val= "Group",   # plot type - N or Vec 
                     ylab = "Group size", 
                     xlab = "time (t)",
-                    rem_year = NULL,
+                    rem_year = 10,
                     mytheme = theme_classic(), 
                     cols= "black",    # can be vector of 2 cols
                     legend.pos = "top",
@@ -234,7 +231,7 @@ group3 <- meta_plot(test_proj_rem3,   # output obj of dd.proj
                     y_val= "Group",   # plot type - N or Vec 
                     ylab = "Group size", 
                     xlab = "time (t)",
-                    rem_year = NULL,
+                    rem_year = 10,
                     mytheme = theme_classic(), 
                     cols= "black",    # can be vector of 2 cols
                     legend.pos = "top",
@@ -261,7 +258,7 @@ meta_nodisp_rem_newplot <- meta_plot(meta_nodisp_rem_newparams,   # output obj o
                                        y_val= "Group",   # plot type - N or Vec 
                                        ylab = "Group size", 
                                        xlab = "time (t)",
-                                       rem_year = NULL,
+                                       rem_year = 10,
                                        mytheme = theme_classic(), 
                                        cols= "black",    # can be vector of 2 cols
                                        legend.pos = "top",
@@ -287,7 +284,7 @@ meta_DDdisp_rem_oldplot <- meta_plot(meta_DDdisp_rem_oldp,   # output obj of dd.
                                      y_val= "Group",   # plot type - N or Vec 
                                      ylab = "Group size", 
                                      xlab = "time (t)",
-                                     rem_year = NULL,
+                                     rem_year = 10,
                                      mytheme = theme_classic(), 
                                      cols= "black",    # can be vector of 2 cols
                                      legend.pos = "top",
@@ -313,25 +310,29 @@ test_DDdisp_rem_newp <- proj_meta_DDdisp_rem(threepatch_Umat, n0_3patch,
                                         return.vec=TRUE, 
                                         return.remvec = TRUE)
 
-(meta_nodisp_rem_pop <- meta_plot(test_DDdisp_rem_newp,   # output obj of dd.proj
+(meta_DDdisp_rem_pop <- meta_plot(test_DDdisp_rem_newp,   # output obj of dd.proj
                                   y_val= "N",   # plot type - N or Vec 
                                   ylab = "Population size", 
                                   xlab = "time (t)",
-                                  rem_year = NULL,
+                                  rem_year = 10,
                                   mytheme = theme_classic(), 
                                   cols= "black",    # can be vector of 2 cols
                                   legend.pos = "top",
                                   base_size = 16))
 
-(meta_nodisp_rem_group <- meta_plot(test_DDdisp_rem_newp,   # output obj of dd.proj
+(meta_DDdisp_rem_group <- meta_plot(test_DDdisp_rem_newp,   # output obj of dd.proj
                                     y_val= "Group",   # plot type - N or Vec 
                                     ylab = "Group size", 
                                     xlab = "time (t)",
-                                    rem_year = NULL,
+                                    rem_year = 10,
                                     mytheme = theme_classic(), 
                                     cols= "black",    # can be vector of 2 cols
                                     legend.pos = "top",
                                     base_size = 16))
 
+meta_DDdisp_rem_newplot <- meta_DDdisp_rem_pop + meta_DDdisp_rem_group
 
 
+
+## NEXT STEPS
+# Sett biased removals
