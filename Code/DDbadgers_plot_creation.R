@@ -27,8 +27,8 @@ ggsave(filename = "meta_fixeddisp_norem_newparams.png",
        bg = "white")
 
 # density dependent dispersal proj without removals, old parameters (tighter dd)
-ggsave(filename = "meta_DDdisp_norem_oldparams.png",
-       plot = meta_DDdisp_norem_oldparams,
+ggsave(filename = "meta_DDdisp_norem_newparams.png",
+       plot = meta_DDdisp_norem_newparams,
        device = "png",
        path = here("Figs"), 
        bg = "white")
@@ -52,7 +52,7 @@ ggsave(filename = "meta_nodisp_rem_newparams.png",
        bg = "white")
 
 
-# density dependent dispersal, removals, old parameters (tighter dd)
+# density dependent dispersal, removals, old parameters 
 ggsave(filename = "meta_DDdisp_rem_oldparams.png",
        plot = meta_DDdisp_rem_oldplot,
        device = "png",
