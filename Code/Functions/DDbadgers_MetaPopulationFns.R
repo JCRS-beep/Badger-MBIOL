@@ -1,7 +1,36 @@
 ## Functions for simple projections of any MPM, and metapopulation functions
-# Written by Chrissy Hernandez
+# Written by Chrissy Hernandez and Jay Creese
 # July 2026
+# Last updated November 2026
 
+<<<<<<< HEAD
+=======
+## New version of DD reproduction without using an Amat:
+# function to create amat with dd reproduction
+badger_repro_IBM <- function(params, 
+                     N,   # yearling and adults
+                     Nf,        # Adult female abundance
+                     Nm             # Adult males
+) {   # returns the ricker-scaled average clutch size per female
+  ## Note that this function assumes the stages are "Yearling_f, Adult_f,
+  ## Yearling_m, Adult_m" in that order
+  
+  # Call to ricker() function
+  rick <- ricker(params, N)    # rick = multiplier to be applied to fertility later
+  
+  # Call to mating.func()
+  f <- mating.func(params,     # density dependent parameters
+                   Nf,        # Adult  females
+                   Nm)             # Adult  males
+  
+  S <- params$Sc_max
+  repro <- f* S * rick
+
+  return(repro) 
+}
+
+
+>>>>>>> e77c0ba1d0da4063b64de07af7ada94b52152d96
 ### Simple projection function for a metapopulation with no dispersal and no removals:
 proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal Umats
                                   initial,
@@ -352,7 +381,7 @@ ddDmat <- function(stagenames,dispersal_stages,
   Dmat <- matrix(0, ncol = length(stagenames), nrow = npatches) # row = number patches
   colnames(Dmat) <- stagenames
   
-  max_move <- 0.3  # greatest proportion of moving individuals?
+  max_move <- 0.3  # greatest proportion of moving individuals
   xhalf <- 15
   steepness = 0.5
   for (p in 1:npatches){
@@ -365,7 +394,6 @@ ddDmat <- function(stagenames,dispersal_stages,
   
   return(Dmat)
 } 
-
 
 # DD moving projection function -----
 # incorporating density dependent movement probs in projection function
