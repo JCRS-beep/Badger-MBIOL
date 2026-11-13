@@ -3,14 +3,8 @@
 # July 13 2026
 # Last updated: Nov 2 2026
 
-# unequal initial vec
+# equal initial vec
 n0_3patch <- round(c(rep(initials[1,]/2, 3)))      # equal patch sizes initially
-
-# multiple patch UMAT ----
-threepatch_Umat <- matrix(data=0, nrow=12, ncol=12)
-threepatch_Umat[1:4,1:4]<- umat
-threepatch_Umat[5:8,5:8]<- umat
-threepatch_Umat[9:12, 9:12] <- umat
 
 # no dispersal function testing
 output<- proj_meta_nodisp_norem(threepatch_Umat,    
@@ -51,29 +45,6 @@ output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, params, stages,
                                       legend.pos = "top",
                                       base_size = 16))
 meta_fixeddisp_norem_oldparams <- meta_fixeddisp_norem_pop + meta_fixeddisp_norem_group
-
-
-
-# setting new beta value for tighter DD params (explained in other script)
-plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
-#  want plateau when N = 28 
-new_b <- log(plateau_rick)/-30    ## solving for new_b exp(-new_b * 28) = 0.2927426
-
-# updated param set up - tighter DD with smaller beta
-new_params <- params 
-new_params$b = new_b
-
-# new initial vecs to match smaller group sizes
-size <- c(10,20, 16)  #  group sizes
-patch <- matrix(0, nrow = length(size), ncol = 4)
-
-for (i in 1:length(size)){   # loop to fill rows of matrix with vector
-  patch[i,] <- floor(stagedist*size[i])
-}
-
-# tuning this into a vector
-n0_3patch <- c(t(patch))
-n0_3patch_eq <- rep(round(initials[1,]/5), 3)
 
 
 # Testing fixed dispersal projection with new params
@@ -336,3 +307,6 @@ meta_DDdisp_rem_newplot <- meta_DDdisp_rem_pop + meta_DDdisp_rem_group
 
 ## NEXT STEPS
 # Sett biased removals
+
+
+

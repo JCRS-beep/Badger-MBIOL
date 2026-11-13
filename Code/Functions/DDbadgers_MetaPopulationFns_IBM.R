@@ -1,6 +1,6 @@
 ## Badger metapopulation function, rewritten as individual-based
 # Written by Chrissy Hernandez 
-# November 2026
+# 11 November 2026
 
 
 # DD moving projection function -----

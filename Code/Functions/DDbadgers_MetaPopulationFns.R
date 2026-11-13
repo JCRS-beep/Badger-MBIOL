@@ -3,8 +3,6 @@
 # July 2026
 # Last updated November 2026
 
-<<<<<<< HEAD
-=======
 ## New version of DD reproduction without using an Amat:
 # function to create amat with dd reproduction
 badger_repro_IBM <- function(params, 
@@ -30,7 +28,6 @@ badger_repro_IBM <- function(params,
 }
 
 
->>>>>>> e77c0ba1d0da4063b64de07af7ada94b52152d96
 ### Simple projection function for a metapopulation with no dispersal and no removals:
 proj_meta_nodisp_norem<- function(Umat,     # must be a big matrix with diaongal Umats
                                   initial,

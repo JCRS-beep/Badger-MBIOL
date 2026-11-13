@@ -40,30 +40,31 @@ for (t in 1:reps){   # loop to fill rows of matrix with vector
 
 
 # PART II - meta-pop model set up ----
+threepatch_Umat <- matrix(data=0, nrow=12, ncol=12)
+threepatch_Umat[1:4,1:4]<- umat
+threepatch_Umat[5:8,5:8]<- umat
+threepatch_Umat[9:12, 9:12] <- umat
+
+
+
 # setting new beta value for tighter DD params (explained in other script)
 plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
 #  want plateau when N = 28 
 new_b <- log(plateau_rick)/-28    ## solving for new_b exp(-new_b * 28) = 0.2927426
 
 # updated param set up - tighter DD with smaller beta
-meta_params <- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for sexes), load from script rogers 1997
-                    b= new_b,       # should vary by group if we set different max group sizes
-                    rep_K= rogers_k,          # max litter size (K), 
-                    h= 10)   # harem size per male - assume single male sufficient for groups
+# updated param set up - tighter DD with smaller beta
+meta_params <- params 
+meta_params$b = new_b
 
 
+# setting up new initial vecs to match smaller group sizes
+size <- c(25,20, 16)  #  group sizes
+patch <- matrix(0, nrow = length(size), ncol = 4)
 
-# setting up repititions
+for (i in 1:length(size)){   # loop to fill rows of matrix with vector
+  patch[i,] <- floor(stagedist*size[i])
+}
 
-nGroups <- 10        # how many groups?
-# how to split pop_sizes across 10 groups unequally?
-# x <- seq(0.05, 0.3, 0.025) # proportions (group size 1 = 0.05* total pop size, until 30% of total pop). will not sum to total pop size. 
-                          # to equal total pop_size, need to sample 10 proportions that sum to 1
-
-# set.seed(123)  # setting repitition number 
-
-
-# limits <- sample(4:28, groups, replace = TRUE)    # max group size = 28, wht to choose for min - single individual of each stage
-
-
-
+# tuning this into a vector
+n0_3patch <- c(t(patch))

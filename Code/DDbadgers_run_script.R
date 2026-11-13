@@ -18,6 +18,7 @@ library(here)
 source(here("Code/Functions/01_all_functions.R")) 
 source(here("Code/Functions/DDbadgers_AnalyseOutputFns.R"))
 source(here("Code/Functions/DDbadgers_MetaPopulationFns.R"))
+source(here("Code/Functions/DDbadgers_MetaPopulationFns_IBM.R"))
 
 # data extraction
 source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) and 1 (all)
