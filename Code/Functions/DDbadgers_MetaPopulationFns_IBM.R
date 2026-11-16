@@ -3,7 +3,7 @@
 # 11 November 2026
 
 
-# DD moving projection function -----
+# DD moving projection function as IBM -----
 # incorporating density dependent movement probs in projection function
 proj_meta_DDdisp_norem_IBM <- function(Umat,
                                        initial,
@@ -96,14 +96,14 @@ proj_meta_DDdisp_norem_IBM <- function(Umat,
     #### Arrival process: Needs updating to density dependence! for now, let's
     #say probability of arrival is equal for all patches other than the
     #departure patch
-    prob_arrival<- rep(1/(npatches-1), npatches)
+    prob_arrival <- rep(1/(npatches-1), npatches)
     
     # individuals arriving to patches
     arrivers <- matrix(0, nrow=npatches, ncol=length(stagenames))   # individuals arriving in other patches
     for (p in 1:npatches){
       Ipatch <- (1+4*(p-1)):(4*p) # indices of the patch rows/cols in Vec and Umat
       subleavers<- leavers[Ipatch]
-      if (sum(subleavers)<1){ next }
+      if (sum(subleavers)<1){ next }   # only continues if there are individuals leaving current patch
       # possible destinations
       arrival_patches <- setdiff(1:npatches, p)   # setdiff compares differences between dataframes, removes p from all other patches
       # destinations for the number of individuals (currently, we sum all the
