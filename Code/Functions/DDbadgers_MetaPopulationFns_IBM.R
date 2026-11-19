@@ -210,3 +210,6 @@ proj_meta_DDdisp_norem_IBM <- function(Umat,
     return(Pop)
   }
 }
+
+
+# DD movement and removal function converted to IBM

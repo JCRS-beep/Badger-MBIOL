@@ -48,7 +48,7 @@ meta_fixeddisp_norem_oldparams <- meta_fixeddisp_norem_pop + meta_fixeddisp_nore
 
 
 # Testing fixed dispersal projection with new params
-output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
+output <- proj_meta_fixeddisp_norem(threepatch_Umat, n0_3patch, meta_params, stages, 
                                     npatches=3, DDapply = 'fertility', time = 100,
                                     dispersal_prob = 0.2, 
                                     dispersal_stages = c("Adult_f", "Adult_m"),
@@ -107,7 +107,7 @@ meta_DDdisp_norem_oldparams <- meta_DDdisp_norem_pop + meta_DDdisp_norem_group
 
 
 #new params and density dependent movement 
-output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, new_params, stages, 
+output <- proj_meta_DDdisp_norem(threepatch_Umat, n0_3patch, meta_params, stages, 
                        npatches=3, DDapply = 'fertility', time = 50,
                                    dispersal_stages = c("Adult_f", "Adult_m"),
                                    return.vec=TRUE)
@@ -215,7 +215,7 @@ removal_summary_plot <- (group1+group2/group3)
 # testing no dispersal, removals and new params
 meta_nodisp_rem_newparams <- proj_meta_nodisp_rem(threepatch_Umat, n0_3patch, 
                                        stagedist,  # proportion of each stage
-                                       new_params,     # using old parameters at first
+                                       meta_params,     # using old parameters at first
                                        stagenames = stages, 
                                        npatches = 3,
                                        time = 50,     
@@ -269,7 +269,7 @@ meta_DDdisp_rem_oldplot <- meta_plot(meta_DDdisp_rem_oldp,   # output obj of dd.
 # MAY BE AN ISSUE IN THE LOOP AFTER REMOVALS?
 test_DDdisp_rem_newp <- proj_meta_DDdisp_rem(threepatch_Umat, n0_3patch, 
                                         stagedist,  # proportion of each stage
-                                        new_params, 
+                                        meta_params, 
                                         stagenames = stages, 
                                         npatches = 3,
                                         time = 50,     
