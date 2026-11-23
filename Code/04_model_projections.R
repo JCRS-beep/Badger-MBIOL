@@ -1,5 +1,6 @@
 # Modelling our different scenarios, producing outputs for plotting
-# 23/02/25
+#  written by Jay 23/02/25
+# Updated for new project 23/11/2026
 
 
 # loading required packages
@@ -23,8 +24,6 @@ proj0 <- multi.rem(Umat,
                   return.vec= TRUE, 
                   return.remvec = FALSE) 
 
-ssd0 <- ssd(proj0, vis = FALSE)
-stagedist <- round(ssd0$stageMat[20,], 3) # final dist used as ssd, rounded to 3 sf
 
 # Repeated projections, do not return long outputs !
 

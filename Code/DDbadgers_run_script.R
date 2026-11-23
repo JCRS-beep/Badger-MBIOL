@@ -26,7 +26,6 @@ source(here("Code/02_data_extraction.R"))  # select options 2 (existing data) an
 # parameter definition and df set ups
 source(here("Code/03_parameter_rate_setup.R"))
 
-
 # following sections only relevant for MBIOL project - will be updating the removal scenarios with new functions and different removal biases.
 # setting up model scenarios
 source(here("Code/04_model_projections.R"))  

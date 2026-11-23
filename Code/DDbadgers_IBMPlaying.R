@@ -9,9 +9,16 @@ out <- proj_meta_DDdisp_norem_IBM (threepatch_Umat,
                             stages,
                             npatches = 3,
                             time = 30,
+                            max_group = 28,
                             DDapply="fertility",
                             dispersal_stages = c("Adult_f", "Adult_m"),
                             return.vec= TRUE)
+
+# "Error in sample.int(length(x), size, replace, prob) : 
+# too few positive probabilities
+# Called from: sample.int(length(x), size, replace, prob)"
+# Where is this being called in our function file?
+
 
 (test_plot  <- meta_plot(out,   # output obj of dd.proj
                            y_val= "N",   # plot type - N or Vec 
@@ -175,3 +182,5 @@ ggsave(filename = "metaIBM_DDdisp_rem_newparams.png",
        device = "png",
        path = here("Figs"), 
        bg = "white")
+
+

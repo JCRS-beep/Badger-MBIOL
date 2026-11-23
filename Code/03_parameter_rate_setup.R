@@ -22,8 +22,8 @@ params<- data.frame(Sc_max= rogers_cub_survival,   # max cub survival (equal for
 
 # creating initial vectors here?
 # inital vec for single projection 
-stagedist <- c(0.12, 0.43, 0.12, 0.34)
-n0 <- stagedist * 100 # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
+temp_stagedist <- c(0.12, 0.43, 0.12, 0.34) # approx stagedist
+n0 <- temp_stagedist * 100 # vec structure = yf, af, ym, am. if pop size = 100, ssd gives this vec
 
 
 # initial vecs for repeated projection scenarios
@@ -35,7 +35,7 @@ pop_sizes <- runif(reps, min = 30, max=240) # min pop size = 25, max = 240.
 initials <- matrix(0, nrow = reps, ncol = 4)
 
 for (t in 1:reps){   # loop to fill rows of matrix with vector
-  initials[t,] <- floor(stagedist*pop_sizes[t])
+  initials[t,] <- floor(temp_stagedist*pop_sizes[t])
 }
 
 
@@ -48,7 +48,26 @@ threepatch_Umat[9:12, 9:12] <- umat
 
 
 # setting new beta value for tighter DD params (explained in other script)
-plateau_rick <- exp(-params$b *160) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
+# calculating max group size from projection
+proj0 <- multi.rem(umat,     
+                   initial = n0, 
+                   stagedist = temp_stagedist,   # approx stage dist 
+                   params = params, 
+                   stagenames = stages,
+                   time = 100, 
+                   DDapply="Fmat", 
+                   intensity= NULL,  # percentage you want REMOVED from pop at time T=ry
+                   remyear = NULL, 
+                   rem_strat = NULL ,  # if specified removals, "adults, females, yearlings, males, yearling females, 
+                   bias = NULL ,
+                   return.vec= TRUE, 
+                   return.remvec = FALSE) 
+
+ssd0 <- ssd(proj0, vis = FALSE)
+stagedist <- round(ssd0$stageMat[100,], 3)   # final dist used as ssd, rounded to 3 sf
+maxN <- max(proj0$pop)
+
+plateau_rick <- exp(-params$b * maxN) # val when N = 160 (plateau) =  0.2927426  (ricker value at plateau)   
 #  want plateau when N = 28 
 new_b <- log(plateau_rick)/-28    ## solving for new_b exp(-new_b * 28) = 0.2927426
 
